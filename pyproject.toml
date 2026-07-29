@@ -1,16 +1,14 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "pyalloq"
-version = "0.0.1.dev1"
+version = "0.1.0"
 description = "A modern Python SDK for quant portfolio optimization. (Work in Progress)"
-readme = {text = "# pyalloq\n\nComing soon. This package is currently under active development."}
-requires-python = ">=3.9"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Development Status :: 1 - Planning",
+readme = "README.md"
+authors = [
+    { name = "Siddeshkanth", email = "siddeshkanth.logonathan@gmail.com" }
 ]
+requires-python = ">=3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
