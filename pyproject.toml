@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyalloq"
+version = "0.0.1.dev1"
+description = "A modern Python SDK for quant portfolio optimization. (Work in Progress)"
+readme = {text = "# pyalloq\n\nComing soon. This package is currently under active development."}
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 1 - Planning",
+]
