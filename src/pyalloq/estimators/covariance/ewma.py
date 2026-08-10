@@ -1,9 +1,12 @@
 import pandas as pd
-from .base import BaseCovarianceEstimator
+from pyalloq.core.interfaces import BaseCovarianceEstimator
+from pyalloq.core.data import MarketData
+from typing import Any, cast
+
 
 class EWMACovariance(BaseCovarianceEstimator):
     def __init__(
-        self, 
+        self,
         span: int = 60,
         annualization_factor: float = 252.0,
     ) -> None:
@@ -12,12 +15,14 @@ class EWMACovariance(BaseCovarianceEstimator):
 
     def estimate(
         self,
-        prices: pd.DataFrame,
+        data: MarketData,
+        **kwargs: Any,
     ) -> pd.DataFrame:
-        returns = prices.pct_change().dropna()
+        returns = data.prices.pct_change().dropna()
 
         ewma_cov_series = returns.ewm(span=self.span).cov()
         latest_date = returns.index[-1]
         latest_cov = ewma_cov_series.xs(latest_date, level=0)
 
-        return latest_cov * self.annualization_factor
+        final_cov = latest_cov * self.annualization_factor
+        return cast(pd.DataFrame, final_cov)
