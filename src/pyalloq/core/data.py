@@ -17,6 +17,8 @@ class MarketData:
     # Risk free rate (Contant or Time Series)
     risk_free_rate: pd.Series | float = 0.0
 
+    risk_aversion: pd.Series | float = 1.0
+
     def __post_init__(self) -> None:
         self.validate_alignment()
 

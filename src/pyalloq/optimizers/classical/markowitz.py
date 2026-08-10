@@ -27,12 +27,10 @@ class MarkowitzAllocator(BaseAllocator):
         mu, Sigma = self._prepare_inputs(data.prices, expected_returns, cov_matrix)
         n = len(mu)
 
-        # 1. Cast pandas values to strict float numpy arrays
         mu_vals = np.asarray(mu.values, dtype=float)
         sigma_vals_np = np.asarray(Sigma.values, dtype=float)
         Sigma_vals = cp.psd_wrap(sigma_vals_np)
 
-        # 2. Safely extract risk-free rate
         if isinstance(data.risk_free_rate, pd.Series):
             rf = float(data.risk_free_rate.iloc[-1])
         elif data.risk_free_rate is not None:
@@ -42,7 +40,6 @@ class MarkowitzAllocator(BaseAllocator):
 
         if self.objective == ObjectiveFunction.MIN_VOLATILITY:
             w = cp.Variable(n)
-            # Inline the objective to prevent variable reuse errors
             prob = cp.Problem(
                 cp.Minimize(cp.quad_form(w, Sigma_vals)), [cp.sum(w) == 1, w >= 0]
             )
@@ -58,7 +55,6 @@ class MarkowitzAllocator(BaseAllocator):
                 )
 
             y = cp.Variable(n)
-            # Remove .T on 1D arrays
             prob = cp.Problem(
                 cp.Minimize(cp.quad_form(y, Sigma_vals)), [mu_excess @ y == 1, y >= 0]
             )
@@ -71,10 +67,7 @@ class MarkowitzAllocator(BaseAllocator):
 
         elif self.objective == ObjectiveFunction.MAX_RETURN:
             w = cp.Variable(n)
-            # Extract risk_aversion from kwargs, default to 1.0
-            risk_aversion = kwargs.get("risk_aversion", 1.0)
-
-            # Remove .T on 1D arrays
+            risk_aversion = data.risk_aversion
             utility = (mu_vals @ w) - risk_aversion * cp.quad_form(w, Sigma_vals)
             prob = cp.Problem(cp.Maximize(utility), [cp.sum(w) == 1, w >= 0])
             prob.solve()
@@ -92,8 +85,6 @@ class MarkowitzAllocator(BaseAllocator):
 
         weights = np.clip(weights, 0, 1)
         weights /= np.sum(weights)
-
-        # Clean up matrix multiplication using @
         portfolio_return = weights @ mu_vals
         portfolio_vol = np.sqrt(weights @ sigma_vals_np @ weights)
 
