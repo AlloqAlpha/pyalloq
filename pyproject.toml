@@ -64,3 +64,12 @@ Issues = "https://github.com/your-org/qpo/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "scipy.*",
+    "cvxpy.*",
+    "sklearn.*"
+]
+ignore_missing_imports = true

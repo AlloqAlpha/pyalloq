@@ -1,7 +1,8 @@
-import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
 from pyalloq.core.interfaces import BaseReturnEstimator
+from pyalloq.core.data import MarketData
+
 
 class CAPMReturnEstimator(BaseReturnEstimator):
     def __init__(
@@ -14,12 +15,16 @@ class CAPMReturnEstimator(BaseReturnEstimator):
 
     def estimate(
         self,
-        prices: pd.DataFrame,
-        market_prices: pd.DataFrame,
+        data: MarketData,
         **kwargs,
     ) -> pd.Series:
-        returns = prices.pct_change().dropna()
-        market_prices = market_prices.pct_change().dropna()
+        returns = data.prices.pct_change().dropna()
+        market_prices = data.features.get("market_prices")
+        if market_prices is None:
+            raise ValueError(
+                "CAPMReturnEstimator requires market_prices in data.features['CAPMReturnEstimator']"
+            )
+        market_returns = market_prices.pct_change().dropna()
 
         returns, market_returns = returns.align(market_returns, join="inner", axis=0)
         market_var = market_returns.var()
@@ -29,9 +34,12 @@ class CAPMReturnEstimator(BaseReturnEstimator):
             cov = returns[asset].cov(market_returns)
             beta = cov / market_var
 
-            expected_returns[asset] = self.risk_free_rate + beta * self.market_risk_premium
+            expected_returns[asset] = (
+                self.risk_free_rate + beta * self.market_risk_premium
+            )
 
         return pd.Series(expected_returns)
+
 
 class MultiFactorReturnEstimator(BaseReturnEstimator):
     def __init__(
@@ -45,11 +53,17 @@ class MultiFactorReturnEstimator(BaseReturnEstimator):
 
     def estimate(
         self,
-        prices: pd.DataFrame,
-        factor_data: pd.DataFrame,
+        data: MarketData,
         **kwargs,
     ) -> pd.Series:
-        returns = prices.pct_change().dropna()
+        factor_data = data.cross_sectional
+        if factor_data is None:
+            raise ValueError(
+                "MultiFactorReturnEstimator requires 'factors' in data.cross_sectional"
+            )
+
+        returns = data.prices.pct_change().dropna()
+
         returns, factor_data = returns.align(factor_data, join="inner", axis=0)
 
         expected_returns = {}
@@ -60,7 +74,7 @@ class MultiFactorReturnEstimator(BaseReturnEstimator):
             self.model.fit(X, y)
             betas = self.model.coef_
 
-            asset_mu = self.risk_free_rate + np.dot(betas, self.factor_premium.values)
+            asset_mu = self.risk_free_rate + (betas @ self.factor_premium.values)
             expected_returns[asset] = asset_mu
 
         return pd.Series(expected_returns)
