@@ -1,38 +1,73 @@
 import pandas as pd
-from typing import List
-from pyalloq.core.interfaces import BaseAllocator
+from typing import Any, cast
+from pyalloq.core.pipeline import StrategyPipeline
+from pyalloq.backtest.splitters import BaseWindowSplitter, RollingWindowSplitter
+from pyalloq.backtest.costs import BaseCostModel, FlatBpsCostModel
+from pyalloq.backtest.metrics import MetricsTearSheet
+from pyalloq.core.data import MarketData
+
 
 class WalkForwardEngine:
     def __init__(
         self,
-        allocator: BaseAllocator,
-        lookback_window: int = 252,
-        rebalance_freq: str = "6ME"
+        pipeline: StrategyPipeline,
+        splitter: BaseWindowSplitter | None = None,
+        cost_model: BaseCostModel | None = None,
+        rebalance_freq: str = "ME",
     ) -> None:
-        self.allocator = allocator
-        self.lookback_window = lookback_window
+        self.pipeline = pipeline
         self.rebalance_freq = rebalance_freq
+
+        self.splitter = splitter or RollingWindowSplitter(lookback_window=252)
+        self.cost_model = cost_model or FlatBpsCostModel(bps=10.0)
 
     def run(
         self,
-        prices: pd.DataFrame
-    ) -> pd.DataFrame:
-        rebalance_dates = prices.resample(self.rebalance_freq).last()
+        data: MarketData,
+    ) -> dict[str, Any]:
+        asset_returns = data.prices.pct_change().dropna()
+
+        raw_index = data.prices.resample(self.rebalance_freq).last().index
+        rebalance_dates = pd.DatetimeIndex(raw_index)
 
         weights_history = []
-        for current_date in rebalance_dates.index:
-            df_historical = prices.loc[:current_date]
-
-            if len(df_historical) < self.lookback_window:
-                continue
-
-            df_window = df_historical.iloc[-self.lookback_window:]
-
-            result = self.allocator.allocate(
-                prices=df_window,
-            )
-            weights = result.clean_weights()
+        for current_date, data_window in self.splitter.split(data, rebalance_dates):
+            weights = self.pipeline.generate_weights(data_window)
             weights.name = current_date
             weights_history.append(weights)
 
-        return pd.DataFrame(weights_history)
+        df_weights = pd.DataFrame(weights_history)
+        df_weights_daily = df_weights.reindex(data.prices.index).ffill().shift(1)
+
+        weight_changes = df_weights.diff().fillna(df_weights)
+        turnover_costs_daily = pd.Series(0.0, index=data.prices.index)
+
+        for raw_date, row in weight_changes.iterrows():
+            # FIX 1: Cast the Hashable to Any, telling Mypy to trust pandas' native output
+            date = pd.Timestamp(cast(Any, raw_date))
+
+            if date in data.prices.index:
+                # FIX 2: Build the dictionary safely, casting the .loc output to pd.Series
+                daily_feats: dict[str, pd.Series] | None = None
+
+                if data.features:
+                    daily_feats = {}
+                    for k, v in data.features.items():
+                        # We promise Mypy that v.loc[date] will be a pd.Series
+                        daily_feats[k] = cast(pd.Series, v.loc[date])
+
+                costs = self.cost_model.calculate_costs(row, features_slice=daily_feats)
+                turnover_costs_daily.loc[date] = costs.sum()  # type: ignore[call-overload]
+
+        portfolio_returns = (df_weights_daily * asset_returns).sum(
+            axis=1
+        ) - turnover_costs_daily
+        portfolio_returns = portfolio_returns.dropna()
+
+        tear_sheet = MetricsTearSheet.generate(portfolio_returns)
+
+        return {
+            "returns": portfolio_returns,
+            "weights": df_weights_daily,
+            "tear_sheet": tear_sheet,
+        }
