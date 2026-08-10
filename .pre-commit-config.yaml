@@ -1,0 +1,59 @@
+default_stages: [pre-commit]
+
+repos:
+  # ── General & Git Hygiene ─────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, production, --branch, staging]
+
+  # ── Security & Credentials scanning ────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: detect secrets
+        exclude: (?x)^(.*\.lock|.*\.lock\.json)$
+
+  # ── Python: Ruff (lint + format) ──────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format # Natively handles formatting without needing local bash scripts
+
+  # ── Python: mypy (type checking) ──────────────────────────────────────────────────
+  # OPTION A: If you want pre-commit to manage mypy (Standard way)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.10.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [types-requests, types-pyyaml]
+
+  # OPTION B: (Highly Recommended for uv users) Run mypy locally via uv
+  # This guarantees mypy uses the exact dependencies installed in your project.
+  - repo: local
+    hooks:
+      - id: mypy-local
+        name: mypy (uv)
+        entry: uv run mypy
+        language: system
+        types: [python]
+        require_serial: true
+        pass_filenames: true
