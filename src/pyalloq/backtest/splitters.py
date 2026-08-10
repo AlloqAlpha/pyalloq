@@ -44,7 +44,6 @@ class ExpandingWindowSplitter(BaseWindowSplitter):
         rebalance_dates: pd.DatetimeIndex,
     ) -> Generator[tuple[pd.Timestamp, MarketData], None, None]:
         for current_date in rebalance_dates:
-            # Passing lookback=None expands the window from the beginning of history
             data_window = data.slice_time(end_date=current_date, lookback=None)
 
             if len(data_window.prices) >= self.min_periods:

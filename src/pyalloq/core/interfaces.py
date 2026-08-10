@@ -26,7 +26,6 @@ class BaseAllocator(ABC):
             except KeyError:
                 pass
 
-        # Infer frequency directly from pandas DatetimeIndex
         if isinstance(returns.index, pd.DatetimeIndex):
             inferred = pd.infer_freq(returns.index)
             if inferred:

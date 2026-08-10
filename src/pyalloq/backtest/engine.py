@@ -43,17 +43,14 @@ class WalkForwardEngine:
         turnover_costs_daily = pd.Series(0.0, index=data.prices.index)
 
         for raw_date, row in weight_changes.iterrows():
-            # FIX 1: Cast the Hashable to Any, telling Mypy to trust pandas' native output
             date = pd.Timestamp(cast(Any, raw_date))
 
             if date in data.prices.index:
-                # FIX 2: Build the dictionary safely, casting the .loc output to pd.Series
                 daily_feats: dict[str, pd.Series] | None = None
 
                 if data.features:
                     daily_feats = {}
                     for k, v in data.features.items():
-                        # We promise Mypy that v.loc[date] will be a pd.Series
                         daily_feats[k] = cast(pd.Series, v.loc[date])
 
                 costs = self.cost_model.calculate_costs(row, features_slice=daily_feats)

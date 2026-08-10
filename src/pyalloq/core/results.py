@@ -3,14 +3,15 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
+
 @dataclass
 class OptimizationResult:
     """Standardized output for all portfolio optimizers."""
+
     name = str
     weights: pd.Series
     status: str  # e.g., "OPTIMAL", "INFEASIBLE", "SUBOPTIMAL"
 
-    # Optional performance metrics implied by the optimization
     expected_return: Optional[float] = None
     volatility: Optional[float] = None
     sharpe_ratio: Optional[float] = None
@@ -23,5 +24,3 @@ class OptimizationResult:
         clean[np.abs(clean) < cutoff] = 0.0
 
         return clean / clean.sum()
-
-    
