@@ -87,9 +87,16 @@ class BaseAllocator(ABC):
 
 class BaseReturnEstimator(ABC):
     @abstractmethod
-    def estimate(self, data: MarketData, **kwargs) -> pd.Series:
+    def estimate(self, data: MarketData, **kwargs: Any) -> pd.Series:
         """
         Takes raw prices (and optional macro/technical features) and
         returns an Nx1 pandas Series of expected returns for the assets.
         """
+        pass
+
+
+class BaseCovarianceEstimator(ABC):
+    @abstractmethod
+    def estimate(self, data: MarketData, **kwargs: Any) -> pd.DataFrame:
+        """Takes a price DataFrame and returns an NxN covariance matrix."""
         pass
