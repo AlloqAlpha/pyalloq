@@ -4,13 +4,13 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq"
-version = "0.1.1"
+version = "0.1.2"
 description = "A modern Python SDK for quant portfolio optimization."
 readme = "README.md"
 authors = [
     { name = "Siddeshkanth", email = "pyalloq-info@alloq-alpha.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 
 classifiers = [
   "Programming Language :: Python :: 3",
