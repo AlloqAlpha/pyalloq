@@ -13,8 +13,8 @@ class HRPAllocator(BaseAllocator):
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
         if cov_matrix is None:
