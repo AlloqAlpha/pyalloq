@@ -1,6 +1,7 @@
 import cvxpy as cp
 import pandas as pd
 import numpy as np
+from typing import Any
 from pyalloq.core.interfaces import BaseAllocator
 from pyalloq.core.results import OptimizationResult
 from pyalloq.core.data import MarketData
@@ -10,14 +11,14 @@ class MaxDiversificationAllocator(BaseAllocator):
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> OptimizationResult:
         if cov_matrix is None:
             raise ValueError("MaxDiversificationAllocator required cov_matrix")
 
-        N = len(data.prices.columns)
+        N = len(cov_matrix.columns)
         Sigma = cp.psd_wrap(cov_matrix.values)
         vols = np.sqrt(np.diag(cov_matrix.values))
 

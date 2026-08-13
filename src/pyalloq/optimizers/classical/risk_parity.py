@@ -8,16 +8,20 @@ from pyalloq.core.data import MarketData
 
 
 class RiskParityAllocator(BaseAllocator):
+    """
+    Every asset contributes the exact same amount of volatility to overall portfolio.
+    """
+
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
         if cov_matrix is None:
             raise ValueError("RiskBudgetingAllocator requires cov_matrix")
-        N = len(data.prices.columns)
+        N = len(cov_matrix.columns)
         Sigma = cp.psd_wrap(cov_matrix.values)
 
         y = cp.Variable(N)

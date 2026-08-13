@@ -44,7 +44,7 @@ class RandomMatrixTheoryEstimator(BaseCovarianceEstimator):
         D = np.diag(std_devs)
         cov_reconstructed = D @ corr_reconstructed @ D
 
-        corr_reconstructed = (cov_reconstructed + cov_reconstructed.T) / 2
+        cov_reconstructed = (cov_reconstructed + cov_reconstructed.T) / 2
 
         return pd.DataFrame(
             cov_reconstructed, index=data.prices.columns, columns=data.prices.columns

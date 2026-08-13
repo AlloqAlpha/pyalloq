@@ -13,8 +13,8 @@ class HRPAllocator(BaseAllocator):
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
         if cov_matrix is None:
@@ -78,8 +78,8 @@ class HRPAllocator(BaseAllocator):
                 var_right = self._get_cluster_var(cov, cluster_right)
 
                 alpha = 1 - var_left / (var_left + var_right)
-                weights.loc[cluster_left] *= alpha
-                weights.loc[cluster_right] *= 1 - alpha
+                weights.iloc[cluster_left] *= alpha
+                weights.iloc[cluster_right] *= 1 - alpha
 
         return weights
 

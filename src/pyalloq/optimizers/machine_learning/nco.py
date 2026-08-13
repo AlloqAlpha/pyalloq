@@ -17,19 +17,19 @@ class NCOAllocator(BaseAllocator):
         inner_optimizer: BaseAllocator | None = None,
         outer_optimizer: BaseAllocator | None = None,
         n_clusters: int = 4,
-        objective: ObjectiveFunction = ObjectiveFunction.MAX_SHARPE,
+        objective: ObjectiveFunction = ObjectiveFunction.MIN_VOLATILITY,
     ) -> None:
         super().__init__(tickers=tickers)
-        self.inner_optimizer = inner_optimizer or MarkowitzAllocator(tickers)
-        self.outer_optimizer = outer_optimizer or MarkowitzAllocator(tickers)
+        self.inner_optimizer = inner_optimizer or MarkowitzAllocator(tickers, objective)
+        self.outer_optimizer = outer_optimizer or MarkowitzAllocator(tickers, objective)
         self.n_clusters = n_clusters
         self.objective = objective
 
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
         if cov_matrix is None:
@@ -48,11 +48,7 @@ class NCOAllocator(BaseAllocator):
             cluster_assets = cov_matrix.columns[clusters == i]
             sub_cov = cov_matrix.loc[cluster_assets, cluster_assets]
 
-            inner_result = self.inner_optimizer.allocate(
-                data=data,
-                cov_matrix=sub_cov,
-                objective=self.objective,
-            )
+            inner_result = self.inner_optimizer.allocate(data=data, cov_matrix=sub_cov)
             inner_weights_dict[i] = inner_result.weights
 
             cluster_covariance[i, i] = (
@@ -60,11 +56,7 @@ class NCOAllocator(BaseAllocator):
             )
 
         outer_cov_df = pd.DataFrame(cluster_covariance)
-        outer_result = self.outer_optimizer.allocate(
-            data=data,
-            cov_matrix=outer_cov_df,
-            objective=self.objective,
-        )
+        outer_result = self.outer_optimizer.allocate(data=data, cov_matrix=outer_cov_df)
 
         for i in range(self.n_clusters):
             cluster_assets = cov_matrix.columns[clusters == i]
