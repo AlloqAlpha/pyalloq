@@ -20,26 +20,23 @@ class MarkowitzAllocator(BaseAllocator):
     def allocate(
         self,
         data: MarketData,
+        cov_matrix: pd.DataFrame,
         expected_returns: pd.Series | None = None,
-        cov_matrix: pd.DataFrame | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
-        mu, Sigma = self._prepare_inputs(data.prices, expected_returns, cov_matrix)
-        n = len(mu)
+        N = len(cov_matrix.columns)
 
-        mu_vals = np.asarray(mu.values, dtype=float)
-        sigma_vals_np = np.asarray(Sigma.values, dtype=float)
+        sigma_vals_np = np.asarray(cov_matrix.values, dtype=float)
         Sigma_vals = cp.psd_wrap(sigma_vals_np)
 
         if isinstance(data.risk_free_rate, pd.Series):
+            # TODO: Use whole Series instead
             rf = float(data.risk_free_rate.iloc[-1])
-        elif data.risk_free_rate is not None:
-            rf = float(data.risk_free_rate)
         else:
-            rf = 0.0
+            rf = data.risk_free_rate
 
         if self.objective == ObjectiveFunction.MIN_VOLATILITY:
-            w = cp.Variable(n)
+            w = cp.Variable(N)
             prob = cp.Problem(
                 cp.Minimize(cp.quad_form(w, Sigma_vals)), [cp.sum(w) == 1, w >= 0]
             )
@@ -47,6 +44,12 @@ class MarkowitzAllocator(BaseAllocator):
             weights = w.value
 
         elif self.objective == ObjectiveFunction.MAX_SHARPE:
+            if expected_returns is None:
+                raise ValueError(
+                    "expected_returns need to be provided for using MAX_SHARPE objective."
+                )
+            mu_vals = np.asarray(expected_returns.values, dtype=float)
+
             mu_excess = mu_vals - rf
 
             if np.all(mu_excess <= 0):
@@ -54,7 +57,7 @@ class MarkowitzAllocator(BaseAllocator):
                     "All expected returns are <= risk-free rate. Max Sharpe undefined."
                 )
 
-            y = cp.Variable(n)
+            y = cp.Variable(N)
             prob = cp.Problem(
                 cp.Minimize(cp.quad_form(y, Sigma_vals)), [mu_excess @ y == 1, y >= 0]
             )
@@ -66,7 +69,12 @@ class MarkowitzAllocator(BaseAllocator):
                 weights = None
 
         elif self.objective == ObjectiveFunction.MAX_RETURN:
-            w = cp.Variable(n)
+            if expected_returns is None:
+                raise ValueError(
+                    "expected_returns need to be provided for using MAX_SHARPE objective."
+                )
+            mu_vals = np.asarray(expected_returns.values, dtype=float)
+            w = cp.Variable(N)
             risk_aversion = data.risk_aversion
             utility = (mu_vals @ w) - risk_aversion * cp.quad_form(w, Sigma_vals)
             prob = cp.Problem(cp.Maximize(utility), [cp.sum(w) == 1, w >= 0])
@@ -85,19 +93,10 @@ class MarkowitzAllocator(BaseAllocator):
 
         weights = np.clip(weights, 0, 1)
         weights /= np.sum(weights)
-        portfolio_return = weights @ mu_vals
-        portfolio_vol = np.sqrt(weights @ sigma_vals_np @ weights)
-
-        portfolio_sharpe = (
-            (portfolio_return - rf) / portfolio_vol if portfolio_vol > 0 else 0.0
-        )
 
         return OptimizationResult(
-            weights=pd.Series(weights, index=self.tickers),
+            weights=pd.Series(weights, index=cov_matrix.index),
             status=prob.status.upper(),
-            expected_return=portfolio_return,
-            volatility=portfolio_vol,
-            sharpe_ratio=portfolio_sharpe,
             metadata={
                 "objective_value": prob.value,
                 "solver_used": prob.solver_stats.solver_name
