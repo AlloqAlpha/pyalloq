@@ -11,7 +11,7 @@ class MarketData:
 
     prices: pd.DataFrame
     # Time Series features (e.g: Volume, Factor returns, Macro Indicators, Alternative Data)
-    features: dict[str, pd.DataFrame | pd.Series] = field(default_factory=dict)
+    features: dict[str, pd.DataFrame] = field(default_factory=dict)
     # Cross Sectional Data (e.g: Market Caps, Sector Mappings)
     cross_sectional: pd.DataFrame | None = None
     # Risk free rate (Contant or Time Series)
@@ -50,7 +50,7 @@ class MarketData:
         if lookback is not None:
             sliced_prices = sliced_prices.iloc[-lookback:]
 
-        sliced_features: dict[str, pd.DataFrame | pd.Series] = {}
+        sliced_features: dict[str, pd.DataFrame] = {}
         for name, feat in self.features.items():
             sliced_feat = feat.loc[:end_date]
             if lookback is not None:
