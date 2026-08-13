@@ -5,6 +5,7 @@ from pyalloq.backtest.splitters import BaseWindowSplitter, RollingWindowSplitter
 from pyalloq.backtest.costs import BaseCostModel, FlatBpsCostModel
 from pyalloq.backtest.metrics import MetricsTearSheet
 from pyalloq.core.data import MarketData
+from pyalloq.backtest.costs import CostData
 
 
 class WalkForwardEngine:
@@ -46,12 +47,12 @@ class WalkForwardEngine:
             date = pd.Timestamp(cast(Any, raw_date))
 
             if date in data.prices.index:
-                daily_feats: dict[str, pd.Series] | None = None
+                daily_feats: dict[str, CostData] | None = None
 
                 if data.features:
                     daily_feats = {}
                     for k, v in data.features.items():
-                        daily_feats[k] = cast(pd.Series, v.loc[date])
+                        daily_feats[k] = v.loc[date]
 
                 costs = self.cost_model.calculate_costs(row, features_slice=daily_feats)
                 turnover_costs_daily.loc[date] = costs.sum()  # type: ignore[call-overload]

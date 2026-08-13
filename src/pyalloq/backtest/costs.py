@@ -1,14 +1,18 @@
 import pandas as pd
+import torch
+from typing import Union, cast, Any
 from abc import ABC, abstractmethod
+
+CostData = Union[pd.Series, pd.DataFrame, torch.Tensor]
 
 
 class BaseCostModel(ABC):
     @abstractmethod
     def calculate_costs(
         self,
-        weights_delta: pd.Series,
-        features_slice: dict[str, pd.Series] | None = None,
-    ) -> pd.Series:
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> CostData:
         """Returns the cost in percentage terms for each asset."""
         ...
 
@@ -21,9 +25,9 @@ class FlatBpsCostModel(BaseCostModel):
 
     def calculate_costs(
         self,
-        weights_delta: pd.Series,
-        features_slice: dict[str, pd.Series] | None = None,
-    ) -> pd.Series:
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> CostData:
         return weights_delta.abs() * self.cost_pct
 
 
@@ -39,20 +43,26 @@ class AlmgrenChrissCostModel(BaseCostModel):
 
     def calculate_costs(
         self,
-        weights_delta: pd.Series,
-        features_slice: dict[str, pd.Series] | None = None,
-    ) -> pd.Series:
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> CostData:
         if features_slice is None or "volume" not in features_slice:
             raise ValueError(
                 "Almgren-Chriss requires 'volume' in data.features['volume']."
             )
 
+        delta = cast(Any, weights_delta)
+        daily_volume = cast(Any, features_slice["volume"])
+
         # Non-linear market impact math based on trade size relative to daily volume
-        trade_dollar_size = weights_delta.abs() * self.aum
-        daily_volume = features_slice["volume"]
+        trade_dollar_size = delta.abs() * self.aum
+
+        # Safe for torch usage
+        safe_volume = daily_volume + 1e-8
+        safe_trade = trade_dollar_size + 1e-8
 
         # Fixed Spread + Impact Cost (Gamma * sqrt(Trade Size / Volume))
-        impact_cost = self.gamma * (trade_dollar_size / daily_volume).pow(0.5)
-        total_cost_pct = (self.spread + impact_cost) * weights_delta.abs()
+        impact_cost = self.gamma * (safe_trade / safe_volume).pow(0.5)  # type: ignore[operator]
+        total_cost_pct = (self.spread + impact_cost) * weights_delta.abs()  # type: ignore[operator]
 
         return total_cost_pct
