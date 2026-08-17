@@ -12,11 +12,12 @@ from pyalloq.backtest.costs import FlatBpsCostModel
 
 from pyalloq.deep_learning.loss_functions.sharpe import SharpeLoss
 from pyalloq.deep_learning.estimators.returns.models.tft import TFTDeepReturnsNet
-from pyalloq.deep_learning.estimators.covariance.models.cac import (
-    CrossAttentionCholeskyNet,
-)
+
+# from pyalloq.deep_learning.estimators.covariance.models.cac import (
+#     CrossAttentionCholeskyNet,
+# )
+from pyalloq.estimators.covariance.ewma import EWMACovariance
 from pyalloq.deep_learning.estimators.returns.deep_return import DeepReturnEstimator
-from pyalloq.deep_learning.estimators.covariance.deep_cov import DeepCovarianceEstimator
 from pyalloq.deep_learning.trainer import WalkForwardTrainer
 
 
@@ -53,9 +54,6 @@ def test_full_pipeline() -> None:
 
     print("2. Initializing Deep Learning Models...")
     tft_model = TFTDeepReturnsNet(n_features=n_features, hidden_size=32, num_heads=2)
-    cov_model = CrossAttentionCholeskyNet(
-        n_features=n_features, hidden_dim=32, num_heads=2
-    )
 
     # 3. Setup Splitter and Trainer
     splitter = RollingWindowSplitter(lookback_window=120)
@@ -75,7 +73,7 @@ def test_full_pipeline() -> None:
     print("4. Assembling Hybrid Strategy Pipeline...")
     # Wrap PyTorch models into BaseEstimator wrappers
     returns_est = DeepReturnEstimator(model=tft_model, lookback_window=lookback)
-    cov_est = DeepCovarianceEstimator(model=cov_model, lookback_window=lookback)
+    cov_est = EWMACovariance(span=30)
 
     pipeline = StrategyPipeline(
         returns_estimator=returns_est,
