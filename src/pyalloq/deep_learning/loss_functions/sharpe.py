@@ -29,22 +29,21 @@ class SharpeLoss(nn.Module):
         weights: Tensor of shape (Batch Size, N assets). Must sum to 1
         true_returns: Tensor of shape(Batch Size, N assets). T+1 return
         """
+
         if weights_matrix.dim() == 2:
             weights_matrix = weights_matrix.unsqueeze(1)
-            true_returns_matrix = true_returns_matrix.unsqueeze(1)
+            true_returns_matrix = true_returns_matrix.squeeze(1)
             if volume_matrix is not None:
                 volume_matrix = volume_matrix.unsqueeze(1)
 
         gross_returns = torch.sum(weights_matrix * true_returns_matrix, dim=-1)
 
         if initial_weights is None:
-            initial_weights = torch.zeros_like(weights_matrix[:, 0, :])
+            initial_weights = torch.zeros_like(weights_matrix[:, :1, :])
         else:
             initial_weights = initial_weights.unsqueeze(1)
 
-        shifted_weights = torch.cat(
-            [initial_weights, weights_matrix[:, :-1, :]], dim=-1
-        )
+        shifted_weights = torch.cat([initial_weights, weights_matrix[:, :-1, :]], dim=1)
         weights_delta = weights_matrix - shifted_weights
 
         cost_pct = self.cost_model(weights_delta, volume=volume_matrix)

@@ -14,7 +14,6 @@ class TemporalEncoder(nn.Module):
             input_size=n_features,
             hidden_size=hidden_dim,
             batch_first=True,
-            dropout=dropout,
         )
         self.layer_norm = nn.LayerNorm(hidden_dim)
 
@@ -110,7 +109,10 @@ class CrossAttentionCholeskyNet(nn.Module):
         """
 
         batch_size, lookback, n_assets, n_features = x.size()
-        x_reshaped = x.view(batch_size * n_assets, lookback, n_features)
+
+        x_permuted = x.permute(0, 2, 1, 3).contiguous()
+        x_reshaped = x_permuted.view(batch_size * n_assets, lookback, n_features)
+
         temporal_state = self.temporal_encoder(x_reshaped)
         cross_sectional_state = temporal_state.view(batch_size, n_assets, -1)
         attended_state = self.cross_attention(cross_sectional_state)

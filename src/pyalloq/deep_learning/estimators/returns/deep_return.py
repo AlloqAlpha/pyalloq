@@ -3,14 +3,14 @@ import torch.nn as nn
 import pandas as pd
 from typing import Any
 
-from pyalloq.core.interfaces import BaseCovarianceEstimator
+from pyalloq.core.interfaces import BaseReturnEstimator
 from pyalloq.core.data import MarketData
 from pyalloq.deep_learning.dataset import MarketDataset
 
 
-class DeepCovarianceEstimator(BaseCovarianceEstimator):
+class DeepReturnEstimator(BaseReturnEstimator):
     """
-    Wraps a trained Deep Learning model to forecast covariance matrix for downstream optimizers.
+    Wraps a trained Deep Learning model to forecast expected returns for downstream optimizers
     """
 
     def __init__(
@@ -28,12 +28,9 @@ class DeepCovarianceEstimator(BaseCovarianceEstimator):
         self,
         data: MarketData,
         **kwargs: Any,
-    ) -> pd.DataFrame:
+    ) -> pd.Series:
         if len(data.prices) < self.lookback_window:
-            cov_np = data.prices.pct_change().cov().fillna(0.0).values
-            return pd.DataFrame(
-                cov_np, index=data.prices.columns, columns=data.prices.columns
-            )
+            return pd.Series(0.0, index=data.prices.columns, name="expected_returns")
 
         dataset = MarketDataset(
             data=data,
@@ -43,15 +40,13 @@ class DeepCovarianceEstimator(BaseCovarianceEstimator):
 
         x_tensor, _ = dataset[len(dataset) - 1]
         x_batch = x_tensor.unsqueeze(0).to(self.device)
+
         with torch.no_grad():
-            # Output Shape: (1, N_Assets, N_Assets)
-            cov_pred_tensor = self.model(x_batch)
-        cov_np = cov_pred_tensor.squeeze(0).cpu().numpy()
+            mu_pred_tensor = self.model(x_batch)
+        mu_pred = mu_pred_tensor.squeeze(0).cpu().numpy()
 
-        cov_matrix = pd.DataFrame(
-            cov_np,
+        return pd.Series(
+            mu_pred,
             index=data.prices.columns,
-            columns=data.prices.columns,
+            name="expected_returns",
         )
-
-        return cov_matrix

@@ -24,7 +24,9 @@ class MarketDataset(Dataset):
 
         if data.features is not None:
             for feat_name, df_feature in data.features.items():
-                aligned_feat = df_feature.reindex(columns=self.assets).fillna(0.0)
+                aligned_feat = df_feature.reindex(
+                    index=df_returns.index, columns=self.assets
+                ).fillna(0.0)
                 features_list.append(aligned_feat.to_numpy())
 
         stacked_features = np.stack(features_list, axis=-1)
