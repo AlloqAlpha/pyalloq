@@ -4,8 +4,8 @@ from torch.utils.data import DataLoader
 import pandas as pd
 import copy
 
-from pyalloq.core.data import MarketData
-from pyalloq.backtest.splitters import BaseWindowSplitter
+from pyalloq_core.data import MarketData
+from pyalloq_backtest.splitters import BaseWindowSplitter
 from pyalloq.deep_learning.dataset import MarketDataset
 
 

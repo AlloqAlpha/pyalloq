@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from pyalloq.backtest.costs import BaseCostModel, FlatBpsCostModel
+from pyalloq_backtest.costs import BaseCostModel, FlatBpsCostModel
 from pyalloq.deep_learning.costs import TorchCostAdapter
 
 

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-from pyalloq.core.data import MarketData
+from pyalloq_core.data import MarketData
 
 
 class MarketDataset(Dataset):

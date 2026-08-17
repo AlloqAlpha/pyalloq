@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import cast
-from pyalloq.backtest.costs import BaseCostModel, CostData
+from pyalloq_backtest.costs import BaseCostModel, CostData
 
 
 class TorchCostAdapter(nn.Module):

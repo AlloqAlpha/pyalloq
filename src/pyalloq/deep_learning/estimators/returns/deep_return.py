@@ -3,8 +3,8 @@ import torch.nn as nn
 import pandas as pd
 from typing import Any
 
-from pyalloq.core.interfaces import BaseReturnEstimator
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseReturnEstimator
+from pyalloq_core.data import MarketData
 from pyalloq.deep_learning.dataset import MarketDataset
 
 

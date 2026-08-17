@@ -2,20 +2,17 @@ import numpy as np
 import pandas as pd
 import torch
 
-from pyalloq.core.data import MarketData
-from pyalloq.core.pipeline import StrategyPipeline
-from pyalloq.core.enums import ObjectiveFunction
+from pyalloq_core.data import MarketData
+from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_core.enums import ObjectiveFunction
 from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
-from pyalloq.backtest.engine import WalkForwardEngine
-from pyalloq.backtest.splitters import RollingWindowSplitter
-from pyalloq.backtest.costs import FlatBpsCostModel
+from pyalloq_backtest.engine import WalkForwardEngine
+from pyalloq_backtest.splitters import RollingWindowSplitter
+from pyalloq_backtest.costs import FlatBpsCostModel
 
 from pyalloq.deep_learning.loss_functions.sharpe import SharpeLoss
 from pyalloq.deep_learning.estimators.returns.models.tft import TFTDeepReturnsNet
 
-# from pyalloq.deep_learning.estimators.covariance.models.cac import (
-#     CrossAttentionCholeskyNet,
-# )
 from pyalloq.estimators.covariance.ewma import EWMACovariance
 from pyalloq.deep_learning.estimators.returns.deep_return import DeepReturnEstimator
 from pyalloq.deep_learning.trainer import WalkForwardTrainer
