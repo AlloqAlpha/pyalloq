@@ -1,17 +1,21 @@
 import pandas as pd
 import numpy as np
-from .base import BaseCovarianceEstimator
+from pyalloq_core.interfaces import BaseCovarianceEstimator
+from pyalloq_core.data import MarketData
+from typing import Any
+
 
 class SemiCovariance(BaseCovarianceEstimator):
     def __init__(
-        self, 
+        self,
         benchmark_return: float = 0.0,
         annualization_factor: float = 252.0,
     ) -> None:
         self.benchmark_return = benchmark_return
         self.annualization_factor = annualization_factor
 
-    def estimate(self, prices: pd.DataFrame) -> pd.DataFrame:
+    def estimate(self, data: MarketData, **kwargs: Any) -> pd.DataFrame:
+        prices = data.prices
         returns = prices.pct_change().dropna()
 
         daily_benchmark = self.benchmark_return / self.annualization_factor

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Tuple
 
+
 class BlackLittermanEstimator:
     def __init__(
         self,
@@ -19,7 +20,6 @@ class BlackLittermanEstimator:
         Q: pd.DataFrame,
         Omega: pd.DataFrame | None = None,
     ) -> Tuple[pd.Series, pd.DataFrame]:
-
         assets = cov_matrix.columns
         market_caps = market_caps.loc[assets]
         Sigma = cov_matrix.values
@@ -33,7 +33,7 @@ class BlackLittermanEstimator:
             tau_Sigma = self.tau * Sigma
             omega_val = np.diag(np.diag(P_val.dot(tau_Sigma).dot(P_val.T)))
         else:
-            omega_val = omega_val.values
+            omega_val = Omega.values
 
         tau_cov_inv = np.linalg.inv(self.tau * Sigma)
         omega_inv = np.linalg.inv(omega_val)
@@ -46,5 +46,5 @@ class BlackLittermanEstimator:
 
         return (
             pd.Series(bl_mu, index=assets),
-            pd.DataFrame(bl_cov, index=assets, columns=assets)
+            pd.DataFrame(bl_cov, index=assets, columns=assets),
         )

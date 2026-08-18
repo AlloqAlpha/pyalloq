@@ -14,8 +14,8 @@ class RiskParityAllocator(BaseAllocator):
 
     def allocate(
         self,
-        data: MarketData,
-        cov_matrix: pd.DataFrame,
+        data: MarketData | None = None,
+        cov_matrix: pd.DataFrame | None = None,
         expected_returns: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
