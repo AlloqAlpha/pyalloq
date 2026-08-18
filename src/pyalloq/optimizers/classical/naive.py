@@ -32,9 +32,9 @@ class RandomAllocator(BaseAllocator):
         expected_returns: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
-        N = len(data.prices.columns)
-        weights = pd.Series(np.random.rand(N), index=data.prices.columns)
-        weights /= weights.sum()
+        tickers = data.prices.columns
+        N = len(tickers)
+        weights = pd.Series(np.random.dirichlet(np.ones(N)), index=tickers)
 
         return OptimizationResult(
             weights=weights,
