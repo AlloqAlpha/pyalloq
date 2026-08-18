@@ -2206,7 +2206,7 @@ wheels = [
 
 [[package]]
 name = "pyalloq"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "cvxopt", marker = "sys_platform != 'win32'" },
@@ -2295,7 +2295,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-backtest"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "src/pyalloq-backtest" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -2327,7 +2327,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-core"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "src/pyalloq-core" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -2357,7 +2357,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-data-connector"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "src/pyalloq-data-connector" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -2399,7 +2399,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-features"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "src/pyalloq-features" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },

@@ -38,6 +38,8 @@ uv run pre-commit run --all-files
 import datetime as dt
 from pyalloq_data_connector.yahoo_finance import YahooFinanceClient
 from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_backtest.engine import WalkForwardEngine
 
 # 1. Fetch Market Data
 client = YahooFinanceClient()
@@ -47,13 +49,17 @@ data = client.get_market_data(
     end=dt.datetime(2024, 1, 1)
 )
 
-# 2. Compute Covariance & Allocate
-cov_matrix = data.prices.pct_change().dropna().cov() * 252
+# 2. Build Strategy Pipeline
 allocator = RiskParityAllocator(tickers=data.assets)
-result = allocator.allocate(data=data, cov_matrix=cov_matrix)
+pipeline = StrategyPipeline(allocator=allocator)
 
-print("Optimal Weights:")
-print(result.weights)
+# 3. Run Walk-Forward Backtest
+engine = WalkForwardEngine(pipeline=pipeline, rebalance_freq="ME")
+results = engine.run(data)
+
+# 4. Inspect Results & Performance Metrics
+print("Performance Tear Sheet:")
+print(results["tear_sheet"])
 ```
 
 ## License
