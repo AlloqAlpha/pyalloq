@@ -94,5 +94,6 @@ pyalloq-data-connector = { workspace = true }
 [tool.uv.workspace]
 members = [
   "src/pyalloq-core",
+  "src/pyalloq-backtest",
   "src/pyalloq-data-connector"
 ]

@@ -19,6 +19,7 @@ resolution-markers = [
 [manifest]
 members = [
     "pyalloq",
+    "pyalloq-backtest",
     "pyalloq-core",
     "pyalloq-data-connector",
 ]
@@ -2285,6 +2286,38 @@ dev = [
     { name = "pandas-stubs", specifier = ">=3.0.5.260730" },
     { name = "pre-commit", specifier = ">=3.7.0" },
     { name = "ruff", specifier = ">=0.5.0" },
+]
+
+[[package]]
+name = "pyalloq-backtest"
+version = "0.1.4"
+source = { editable = "src/pyalloq-backtest" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pandas" },
+    { name = "pyalloq-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "numpy", specifier = ">=1.24" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "pyalloq-core", editable = "src/pyalloq-core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "ruff", specifier = ">=0.6" },
 ]
 
 [[package]]
