@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq-data-connector"
-version = "0.1.5"
+version = "0.1.4"
 description = "Vendor-agnostic data adapters for PyAlloq."
 readme = "README.md"
 authors = [
