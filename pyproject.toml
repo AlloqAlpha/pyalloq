@@ -32,7 +32,9 @@ dependencies = [
   "matplotlib>=3.7",
   "seaborn>=0.13",
   "pyalloq-core",
-  "pyalloq-data-connector"
+  "pyalloq-data-connector",
+  "pyalloq-backtest",
+  "pyalloq-features"
 ]
 
 [dependency-groups]
