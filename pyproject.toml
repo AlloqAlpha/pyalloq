@@ -71,7 +71,9 @@ files = ["src"]
 mypy_path = [
   "src",
   "src/pyalloq-core/src",
-  "src/pyalloq-data-connector/src"
+  "src/pyalloq-data-connector/src",
+  "src/pyalloq-features/src",
+  "src/pyalloq-backtest/src"
 ]
 explicit_package_bases = true
 namespace_packages = true
@@ -82,18 +84,22 @@ module = [
     "scipy.*",
     "cvxpy.*",
     "sklearn.*",
-    "yfinance.*"
+    "yfinance.*",
+    "talib.*"
 ]
 ignore_missing_imports = true
 
 [tool.uv.sources]
 pyalloq-core = { workspace = true }
 pyalloq-data-connector = { workspace = true }
+pyalloq-features = { workspace = true }
+pyalloq-backtest = { workspace = true }
 
 
 [tool.uv.workspace]
 members = [
   "src/pyalloq-core",
   "src/pyalloq-backtest",
-  "src/pyalloq-data-connector"
+  "src/pyalloq-data-connector",
+  "src/pyalloq-features",
 ]

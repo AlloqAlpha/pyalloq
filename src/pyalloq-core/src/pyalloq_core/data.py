@@ -9,6 +9,7 @@ class MarketData:
     Serves as a single source of truth across the pyalloq SDK
     """
 
+    assets: list[str] = field(default_factory=list)
     prices: pd.DataFrame
     # Time Series features (e.g: Volume, Factor returns, Macro Indicators, Alternative Data)
     features: dict[str, pd.DataFrame] = field(default_factory=dict)
@@ -20,6 +21,8 @@ class MarketData:
     risk_aversion: pd.Series | float = 1.0
 
     def __post_init__(self) -> None:
+        if not self.assets and self.prices is not None and not self.prices.empty:
+            self.assets = list(self.prices.columns)
         self.validate_alignment()
 
     def validate_alignment(self) -> None:
