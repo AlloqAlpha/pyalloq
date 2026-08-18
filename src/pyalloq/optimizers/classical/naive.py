@@ -25,6 +25,15 @@ class EqualWeightAllocator(BaseAllocator):
 
 
 class RandomAllocator(BaseAllocator):
+    """
+    Generate random weights that sum to 1 using Dirichlet distribution.
+    """
+
+    def __init__(self, tickers: list[str], seed: int | None = None) -> None:
+        super().__init__(tickers)
+        self.seed = seed
+        self._rng = np.random.default_rng(seed)
+
     def allocate(
         self,
         data: MarketData,
@@ -33,11 +42,13 @@ class RandomAllocator(BaseAllocator):
         **kwargs: Any,
     ) -> OptimizationResult:
         tickers = data.prices.columns
-        N = len(tickers)
-        weights = pd.Series(np.random.dirichlet(np.ones(N)), index=tickers)
+        weights = pd.Series(
+            self._rng.dirichlet(np.ones(len(tickers))),
+            index=tickers,
+        )
 
         return OptimizationResult(
             weights=weights,
             status="OPTIMAL_RANDOM",
-            metadata={"strategy": "Random Weights"},
+            metadata={"strategy": "Random (Dirichlet)", "seed": self.seed},
         )
