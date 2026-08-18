@@ -9,16 +9,16 @@ jobs:
   pypi-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    
+
     # This environment matches what you typed in PyPI
     environment:
       name: pypi
       url: https://pypi.org/p/pyalloq
-      
+
     permissions:
       id-token: write
       contents: read
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,4 +32,4 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        run: uv publish 
+        run: uv publish

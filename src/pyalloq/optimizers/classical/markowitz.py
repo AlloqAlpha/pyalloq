@@ -2,10 +2,10 @@ import cvxpy as cp
 import pandas as pd
 import numpy as np
 from typing import Any
-from pyalloq.core.interfaces import BaseAllocator
-from pyalloq.core.results import OptimizationResult
-from pyalloq.core.enums import ObjectiveFunction
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.results import OptimizationResult
+from pyalloq_core.enums import ObjectiveFunction
+from pyalloq_core.data import MarketData
 
 
 class MarkowitzAllocator(BaseAllocator):

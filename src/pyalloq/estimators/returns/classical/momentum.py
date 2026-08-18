@@ -1,6 +1,6 @@
 import pandas as pd
-from pyalloq.core.interfaces import BaseReturnEstimator
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseReturnEstimator
+from pyalloq_core.data import MarketData
 
 
 class CrossSectionalMomentumEstimator(BaseReturnEstimator):

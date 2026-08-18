@@ -3,10 +3,10 @@ import pandas as pd
 from typing import Any
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as ssd
-from pyalloq.core.interfaces import BaseAllocator
-from pyalloq.core.results import OptimizationResult
-from pyalloq.core.utils import cov_to_corr
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.results import OptimizationResult
+from pyalloq_core.utils import cov_to_corr
+from pyalloq_core.data import MarketData
 
 
 class HRPAllocator(BaseAllocator):

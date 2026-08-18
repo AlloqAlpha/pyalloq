@@ -2,9 +2,9 @@ import cvxpy as cp
 import numpy as np
 import pandas as pd
 from typing import Any
-from pyalloq.core.interfaces import BaseAllocator
-from pyalloq.core.results import OptimizationResult
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.results import OptimizationResult
+from pyalloq_core.data import MarketData
 
 
 class RiskParityAllocator(BaseAllocator):
@@ -14,8 +14,8 @@ class RiskParityAllocator(BaseAllocator):
 
     def allocate(
         self,
-        data: MarketData,
-        cov_matrix: pd.DataFrame,
+        data: MarketData | None = None,
+        cov_matrix: pd.DataFrame | None = None,
         expected_returns: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:

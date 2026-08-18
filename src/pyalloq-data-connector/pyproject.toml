@@ -1,0 +1,60 @@
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[project]
+name = "pyalloq-data-connector"
+version = "0.1.4"
+description = "Vendor-agnostic data adapters for PyAlloq."
+readme = "README.md"
+authors = [
+    { name = "Siddeshkanth", email = "pyalloq-info@alloq-alpha.com" }
+]
+requires-python = ">=3.11"
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "yfinance>=1.6.0",
+  "requests>=2.31",
+  "pyalloq-core"
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-requests>=2.0",
+    "pandas-stubs>=3.0.5.260730",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/qpo"
+Repository = "https://github.com/your-org/qpo"
+Issues = "https://github.com/your-org/qpo/issues"
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "numpy.*",
+    "pandas.*",
+    "yfinance.*"
+]
+ignore_missing_imports = true
+
+[tool.uv.sources]
+pyalloq-core = { workspace = true }

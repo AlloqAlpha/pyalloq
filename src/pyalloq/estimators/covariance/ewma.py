@@ -1,6 +1,6 @@
 import pandas as pd
-from pyalloq.core.interfaces import BaseCovarianceEstimator
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseCovarianceEstimator
+from pyalloq_core.data import MarketData
 from typing import Any, cast
 
 

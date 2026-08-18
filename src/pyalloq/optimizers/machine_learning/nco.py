@@ -3,11 +3,11 @@ import numpy as np
 from typing import Any
 from sklearn.cluster import KMeans
 from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
-from pyalloq.core.interfaces import BaseAllocator
-from pyalloq.core.results import OptimizationResult
-from pyalloq.core.utils import cov_to_corr
-from pyalloq.core.enums import ObjectiveFunction
-from pyalloq.core.data import MarketData
+from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.results import OptimizationResult
+from pyalloq_core.utils import cov_to_corr
+from pyalloq_core.enums import ObjectiveFunction
+from pyalloq_core.data import MarketData
 
 
 class NCOAllocator(BaseAllocator):
