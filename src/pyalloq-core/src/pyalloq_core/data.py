@@ -17,7 +17,7 @@ class MarketData:
     cross_sectional: pd.DataFrame | None = None
     # Risk free rate (Contant or Time Series)
     risk_free_rate: pd.Series | float = 0.0
-
+    # Risk aversion rate (0: Most risk taking - 1: Most conservative)
     risk_aversion: pd.Series | float = 1.0
 
     def __post_init__(self) -> None:
@@ -72,3 +72,6 @@ class MarketData:
             cross_sectional=self.cross_sectional,
             risk_free_rate=sliced_rf,
         )
+
+    def get_returns(self, log_returns: bool = False) -> None:
+        pass

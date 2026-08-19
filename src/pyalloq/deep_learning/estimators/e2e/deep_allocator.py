@@ -5,12 +5,11 @@ from typing import Any
 from pyalloq_core.interfaces import BaseAllocator
 from pyalloq_core.data import MarketData
 from pyalloq_core.results import OptimizationResult
-from pyalloq.deep_learning.dataset import MarketDataset
 
 
 class DeepAllocator(BaseAllocator):
     """
-    Wraps a trained Pytorch model into a standard pyalloq Allocator.
+    End-to-End Pytorch DL Allocator mapping raw features directly to portfolio weights.
     """
 
     def __init__(
@@ -27,22 +26,29 @@ class DeepAllocator(BaseAllocator):
     def allocate(
         self,
         data: MarketData,
-        cov_matrix: pd.DataFrame,
+        cov_matrix: pd.DataFrame | None = None,
         expected_returns: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
-        dataset = MarketDataset(
-            data=data, lookback_window=self.lookback_window, horizon=1
-        )
+        returns_df = data.prices.pct_change().fillna(0.0).iloc[-self.lookback_window :]
+        base_tensor = torch.tensor(returns_df.values, dtype=torch.float32).unsqueeze(-1)
+        tensor_list = [base_tensor]
 
-        x_tensor, _ = dataset[-1]
+        for feat_name, df_feat in data.features.items():
+            feat_window = df_feat.iloc[-self.lookback_window :]
+            feat_tensor = torch.tensor(
+                feat_window.values, dtype=torch.float32
+            ).unsqueeze(-1)
+            tensor_list.append(feat_tensor)
+
+        x_tensor = torch.cat(tensor_list, dim=-1)
 
         x_batch = x_tensor.unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             weights_tensor = self.model(x_batch)
 
-        weights = weights_tensor.squeeze(0).cpu().numpy()
-        weights = pd.Series(weights, index=data.prices.columns, name="weights")
+        weights_np = weights_tensor.squeeze(0).cpu().numpy()
+        weights = pd.Series(weights_np, index=data.prices.columns, name="weights")
 
         return OptimizationResult(weights=weights, status="OPTIMAL_DL_E2E")

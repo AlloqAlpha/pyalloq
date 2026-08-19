@@ -1,9 +1,13 @@
 import pandas as pd
-import torch
-from typing import Union, cast, Any
+from typing import Union, cast, Any, TYPE_CHECKING
 from abc import ABC, abstractmethod
 
-CostData = Union[pd.Series, pd.DataFrame, torch.Tensor]
+if TYPE_CHECKING:
+    import torch
+
+    CostData = Union[pd.Series, pd.DataFrame, torch.Tensor]
+else:
+    CostData = Union[pd.Series, pd.DataFrame, Any]
 
 
 class BaseCostModel(ABC):
