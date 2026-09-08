@@ -84,6 +84,17 @@ class BaseAllocator(ABC):
         ...
 
 
+class BaseViewGenerator(ABC):
+    @abstractmethod
+    def generate(
+        self, data: MarketData, **kwargs: Any
+    ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+        """
+        Generates P, Q and Omega that will be used for Black Litterman
+        """
+        ...
+
+
 class BaseReturnEstimator(ABC):
     @abstractmethod
     def estimate(self, data: MarketData, **kwargs: Any) -> pd.Series:
