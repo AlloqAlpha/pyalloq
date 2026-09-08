@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq"
-version = "0.1.16"
+version = "0.1.17"
 description = "A modern Python SDK for quant portfolio optimization."
 readme = "README.md"
 authors = [
@@ -49,7 +49,7 @@ dev = [
 ]
 
 [project.optional-dependencies]
-dl = ["torch>=2.0"]
+dl = ["torch>=2.0", "timesfm==3.0.1"]
 rl = ["stable-baselines3>=2.0", "gymnasium>=0.29"]
 all-ml = ["pyalloq[torch,rl]"]
 dev = [
@@ -90,7 +90,8 @@ module = [
     "cvxpy.*",
     "sklearn.*",
     "yfinance.*",
-    "talib.*"
+    "talib.*",
+    "timesfm3.*"
 ]
 ignore_missing_imports = true
 
