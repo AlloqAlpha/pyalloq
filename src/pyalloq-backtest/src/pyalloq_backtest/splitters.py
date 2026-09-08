@@ -17,8 +17,9 @@ class BaseWindowSplitter(ABC):
 
 
 class RollingWindowSplitter(BaseWindowSplitter):
-    def __init__(self, lookback_window: int = 252) -> None:
+    def __init__(self, lookback_window: int = 252, horizon_steps: int = 0) -> None:
         self.lookback_window = lookback_window
+        self.horizon_steps = horizon_steps
 
     def split(
         self,
@@ -27,7 +28,9 @@ class RollingWindowSplitter(BaseWindowSplitter):
     ) -> Generator[tuple[pd.Timestamp, MarketData], None, None]:
         for current_date in rebalance_dates:
             data_window = data.slice_time(
-                end_date=current_date, lookback=self.lookback_window
+                end_date=current_date,
+                lookback=self.lookback_window,
+                horizon_steps=self.horizon_steps,
             )
 
             if len(data_window.prices) >= self.lookback_window:
@@ -35,8 +38,9 @@ class RollingWindowSplitter(BaseWindowSplitter):
 
 
 class ExpandingWindowSplitter(BaseWindowSplitter):
-    def __init__(self, min_periods: int = 252) -> None:
+    def __init__(self, min_periods: int = 252, horizon_steps: int = 0) -> None:
         self.min_periods = min_periods
+        self.horizon_steps = horizon_steps
 
     def split(
         self,
@@ -44,7 +48,9 @@ class ExpandingWindowSplitter(BaseWindowSplitter):
         rebalance_dates: pd.DatetimeIndex,
     ) -> Generator[tuple[pd.Timestamp, MarketData], None, None]:
         for current_date in rebalance_dates:
-            data_window = data.slice_time(end_date=current_date, lookback=None)
+            data_window = data.slice_time(
+                end_date=current_date, lookback=None, horizon_steps=self.horizon_steps
+            )
 
             if len(data_window.prices) >= self.min_periods:
                 yield current_date, data_window
