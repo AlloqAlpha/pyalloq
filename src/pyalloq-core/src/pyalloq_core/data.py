@@ -13,6 +13,8 @@ class MarketData:
     prices: pd.DataFrame
     # Time Series features (e.g: Volume, Factor returns, Macro Indicators, Alternative Data)
     features: dict[str, pd.DataFrame] = field(default_factory=dict)
+    # Known Future Covariates (e.g., scheduled macro events, earnings call)
+    future_features: dict[str, pd.DataFrame] = field(default_factory=dict)
     # Cross Sectional Data (e.g: Market Caps, Sector Mappings)
     cross_sectional: pd.DataFrame | None = None
     # Risk free rate (Contant or Time Series)
@@ -35,6 +37,12 @@ class MarketData:
                     f"Data misalignment: Feature: {feat_name} index does not perfectly match 'prices' index."
                 )
 
+        for feat_name, df_feat in self.future_features.items():
+            if not self.prices.index.equals(df_feat.index):
+                raise ValueError(
+                    f"Data misaligment: Future feature '{feat_name}' is missing historical dates."
+                )
+
         if isinstance(self.risk_free_rate, pd.Series):
             if not self.prices.index.equals(self.risk_free_rate.index):
                 raise ValueError(
@@ -45,6 +53,7 @@ class MarketData:
         self,
         end_date: pd.Timestamp,
         lookback: int | None = None,
+        horizon_steps: int = 0,
     ) -> "MarketData":
         """
         Returns a new MarketData instance safely sliced for a backtest window.
@@ -60,6 +69,21 @@ class MarketData:
                 sliced_feat = sliced_feat.iloc[-lookback:]
             sliced_features[name] = sliced_feat
 
+        sliced_futures: dict[str, pd.DataFrame] = {}
+        for name, feat in self.future_features.items():
+            if end_date in feat.index:
+                loc = feat.index.get_loc(end_date)
+                if not isinstance(loc, int):
+                    raise ValueError(
+                        f"Duplicate timestamps found in future_features['{name}']"
+                        "Time series indices must be strictly unique."
+                    )
+                start_loc = max(0, (loc - lookback + 1)) if lookback else 0
+                end_loc = loc + 1 + horizon_steps
+                sliced_futures[name] = feat.iloc[start_loc:end_loc]
+            else:
+                sliced_futures[name] = feat.loc[:end_date]
+
         sliced_rf = self.risk_free_rate
         if isinstance(self.risk_free_rate, pd.Series):
             sliced_rf = self.risk_free_rate.loc[:end_date]
@@ -69,6 +93,7 @@ class MarketData:
         return self.__class__(
             prices=sliced_prices,
             features=sliced_features,
+            future_features=sliced_futures,
             cross_sectional=self.cross_sectional,
             risk_free_rate=sliced_rf,
         )
