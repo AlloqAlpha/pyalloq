@@ -8,7 +8,8 @@ from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
 from pyalloq.estimators.returns.classical.implied import ImpliedReturnEstimator
 from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
 from pyalloq.estimators.returns.classical.momentum import (
-    CrossSectionalMomentumEstimator,
+    ResidualMomentumEstimator,
+    VolatilityScaledMultiHorizonEstimator,
 )
 
 
@@ -36,25 +37,57 @@ class TestReturnEstimators:
         assert np.var(js_returns.values) <= np.var(raw_rets.values) + 1e-6
         assert list(js_returns.index) == sample_assets
 
-    def test_momentum_requires_252_days(self, sample_assets: list[str]) -> None:
+    def test_volatility_scaled_momentum_requires_sufficient_history(
+        self, sample_assets: list[str]
+    ) -> None:
+        dates = pd.date_range("2023-01-01", periods=50, freq="B")
+        df = pd.DataFrame(100.0, index=dates, columns=sample_assets)
+        short_data = MarketData(prices=df)
+
+        estimator = VolatilityScaledMultiHorizonEstimator(horizons=(63, 126, 252))
+        with pytest.raises(
+            ValueError, match="Requires at least 252 price observations"
+        ):
+            estimator.estimate(short_data)
+
+    def test_volatility_scaled_momentum_properties(
+        self, synthetic_market_data: MarketData, sample_assets: list[str]
+    ) -> None:
+        estimator = VolatilityScaledMultiHorizonEstimator(
+            horizons=(20, 40, 60), skip_period=5
+        )
+        scores = estimator.estimate(synthetic_market_data)
+
+        assert isinstance(scores, pd.Series)
+        assert list(scores.index) == sample_assets
+        assert not scores.isna().any()
+        # Cross-sectional standardized average z-scores mean ~ 0
+        np.testing.assert_allclose(scores.mean(), 0.0, atol=1e-5)
+
+    def test_residual_momentum_requires_sufficient_history(
+        self, sample_assets: list[str]
+    ) -> None:
         dates = pd.date_range("2023-01-01", periods=100, freq="B")
         df = pd.DataFrame(100.0, index=dates, columns=sample_assets)
         short_data = MarketData(prices=df)
 
-        estimator = CrossSectionalMomentumEstimator()
-        with pytest.raises(ValueError, match="at least 252 days"):
+        estimator = ResidualMomentumEstimator(lookback=252)
+        with pytest.raises(
+            ValueError, match="Requires at least 252 price observations"
+        ):
             estimator.estimate(short_data)
 
-    def test_momentum_zscore_normalized(
-        self, synthetic_market_data: MarketData
+    def test_residual_momentum_properties(
+        self, synthetic_market_data: MarketData, sample_assets: list[str]
     ) -> None:
-        estimator = CrossSectionalMomentumEstimator()
+        estimator = ResidualMomentumEstimator(lookback=120, skip_period=10)
         scores = estimator.estimate(synthetic_market_data)
 
         assert isinstance(scores, pd.Series)
-        # Standardized z-score mean must be ~ 0 and sample std ~ 1
-        np.testing.assert_allclose(scores.mean(), 0.0, atol=1e-6)
-        np.testing.assert_allclose(scores.std(ddof=1), 1.0, atol=1e-5)
+        assert list(scores.index) == sample_assets
+        assert not scores.isna().any()
+        assert scores.name == "expected_returns"
+        np.testing.assert_allclose(scores.mean(), 0.0, atol=1e-5)
 
     def test_implied_returns(
         self, synthetic_market_data: MarketData, sample_assets: list[str]
