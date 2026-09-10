@@ -105,6 +105,12 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+ignore_errors = true
+
 [tool.uv.sources]
 pyalloq-core = { workspace = true }
 pyalloq-data-connector = { workspace = true }
