@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
+
 from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
 
 
 class HERCAllocator(HRPAllocator):
@@ -42,7 +43,7 @@ class HERCAllocator(HRPAllocator):
 
                 alpha = 1.0 - (risk_left / (risk_left + risk_right))
 
-                weights.loc[cluster_left] *= alpha
-                weights.loc[cluster_right] *= 1 - alpha
+                weights.iloc[cluster_left] *= alpha
+                weights.iloc[cluster_right] *= 1 - alpha
 
         return weights

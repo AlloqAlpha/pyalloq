@@ -1,13 +1,15 @@
-import pandas as pd
-import numpy as np
 from typing import Any
-from sklearn.cluster import KMeans
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
+
+import numpy as np
+import pandas as pd
+from pyalloq_core.data import MarketData
+from pyalloq_core.enums import ObjectiveFunction
 from pyalloq_core.interfaces import BaseAllocator
 from pyalloq_core.results import OptimizationResult
 from pyalloq_core.utils import cov_to_corr
-from pyalloq_core.enums import ObjectiveFunction
-from pyalloq_core.data import MarketData
+from sklearn.cluster import KMeans
+
+from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
 
 
 class NCOAllocator(BaseAllocator):
@@ -35,7 +37,7 @@ class NCOAllocator(BaseAllocator):
         if cov_matrix is None:
             raise ValueError("NCOAllocator requires cov_matrix provided")
         corr = cov_to_corr(cov_matrix.to_numpy())
-        distance_matrix = np.sqrt(0.5 * (1 - corr))
+        distance_matrix = np.sqrt(np.clip(0.5 * (1 - corr), 0.0, 1.0))
 
         kmeans = KMeans(n_clusters=self.n_clusters)
         clusters = kmeans.fit_predict(distance_matrix)

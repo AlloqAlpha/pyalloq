@@ -1,12 +1,13 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Any
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as ssd
+from pyalloq_core.data import MarketData
 from pyalloq_core.interfaces import BaseAllocator
 from pyalloq_core.results import OptimizationResult
 from pyalloq_core.utils import cov_to_corr
-from pyalloq_core.data import MarketData
 
 
 class HRPAllocator(BaseAllocator):
@@ -21,7 +22,7 @@ class HRPAllocator(BaseAllocator):
             raise ValueError("HRPAllocator requires cov_matrix")
 
         corr = cov_to_corr(cov_matrix.to_numpy())
-        dist = np.sqrt(0.5 * (1 - corr))
+        dist = np.sqrt(np.clip(0.5 * (1 - corr), 0.0, 1.0))
 
         condensed_dist = ssd.squareform(dist, checks=False)
         link = sch.linkage(condensed_dist, method="single")

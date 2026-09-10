@@ -1,7 +1,7 @@
 import pandas as pd
-from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
-from pyalloq_core.interfaces import BaseReturnEstimator
 from pyalloq_core.data import MarketData
+from pyalloq_core.interfaces import BaseReturnEstimator
+from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
 
 
 class CAPMReturnEstimator(BaseReturnEstimator):
@@ -22,17 +22,26 @@ class CAPMReturnEstimator(BaseReturnEstimator):
         market_prices = data.features.get("market_prices")
         if market_prices is None:
             raise ValueError(
-                "CAPMReturnEstimator requires market_prices in data.features['CAPMReturnEstimator']"
+                "CAPMReturnEstimator requires market_prices in data.features['market_prices']"
             )
-        market_returns = market_prices.pct_change().dropna()
 
-        returns, market_returns = returns.align(market_returns, join="inner", axis=0)
-        market_var = market_returns.var()
+        market_series: pd.Series = (
+            market_prices.iloc[:, 0]
+            if isinstance(market_prices, pd.DataFrame)
+            else market_prices
+        )
+        market_returns: pd.Series = market_series.pct_change().dropna()
+
+        common_index = returns.index.intersection(market_returns.index)
+        aligned_returns = returns.loc[common_index]
+        aligned_market_returns = market_returns.loc[common_index]
+
+        market_var = float(aligned_market_returns.var())
         expected_returns = {}
 
-        for asset in returns.column:
-            cov = returns[asset].cov(market_returns)
-            beta = cov / market_var
+        for asset in aligned_returns.columns:
+            cov = float(aligned_returns[asset].cov(aligned_market_returns))
+            beta = cov / market_var if market_var > 0 else 1.0
 
             expected_returns[asset] = (
                 self.risk_free_rate + beta * self.market_risk_premium
