@@ -1,11 +1,17 @@
+from typing import Any
 import pandas as pd
 import numpy as np
-from timesfm3 import TimesFM3Evaluator
+
+try:
+    from timesfm3 import TimesFM3Evaluator
+except ImportError:
+    TimesFM3Evaluator = Any  # type: ignore[misc,assignment]
+
 from pyalloq_core.interfaces import BaseReturnEstimator
 from pyalloq_core.data import MarketData
 
 
-class TimesFM3RUnivariateeturnEstimator(BaseReturnEstimator):
+class TimesFM3UnivariateReturnEstimator(BaseReturnEstimator):
     """Zero-shot univariate return estimator using Google's TimesFM 3.0."""
 
     def __init__(self, model: TimesFM3Evaluator, horizon: int = 21):

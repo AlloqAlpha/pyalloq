@@ -79,13 +79,36 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
     )
     ```
 
-=== "Momentum"
+=== "Volatility-Scaled Momentum"
     ```python
-    from pyalloq.estimators.returns.classical.momentum import CrossSectionalMomentumEstimator
+    from pyalloq.estimators.returns.classical.momentum import VolatilityScaledMultiHorizonEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
-        returns_estimator=CrossSectionalMomentumEstimator(),  # cross-sectional momentum signal
+        returns_estimator=VolatilityScaledMultiHorizonEstimator(),  # multi-horizon volatility-scaled z-score
+    )
+    ```
+
+=== "Residual Momentum"
+    ```python
+    from pyalloq.estimators.returns.classical.momentum import ResidualMomentumEstimator
+
+    pipeline = StrategyPipeline(
+        allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
+        returns_estimator=ResidualMomentumEstimator(),  # beta-neutralized idiosyncratic momentum
+    )
+    ```
+
+=== "TimesFM 3.0 (Foundation Model)"
+    ```python
+    from pyalloq.deep_learning.estimators.returns.timesfm import TimesFM3MultivariateReturnEstimator
+    from timesfm3 import TimesFM3Evaluator
+
+    tfm_model = TimesFM3Evaluator.load_pretrained(...)  # Loaded TimesFM 3.0 evaluator
+
+    pipeline = StrategyPipeline(
+        allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
+        returns_estimator=TimesFM3MultivariateReturnEstimator(model=tfm_model, horizon=21),
     )
     ```
 
