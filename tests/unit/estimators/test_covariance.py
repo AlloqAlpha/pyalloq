@@ -3,13 +3,13 @@ import pandas as pd
 import pytest
 from pyalloq_core.data import MarketData
 
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq.estimators.covariance.ewma import EWMACovariance
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
-from pyalloq.estimators.covariance.random_matrix_theory import (
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.covariance.ewma import EWMACovariance
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.estimators.covariance.random_matrix_theory import (
     RandomMatrixTheoryEstimator,
 )
-from pyalloq.estimators.covariance.semi_covariance import SemiCovariance
+from pyalloq.classical.estimators.covariance.semi_covariance import SemiCovariance
 
 
 class TestCovarianceEstimators:

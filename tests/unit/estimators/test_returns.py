@@ -3,11 +3,15 @@ import pandas as pd
 import pytest
 from pyalloq_core.data import MarketData
 
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
-from pyalloq.estimators.returns.classical.implied import ImpliedReturnEstimator
-from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
-from pyalloq.estimators.returns.classical.momentum import (
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.estimators.returns.classical.implied import (
+    ImpliedReturnEstimator,
+)
+from pyalloq.classical.estimators.returns.classical.james_stein import (
+    JamesSteinReturnEstimator,
+)
+from pyalloq.classical.estimators.returns.classical.momentum import (
     ResidualMomentumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
@@ -109,7 +113,9 @@ class TestReturnEstimators:
     def test_capm_returns(
         self, synthetic_market_data: MarketData, sample_assets: list[str]
     ) -> None:
-        from pyalloq.estimators.returns.classical.factor import CAPMReturnEstimator
+        from pyalloq.classical.estimators.returns.classical.factor import (
+            CAPMReturnEstimator,
+        )
 
         # Market prices feature
         market_prices = pd.DataFrame(
@@ -128,7 +134,7 @@ class TestReturnEstimators:
     def test_multifactor_returns(
         self, synthetic_market_data: MarketData, sample_assets: list[str]
     ) -> None:
-        from pyalloq.estimators.returns.classical.factor import (
+        from pyalloq.classical.estimators.returns.classical.factor import (
             MultiFactorReturnEstimator,
         )
 

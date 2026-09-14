@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from pyalloq.estimators.black_litterman.bayesian import BlackLittermanEstimator
+from pyalloq.classical.estimators.black_litterman.bayesian import (
+    BlackLittermanEstimator,
+)
 
 
 class TestBlackLitterman:

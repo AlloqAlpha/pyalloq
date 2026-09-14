@@ -9,7 +9,7 @@ from pyalloq_core.results import OptimizationResult
 from pyalloq_core.utils import cov_to_corr
 from sklearn.cluster import KMeans
 
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
+from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
 
 
 class NCOAllocator(BaseAllocator):

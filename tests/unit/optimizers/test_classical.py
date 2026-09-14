@@ -3,12 +3,12 @@ import pandas as pd
 from pyalloq_core.data import MarketData
 from pyalloq_core.enums import ObjectiveFunction
 
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
-from pyalloq.optimizers.classical.max_diversification import MaxDiversificationAllocator
-from pyalloq.optimizers.classical.naive import EqualWeightAllocator, RandomAllocator
-from pyalloq.optimizers.classical.risk_budgeting import RiskBudgetingAllocator
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
+from pyalloq.classical.optimizers.max_diversification import MaxDiversificationAllocator
+from pyalloq.classical.optimizers.naive import EqualWeightAllocator, RandomAllocator
+from pyalloq.classical.optimizers.risk_budgeting import RiskBudgetingAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 
 
 class TestClassicalOptimizers:

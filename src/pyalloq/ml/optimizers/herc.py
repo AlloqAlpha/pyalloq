@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
-from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
+from pyalloq.ml.optimizers.hrp import HRPAllocator
 
 
 class HERCAllocator(HRPAllocator):

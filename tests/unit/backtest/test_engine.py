@@ -6,9 +6,9 @@ from pyalloq_backtest.splitters import RollingWindowSplitter
 from pyalloq_core.data import MarketData
 from pyalloq_core.pipeline import StrategyPipeline
 
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
-from pyalloq.optimizers.classical.naive import EqualWeightAllocator
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 
 
 class TestBacktestEngine:

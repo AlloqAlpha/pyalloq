@@ -8,13 +8,13 @@ from pyalloq_core.data import MarketData
 from pyalloq_core.enums import ObjectiveFunction
 from pyalloq_core.pipeline import StrategyPipeline
 
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
-from pyalloq.estimators.covariance.random_matrix_theory import (
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.estimators.covariance.random_matrix_theory import (
     RandomMatrixTheoryEstimator,
 )
-from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
-from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
+from pyalloq.ml.optimizers.hrp import HRPAllocator
 
 pytestmark = pytest.mark.integration
 

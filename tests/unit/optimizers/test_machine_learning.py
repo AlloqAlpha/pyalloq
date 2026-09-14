@@ -1,10 +1,10 @@
 import numpy as np
 from pyalloq_core.data import MarketData
 
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq.optimizers.machine_learning.herc import HERCAllocator
-from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
-from pyalloq.optimizers.machine_learning.nco import NCOAllocator
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.ml.optimizers.herc import HERCAllocator
+from pyalloq.ml.optimizers.hrp import HRPAllocator
+from pyalloq.ml.optimizers.nco import NCOAllocator
 
 
 class TestMachineLearningOptimizers:

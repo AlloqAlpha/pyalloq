@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from pyalloq_backtest.costs import BaseCostModel, FlatBpsCostModel
-from pyalloq.deep_learning.costs import TorchCostAdapter
+from pyalloq.dl.costs import TorchCostAdapter
 
 
 class SharpeLoss(nn.Module):

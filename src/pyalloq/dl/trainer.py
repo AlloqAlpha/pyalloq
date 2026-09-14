@@ -6,7 +6,7 @@ import copy
 
 from pyalloq_core.data import MarketData
 from pyalloq_backtest.splitters import BaseWindowSplitter
-from pyalloq.deep_learning.dataset import MarketDataset
+from pyalloq.dl.dataset import MarketDataset
 
 
 class WalkForwardTrainer:

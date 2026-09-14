@@ -6,7 +6,7 @@ from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_core.results import OptimizationResult
 from pyalloq_core.utils import cov_to_corr
 
-from pyalloq.optimizers.classical.naive import EqualWeightAllocator
+from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 
 
 class TestMarketData:
