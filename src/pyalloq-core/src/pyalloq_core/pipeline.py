@@ -5,8 +5,8 @@ from pyalloq_core.interfaces import (
     BaseReturnEstimator,
     BaseCovarianceEstimator,
 )
-from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
 from pyalloq_core.data import MarketData
 
 

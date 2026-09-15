@@ -16,8 +16,16 @@ class AlphaVantageClient(BaseDataClient):
             raise ValueError("Alpha Vantage requires an API key.")
 
         raw_dict = {}
-        start_ts = pd.Timestamp(start)
-        end_ts = pd.Timestamp(end)
+        start_ts = (
+            pd.Timestamp(start).tz_localize(None)
+            if getattr(start, "tzinfo", None) is not None
+            else pd.Timestamp(start)
+        )
+        end_ts = (
+            pd.Timestamp(end).tz_localize(None)
+            if getattr(end, "tzinfo", None) is not None
+            else pd.Timestamp(end)
+        )
 
         for ticker in tickers:
             params = {

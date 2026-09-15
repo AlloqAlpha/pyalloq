@@ -14,11 +14,27 @@
 
 ::: pyalloq.estimators.returns.classical.james_stein.JamesSteinReturnEstimator
 
+### VolatilityScaledMultiHorizonEstimator
+
+::: pyalloq.estimators.returns.classical.momentum.VolatilityScaledMultiHorizonEstimator
+
 ---
 
-### CrossSectionalMomentumEstimator
+### ResidualMomentumEstimator
 
-::: pyalloq.estimators.returns.classical.momentum.CrossSectionalMomentumEstimator
+::: pyalloq.estimators.returns.classical.momentum.ResidualMomentumEstimator
+
+---
+
+### TimesFM3UnivariateReturnEstimator
+
+::: pyalloq.deep_learning.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
+
+---
+
+### TimesFM3MultivariateReturnEstimator
+
+::: pyalloq.deep_learning.estimators.returns.timesfm.TimesFM3MultivariateReturnEstimator
 
 ---
 
@@ -77,3 +93,15 @@
 ### BlackLittermanEstimator
 
 ::: pyalloq.estimators.black_litterman.bayesian.BlackLittermanEstimator
+
+---
+
+### TimesFM3UnivariateViewGenerator
+
+::: pyalloq.deep_learning.estimators.black_litterman.timesfm.TimesFM3UnivariateViewGenerator
+
+---
+
+### TimesFM3MultivariateViewGenerator
+
+::: pyalloq.deep_learning.estimators.black_litterman.timesfm.TimesFM3MultivariateViewGenerator

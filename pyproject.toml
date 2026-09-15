@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq"
-version = "0.1.16"
+version = "0.1.17"
 description = "A modern Python SDK for quant portfolio optimization."
 readme = "README.md"
 authors = [
@@ -39,22 +39,32 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.12.0",
+    "hypothesis>=6.100.0",
     "ruff>=0.5.0",
     "pre-commit>=3.7.0",
-    "mypy>=2.3.0",
-    "pandas-stubs>=3.0.5.260730",
+    "mypy>=1.11.0",
+    "pandas-stubs>=2.0.0",
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.25",
+    "twine>=5",
+    "build>=1",
+    "types-requests>=2",
+    "types-setuptools>=75",
 ]
 
 [project.optional-dependencies]
-dl = ["torch>=2.0"]
+dl = ["torch>=2.0", "timesfm==3.0.1"]
 rl = ["stable-baselines3>=2.0", "gymnasium>=0.29"]
 all-ml = ["pyalloq[torch,rl]"]
 dev = [
   "pytest>=8",
   "pytest-cov>=5",
+  "pytest-mock>=3.12",
+  "hypothesis>=6.100",
   "ruff>=0.6",
   "mypy>=1.11",
   "twine>=5",
@@ -90,9 +100,16 @@ module = [
     "cvxpy.*",
     "sklearn.*",
     "yfinance.*",
-    "talib.*"
+    "talib.*",
+    "timesfm3.*"
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+ignore_errors = true
 
 [tool.uv.sources]
 pyalloq-core = { workspace = true }
@@ -108,3 +125,46 @@ members = [
   "src/pyalloq-data-connector",
   "src/pyalloq-features",
 ]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = [
+  "src",
+  "src/pyalloq-core/src",
+  "src/pyalloq-backtest/src",
+  "src/pyalloq-data-connector/src",
+  "src/pyalloq-features/src",
+]
+addopts = "-v --strict-markers -ra"
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "dl: deep learning tests requiring torch/timesfm",
+  "rl: reinforcement learning tests requiring gymnasium/sb3",
+  "integration: end-to-end integration workflows",
+  "network: tests that require network access",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::UserWarning",
+]
+
+[tool.coverage.run]
+source = [
+  "pyalloq",
+  "pyalloq_core",
+  "pyalloq_backtest",
+  "pyalloq_features",
+  "pyalloq_data_connector",
+]
+omit = [
+  "*/tests/*",
+  "*/site-packages/*",
+  "*/rl/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 80.0
+precision = 2
