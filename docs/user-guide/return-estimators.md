@@ -18,7 +18,7 @@ class BaseReturnEstimator(ABC):
 Exponentially Weighted Moving Average returns. Recent observations receive higher weight. The **default** estimator in `StrategyPipeline`.
 
 ```python
-from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -45,7 +45,7 @@ w = \min\left(1, \frac{N-2}{(\hat{\mu} - \bar{\mu}\mathbf{1})^\top \Sigma^{-1} (
 \]
 
 ```python
-from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
+from pyalloq.classical.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -62,7 +62,7 @@ pipeline = StrategyPipeline(
 Computes raw momentum over multiple lookback horizons (by default 63, 126, and 252 trading days, skipping the most recent 21 days to avoid 1-month short-term reversal). Each horizon return is normalized by realized volatility, and the resulting scores are standardized cross-sectionally to produce stable relative return forecasts.
 
 ```python
-from pyalloq.estimators.returns.classical.momentum import VolatilityScaledMultiHorizonEstimator
+from pyalloq.classical.estimators.returns.classical.momentum import VolatilityScaledMultiHorizonEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -88,7 +88,7 @@ R_{i, t} = \alpha_i + \beta_i R_{m, t} + \epsilon_{i, t}
 Standardized cumulative residuals $\sum \epsilon_{i, t} / \sigma_{\epsilon, i}$ are then converted to cross-sectional Z-scores.
 
 ```python
-from pyalloq.estimators.returns.classical.momentum import ResidualMomentumEstimator
+from pyalloq.classical.estimators.returns.classical.momentum import ResidualMomentumEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -108,7 +108,7 @@ pipeline = StrategyPipeline(
 Estimates expected returns using a factor model. Asset returns are attributed to systematic risk factors (e.g., Fama-French). The factor loadings are estimated from `data.features`.
 
 ```python
-from pyalloq.estimators.returns.classical.factor import MultiFactorReturnEstimator
+from pyalloq.classical.estimators.returns.classical.factor import MultiFactorReturnEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -131,7 +131,7 @@ Reverse-engineers expected returns from observed market-capitalization weights u
 where \(\lambda\) is the implied risk aversion from the market, \(\Sigma\) is the covariance matrix, and \(w^{mkt}\) are cap-weighted market weights.
 
 ```python
-from pyalloq.estimators.returns.classical.implied import ImpliedReturnEstimator
+from pyalloq.classical.estimators.returns.classical.implied import ImpliedReturnEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -152,7 +152,7 @@ Blends the market equilibrium returns \(\Pi\) with investor views \(Q\) expresse
 \]
 
 ```python
-from pyalloq.estimators.black_litterman.bayesian import BlackLittermanEstimator
+from pyalloq.classical.estimators.black_litterman.bayesian import BlackLittermanEstimator
 import pandas as pd
 
 # Define views: "AAPL will outperform MSFT by 5%"
@@ -198,7 +198,7 @@ For a forecast horizon $H$ (in trading days) and forecasted price $\hat{P}_{T+H,
 \]
 
 ```python
-from pyalloq.deep_learning.estimators.returns.timesfm import (
+from pyalloq.dl.estimators.returns.timesfm import (
     TimesFM3MultivariateReturnEstimator,
     TimesFM3UnivariateReturnEstimator,
 )
@@ -244,11 +244,11 @@ Black-Litterman typically requires subjective investor views ($Q$) and a diagona
 3. **Picking Matrix ($P$)**: Identity matrix $I_N$, since views are generated for all assets.
 
 ```python
-from pyalloq.deep_learning.estimators.black_litterman.timesfm import (
+from pyalloq.dl.estimators.black_litterman.timesfm import (
     TimesFM3MultivariateViewGenerator,
     TimesFM3UnivariateViewGenerator,
 )
-from pyalloq.estimators.black_litterman.bayesian import BlackLittermanEstimator
+from pyalloq.classical.estimators.black_litterman.bayesian import BlackLittermanEstimator
 from timesfm3 import TimesFM3Evaluator
 
 tfm = TimesFM3Evaluator.load_pretrained(...)

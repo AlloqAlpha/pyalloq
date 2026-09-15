@@ -13,7 +13,7 @@ Every component is **independently swappable**. Change your covariance estimator
 
 ```python
 from pyalloq_data_connector.yahoo_finance import YahooFinanceClient
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_backtest.engine import WalkForwardEngine
 

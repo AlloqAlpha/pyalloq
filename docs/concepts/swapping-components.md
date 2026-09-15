@@ -12,9 +12,9 @@ The covariance estimator has the biggest impact on optimizer stability, especial
 
 === "Empirical (Default)"
     ```python
-    from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
+    from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
     from pyalloq_core.pipeline import StrategyPipeline
-    from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
+    from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
     from pyalloq_core.enums import ObjectiveFunction
 
     pipeline = StrategyPipeline(
@@ -25,7 +25,7 @@ The covariance estimator has the biggest impact on optimizer stability, especial
 
 === "Ledoit-Wolf Shrinkage"
     ```python
-    from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+    from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MIN_VOLATILITY),
@@ -35,7 +35,7 @@ The covariance estimator has the biggest impact on optimizer stability, especial
 
 === "RMT Denoising"
     ```python
-    from pyalloq.estimators.covariance.random_matrix_theory import RandomMatrixTheoryEstimator
+    from pyalloq.classical.estimators.covariance.random_matrix_theory import RandomMatrixTheoryEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MIN_VOLATILITY),
@@ -45,7 +45,7 @@ The covariance estimator has the biggest impact on optimizer stability, especial
 
 === "Semi-Covariance"
     ```python
-    from pyalloq.estimators.covariance.semi_covariance import SemiCovariance
+    from pyalloq.classical.estimators.covariance.semi_covariance import SemiCovariance
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MIN_VOLATILITY),
@@ -61,7 +61,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "EWMA (Default)"
     ```python
-    from pyalloq.estimators.returns.classical.ewma import EWMAReturnEstimator
+    from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
@@ -71,7 +71,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "James-Stein Shrinkage"
     ```python
-    from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
+    from pyalloq.classical.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
@@ -81,7 +81,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "Volatility-Scaled Momentum"
     ```python
-    from pyalloq.estimators.returns.classical.momentum import VolatilityScaledMultiHorizonEstimator
+    from pyalloq.classical.estimators.returns.classical.momentum import VolatilityScaledMultiHorizonEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
@@ -91,7 +91,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "Residual Momentum"
     ```python
-    from pyalloq.estimators.returns.classical.momentum import ResidualMomentumEstimator
+    from pyalloq.classical.estimators.returns.classical.momentum import ResidualMomentumEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
@@ -101,7 +101,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "TimesFM 3.0 (Foundation Model)"
     ```python
-    from pyalloq.deep_learning.estimators.returns.timesfm import TimesFM3MultivariateReturnEstimator
+    from pyalloq.dl.estimators.returns.timesfm import TimesFM3MultivariateReturnEstimator
     from timesfm3 import TimesFM3Evaluator
 
     tfm_model = TimesFM3Evaluator.load_pretrained(...)  # Loaded TimesFM 3.0 evaluator
@@ -114,7 +114,7 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
 
 === "Implied Returns"
     ```python
-    from pyalloq.estimators.returns.classical.implied import ImpliedReturnEstimator
+    from pyalloq.classical.estimators.returns.classical.implied import ImpliedReturnEstimator
 
     pipeline = StrategyPipeline(
         allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
@@ -130,7 +130,7 @@ The allocator is completely decoupled from estimators and the backtest engine. S
 
 === "Risk Parity"
     ```python
-    from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+    from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 
     pipeline = StrategyPipeline(
         allocator=RiskParityAllocator(tickers=data.assets),
@@ -139,7 +139,7 @@ The allocator is completely decoupled from estimators and the backtest engine. S
 
 === "Markowitz (Min Vol)"
     ```python
-    from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
+    from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
     from pyalloq_core.enums import ObjectiveFunction
 
     pipeline = StrategyPipeline(
@@ -149,7 +149,7 @@ The allocator is completely decoupled from estimators and the backtest engine. S
 
 === "HRP (Hierarchical Risk Parity)"
     ```python
-    from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
+    from pyalloq.ml.optimizers.hrp import HRPAllocator
 
     pipeline = StrategyPipeline(
         allocator=HRPAllocator(tickers=data.assets),
@@ -158,7 +158,7 @@ The allocator is completely decoupled from estimators and the backtest engine. S
 
 === "Max Diversification"
     ```python
-    from pyalloq.optimizers.classical.max_diversification import MaxDiversificationAllocator
+    from pyalloq.classical.optimizers.max_diversification import MaxDiversificationAllocator
 
     pipeline = StrategyPipeline(
         allocator=MaxDiversificationAllocator(tickers=data.assets),
@@ -167,7 +167,7 @@ The allocator is completely decoupled from estimators and the backtest engine. S
 
 === "Equal Weight (Baseline)"
     ```python
-    from pyalloq.optimizers.classical.naive import EqualWeightAllocator
+    from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 
     pipeline = StrategyPipeline(
         allocator=EqualWeightAllocator(tickers=data.assets),

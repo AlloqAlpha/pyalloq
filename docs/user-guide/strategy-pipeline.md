@@ -8,7 +8,7 @@
 
 ```python
 from pyalloq_core.pipeline import StrategyPipeline
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 
 pipeline = StrategyPipeline(
     allocator=RiskParityAllocator(tickers=data.assets)
@@ -26,9 +26,9 @@ With defaults, `StrategyPipeline` uses:
 
 ```python
 from pyalloq_core.pipeline import StrategyPipeline
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
-from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
+from pyalloq.classical.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq_core.enums import ObjectiveFunction
 
 pipeline = StrategyPipeline(
