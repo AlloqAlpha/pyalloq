@@ -160,7 +160,6 @@ source = [
 omit = [
   "*/tests/*",
   "*/site-packages/*",
-  "*/dl/*",
   "*/rl/*",
 ]
 

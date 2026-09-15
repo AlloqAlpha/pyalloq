@@ -58,7 +58,4 @@ class MarketDataset(Dataset):
         y_end = y_start + self.horizon
         y_tensor = self.y_data[y_start:y_end]
 
-        if self.horizon == 1:
-            y_tensor = y_tensor.unsqueeze(0)
-
         return (X_tensor, y_tensor)

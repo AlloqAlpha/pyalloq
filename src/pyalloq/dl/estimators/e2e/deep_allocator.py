@@ -34,12 +34,13 @@ class DeepAllocator(BaseAllocator):
         base_tensor = torch.tensor(returns_df.values, dtype=torch.float32).unsqueeze(-1)
         tensor_list = [base_tensor]
 
-        for feat_name, df_feat in data.features.items():
-            feat_window = df_feat.iloc[-self.lookback_window :]
-            feat_tensor = torch.tensor(
-                feat_window.values, dtype=torch.float32
-            ).unsqueeze(-1)
-            tensor_list.append(feat_tensor)
+        if data.features is not None:
+            for feat_name, df_feat in data.features.items():
+                feat_window = df_feat.iloc[-self.lookback_window :]
+                feat_tensor = torch.tensor(
+                    feat_window.values, dtype=torch.float32
+                ).unsqueeze(-1)
+                tensor_list.append(feat_tensor)
 
         x_tensor = torch.cat(tensor_list, dim=-1)
 

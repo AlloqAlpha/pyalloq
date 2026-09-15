@@ -109,7 +109,7 @@ class TimesFM3MultivariateViewGenerator(BaseViewGenerator):
 
         # 1. Target Variates: TimesFM expects shape (num_variates, context_length)
         # We transpose our (T, N) price DataFrame to (N, T)
-        target = stock_prices.to_numpy(dtype=np.float32)
+        target = stock_prices.to_numpy(dtype=np.float32).T
 
         # 2. Past-Only Covariates: Process MarketData.features
         # TimesFM expects shape (num_covariate_channels, context_length)
