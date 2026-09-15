@@ -15,7 +15,7 @@ w_i = \frac{1}{N}, \quad \forall i
 \]
 
 ```python
-from pyalloq.optimizers.classical.naive import EqualWeightAllocator
+from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 
 pipeline = StrategyPipeline(
     allocator=EqualWeightAllocator(tickers=data.assets)
@@ -32,7 +32,7 @@ pipeline = StrategyPipeline(
 Classical mean-variance optimizer. Supports three objective functions via the `ObjectiveFunction` enum.
 
 ```python
-from pyalloq.optimizers.classical.markowitz import MarkowitzAllocator
+from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
 from pyalloq_core.enums import ObjectiveFunction
 ```
 
@@ -96,7 +96,7 @@ Equal Risk Contribution (ERC). Every asset contributes the same amount of margin
 Then normalize: \(w = y / \mathbf{1}^\top y\)
 
 ```python
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 
 pipeline = StrategyPipeline(
     allocator=RiskParityAllocator(tickers=data.assets)
@@ -114,7 +114,7 @@ Generalization of Risk Parity where each asset is assigned a **target risk budge
 \]
 
 ```python
-from pyalloq.optimizers.classical.risk_budgeting import RiskBudgetingAllocator
+from pyalloq.classical.optimizers.risk_budgeting import RiskBudgetingAllocator
 import pandas as pd
 
 # Provide risk budgets through MarketData.features
@@ -146,7 +146,7 @@ Maximizes the **Diversification Ratio** — the weighted sum of individual asset
 Implemented via the equivalent dual: minimize portfolio variance subject to weighted volatilities summing to 1.
 
 ```python
-from pyalloq.optimizers.classical.max_diversification import MaxDiversificationAllocator
+from pyalloq.classical.optimizers.max_diversification import MaxDiversificationAllocator
 
 pipeline = StrategyPipeline(
     allocator=MaxDiversificationAllocator(tickers=data.assets)
@@ -164,7 +164,7 @@ These allocators use hierarchical clustering on the correlation matrix to build 
 Hierarchical Risk Parity (López de Prado, 2016). Uses single-linkage clustering on correlation distance, quasi-diagonalization of the covariance matrix, and recursive bisection to assign inverse-variance weights.
 
 ```python
-from pyalloq.optimizers.machine_learning.hrp import HRPAllocator
+from pyalloq.ml.optimizers.hrp import HRPAllocator
 
 pipeline = StrategyPipeline(
     allocator=HRPAllocator(tickers=data.assets)
@@ -184,7 +184,7 @@ Steps:
 Hierarchical Equal Risk Contribution. Similar to HRP but allocates risk budget equally across the hierarchical clusters at each level, then inverse-variance within each cluster.
 
 ```python
-from pyalloq.optimizers.machine_learning.herc import HERCAllocator
+from pyalloq.ml.optimizers.herc import HERCAllocator
 
 pipeline = StrategyPipeline(
     allocator=HERCAllocator(tickers=data.assets)
@@ -198,7 +198,7 @@ pipeline = StrategyPipeline(
 Nested Cluster Optimization. Divides the universe into clusters via k-means on the correlation matrix, runs a Markowitz optimization within each cluster (intra-cluster), and then a second Markowitz optimization across cluster representatives (inter-cluster).
 
 ```python
-from pyalloq.optimizers.machine_learning.nco import NCOAllocator
+from pyalloq.ml.optimizers.nco import NCOAllocator
 
 pipeline = StrategyPipeline(
     allocator=NCOAllocator(tickers=data.assets)

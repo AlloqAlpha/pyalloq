@@ -22,7 +22,7 @@ The classical sample covariance matrix. Simple and unbiased, but sensitive to ou
 \]
 
 ```python
-from pyalloq.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -43,7 +43,7 @@ Exponentially Weighted Moving Average covariance. More recent observations recei
 \]
 
 ```python
-from pyalloq.estimators.covariance.ewma import EWMACovariance
+from pyalloq.classical.estimators.covariance.ewma import EWMACovariance
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -66,7 +66,7 @@ Analytically optimal shrinkage of the sample covariance towards a structured tar
 where \(\alpha^*\) is the analytically derived optimal shrinkage intensity.
 
 ```python
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -93,7 +93,7 @@ Filters the empirical covariance matrix by removing **noise eigenvalues** that f
 **Detoning step (optional):** Removes the largest eigenvalue (the "market mode") to isolate sector-level correlations.
 
 ```python
-from pyalloq.estimators.covariance.random_matrix_theory import RandomMatrixTheoryEstimator
+from pyalloq.classical.estimators.covariance.random_matrix_theory import RandomMatrixTheoryEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -119,7 +119,7 @@ Computes covariance using only **downside returns** (negative returns). This tar
 \]
 
 ```python
-from pyalloq.estimators.covariance.semi_covariance import SemiCovariance
+from pyalloq.classical.estimators.covariance.semi_covariance import SemiCovariance
 
 pipeline = StrategyPipeline(
     allocator=allocator,

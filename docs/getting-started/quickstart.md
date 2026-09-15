@@ -26,10 +26,10 @@ print(data.prices.shape)  # (1006, 5)
 
 ## Step 2 — Choose an Allocator
 
-Pick any allocator from `pyalloq.optimizers`. Every allocator implements the same `BaseAllocator` interface.
+Pick any allocator from `pyalloq.classical.optimizers` or `pyalloq.ml.optimizers`. Every allocator implements the same `BaseAllocator` interface.
 
 ```python
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 
 allocator = RiskParityAllocator(tickers=data.assets)
 ```
@@ -49,8 +49,8 @@ pipeline = StrategyPipeline(allocator=allocator)
 To customize the estimators:
 
 ```python
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
-from pyalloq.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.estimators.returns.classical.james_stein import JamesSteinReturnEstimator
 
 pipeline = StrategyPipeline(
     allocator=allocator,
@@ -109,8 +109,8 @@ weight_history    = results["weights"]     # pd.DataFrame
 
 ```python
 from pyalloq_data_connector.yahoo_finance import YahooFinanceClient
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_backtest.engine import WalkForwardEngine
 

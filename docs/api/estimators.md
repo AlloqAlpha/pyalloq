@@ -6,53 +6,53 @@
 
 ### EWMAReturnEstimator
 
-::: pyalloq.estimators.returns.classical.ewma.EWMAReturnEstimator
+::: pyalloq.classical.estimators.returns.classical.ewma.EWMAReturnEstimator
 
 ---
 
 ### JamesSteinReturnEstimator
 
-::: pyalloq.estimators.returns.classical.james_stein.JamesSteinReturnEstimator
+::: pyalloq.classical.estimators.returns.classical.james_stein.JamesSteinReturnEstimator
 
 ### VolatilityScaledMultiHorizonEstimator
 
-::: pyalloq.estimators.returns.classical.momentum.VolatilityScaledMultiHorizonEstimator
+::: pyalloq.classical.estimators.returns.classical.momentum.VolatilityScaledMultiHorizonEstimator
 
 ---
 
 ### ResidualMomentumEstimator
 
-::: pyalloq.estimators.returns.classical.momentum.ResidualMomentumEstimator
+::: pyalloq.classical.estimators.returns.classical.momentum.ResidualMomentumEstimator
 
 ---
 
 ### TimesFM3UnivariateReturnEstimator
 
-::: pyalloq.deep_learning.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
+::: pyalloq.dl.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
 
 ---
 
 ### TimesFM3MultivariateReturnEstimator
 
-::: pyalloq.deep_learning.estimators.returns.timesfm.TimesFM3MultivariateReturnEstimator
+::: pyalloq.dl.estimators.returns.timesfm.TimesFM3MultivariateReturnEstimator
 
 ---
 
 ### CAPMReturnEstimator
 
-::: pyalloq.estimators.returns.classical.factor.CAPMReturnEstimator
+::: pyalloq.classical.estimators.returns.classical.factor.CAPMReturnEstimator
 
 ---
 
 ### MultiFactorReturnEstimator
 
-::: pyalloq.estimators.returns.classical.factor.MultiFactorReturnEstimator
+::: pyalloq.classical.estimators.returns.classical.factor.MultiFactorReturnEstimator
 
 ---
 
 ### ImpliedReturnEstimator
 
-::: pyalloq.estimators.returns.classical.implied.ImpliedReturnEstimator
+::: pyalloq.classical.estimators.returns.classical.implied.ImpliedReturnEstimator
 
 ---
 
@@ -60,31 +60,31 @@
 
 ### EmpiricalCovariance
 
-::: pyalloq.estimators.covariance.empirical.EmpiricalCovariance
+::: pyalloq.classical.estimators.covariance.empirical.EmpiricalCovariance
 
 ---
 
 ### EWMACovariance
 
-::: pyalloq.estimators.covariance.ewma.EWMACovariance
+::: pyalloq.classical.estimators.covariance.ewma.EWMACovariance
 
 ---
 
 ### LedoitWolfShrinkage
 
-::: pyalloq.estimators.covariance.ledoit_wolf.LedoitWolfShrinkage
+::: pyalloq.classical.estimators.covariance.ledoit_wolf.LedoitWolfShrinkage
 
 ---
 
 ### RandomMatrixTheoryEstimator
 
-::: pyalloq.estimators.covariance.random_matrix_theory.RandomMatrixTheoryEstimator
+::: pyalloq.classical.estimators.covariance.random_matrix_theory.RandomMatrixTheoryEstimator
 
 ---
 
 ### SemiCovariance
 
-::: pyalloq.estimators.covariance.semi_covariance.SemiCovariance
+::: pyalloq.classical.estimators.covariance.semi_covariance.SemiCovariance
 
 ---
 
@@ -92,16 +92,16 @@
 
 ### BlackLittermanEstimator
 
-::: pyalloq.estimators.black_litterman.bayesian.BlackLittermanEstimator
+::: pyalloq.classical.estimators.black_litterman.bayesian.BlackLittermanEstimator
 
 ---
 
 ### TimesFM3UnivariateViewGenerator
 
-::: pyalloq.deep_learning.estimators.black_litterman.timesfm.TimesFM3UnivariateViewGenerator
+::: pyalloq.dl.estimators.black_litterman.timesfm.TimesFM3UnivariateViewGenerator
 
 ---
 
 ### TimesFM3MultivariateViewGenerator
 
-::: pyalloq.deep_learning.estimators.black_litterman.timesfm.TimesFM3MultivariateViewGenerator
+::: pyalloq.dl.estimators.black_litterman.timesfm.TimesFM3MultivariateViewGenerator

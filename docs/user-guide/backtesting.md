@@ -170,8 +170,8 @@ print(tear_sheet)
 
 ```python
 from pyalloq_data_connector.yahoo_finance import YahooFinanceClient
-from pyalloq.optimizers.classical.risk_parity import RiskParityAllocator
-from pyalloq.estimators.covariance.ledoit_wolf import LedoitWolfEstimator
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
+from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_backtest.engine import WalkForwardEngine
 from pyalloq_backtest.splitters import ExpandingWindowSplitter
@@ -184,7 +184,7 @@ data = YahooFinanceClient().get_market_data(
 
 pipeline = StrategyPipeline(
     allocator=RiskParityAllocator(tickers=data.assets),
-    cov_estimator=LedoitWolfEstimator(),
+    cov_estimator=LedoitWolfShrinkage(),
 )
 
 engine = WalkForwardEngine(

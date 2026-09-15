@@ -6,37 +6,37 @@
 
 ### EqualWeightAllocator
 
-::: pyalloq.optimizers.classical.naive.EqualWeightAllocator
+::: pyalloq.classical.optimizers.naive.EqualWeightAllocator
 
 ---
 
 ### RandomAllocator
 
-::: pyalloq.optimizers.classical.naive.RandomAllocator
+::: pyalloq.classical.optimizers.naive.RandomAllocator
 
 ---
 
 ### MarkowitzAllocator
 
-::: pyalloq.optimizers.classical.markowitz.MarkowitzAllocator
+::: pyalloq.classical.optimizers.markowitz.MarkowitzAllocator
 
 ---
 
 ### RiskParityAllocator
 
-::: pyalloq.optimizers.classical.risk_parity.RiskParityAllocator
+::: pyalloq.classical.optimizers.risk_parity.RiskParityAllocator
 
 ---
 
 ### RiskBudgetingAllocator
 
-::: pyalloq.optimizers.classical.risk_budgeting.RiskBudgetingAllocator
+::: pyalloq.classical.optimizers.risk_budgeting.RiskBudgetingAllocator
 
 ---
 
 ### MaxDiversificationAllocator
 
-::: pyalloq.optimizers.classical.max_diversification.MaxDiversificationAllocator
+::: pyalloq.classical.optimizers.max_diversification.MaxDiversificationAllocator
 
 ---
 
@@ -44,16 +44,16 @@
 
 ### HRPAllocator
 
-::: pyalloq.optimizers.machine_learning.hrp.HRPAllocator
+::: pyalloq.ml.optimizers.hrp.HRPAllocator
 
 ---
 
 ### HERCAllocator
 
-::: pyalloq.optimizers.machine_learning.herc.HERCAllocator
+::: pyalloq.ml.optimizers.herc.HERCAllocator
 
 ---
 
 ### NCOAllocator
 
-::: pyalloq.optimizers.machine_learning.nco.NCOAllocator
+::: pyalloq.ml.optimizers.nco.NCOAllocator
