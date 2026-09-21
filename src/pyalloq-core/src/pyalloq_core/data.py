@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from dataclasses import dataclass, field
 
 
@@ -100,3 +101,48 @@ class MarketData:
 
     def get_returns(self, log_returns: bool = False) -> None:
         pass
+
+
+@dataclass(kw_only=True)
+class ScenarioMarketData:
+    """
+    Core 3D tensor container for multi-path synthetic futures in PyAlloq.
+    Shapes:
+        prices: (M, T, N) - M paths, T time steps, N assets
+        returns: (M, T, N)
+    """
+
+    prices: np.ndarray
+    returns: np.ndarray
+    asset_names: list[str]
+    timestamps: pd.RangeIndex = field(default_factory=lambda: pd.RangeIndex(0))
+    features: dict[str, np.ndarray] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.n_paths, self.horizon, self.n_assets = self.prices.shape
+        if len(self.timestamps) == 0:
+            self.timestamps = pd.RangeIndex(start=0, stop=self.horizon, step=1)
+
+    def get_path(self, path_idx: int) -> MarketData:
+        """
+        Slices the 3D tensor at index `path_idx` and returns a standard 2D MarketData
+        object mathematically compatible with the existing StrategyPipeline.
+        """
+        path_prices = pd.DataFrame(
+            self.prices[path_idx], index=self.timestamps, columns=self.asset_names
+        )
+
+        path_features = {}
+        for feature_name, feature_tensor in self.features.items():
+            # Support for both asset-specific features (M, T, N) and exogenous macro features (M, T, 1)
+            if feature_tensor.ndim == 3 and feature_tensor.shape[0] == self.n_paths:
+                columns = (
+                    self.asset_names
+                    if feature_tensor.shape[2] == self.n_assets
+                    else None
+                )
+                path_features[feature_name] = pd.DataFrame(
+                    feature_tensor[path_idx], index=self.timestamps, columns=columns
+                )
+
+        return MarketData(prices=path_prices, features=path_features)

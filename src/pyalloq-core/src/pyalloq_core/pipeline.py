@@ -37,7 +37,14 @@ class StrategyPipeline:
         cov_matrix = self.cov_estimator.estimate(data)
 
         result = self.allocator.allocate(
-            data, cov_matrix=cov_matrix, expected_returns=expected_returns
+            data,
+            cov_matrix=cov_matrix,
+            expected_returns=expected_returns,
+            **self.allocator_kwargs,
         )
 
-        return result.weights
+        return (
+            result.clean_weights()
+            if hasattr(result, "clean_weights")
+            else result.weights
+        )

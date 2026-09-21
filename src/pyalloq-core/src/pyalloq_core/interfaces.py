@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Any
 from .enums import DataFrequency
-from .data import MarketData
+from .data import MarketData, ScenarioMarketData
 from .results import OptimizationResult
 
 
@@ -110,3 +110,21 @@ class BaseCovarianceEstimator(ABC):
     def estimate(self, data: MarketData, **kwargs: Any) -> pd.DataFrame:
         """Takes a price DataFrame and returns an NxN covariance matrix."""
         pass
+
+
+class BaseScenarioGenerator(ABC):
+    @abstractmethod
+    def fit(self, historical_returns: pd.DataFrame) -> None:
+        """
+        Fits the underlying statistical or generative model.
+        """
+        ...
+
+    @abstractmethod
+    def generate(
+        self, initial_prices: pd.Series, horizon: int, n_paths: int
+    ) -> ScenarioMarketData:
+        """
+        Outputs a 3D simulation tensor.
+        """
+        ...
