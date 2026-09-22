@@ -114,16 +114,14 @@ class BaseCovarianceEstimator(ABC):
 
 class BaseScenarioGenerator(ABC):
     @abstractmethod
-    def fit(self, historical_returns: pd.DataFrame) -> None:
+    def fit(self, data: MarketData) -> None:
         """
         Fits the underlying statistical or generative model.
         """
         ...
 
     @abstractmethod
-    def generate(
-        self, initial_prices: pd.Series, horizon: int, n_paths: int
-    ) -> ScenarioMarketData:
+    def generate(self, n_paths: int, horizon: int) -> ScenarioMarketData:
         """
         Outputs a 3D simulation tensor.
         """
