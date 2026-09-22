@@ -55,6 +55,7 @@ dev = [
     "build>=1",
     "types-requests>=2",
     "types-setuptools>=75",
+    "scipy-stubs>=1.17.1.5",
 ]
 
 [project.optional-dependencies]
@@ -72,6 +73,7 @@ dev = [
   "build>=1",
   "types-requests>=2",
   "types-setuptools>=75",
+  "scipy-stubs>=1.17",
 ]
 
 [project.urls]
