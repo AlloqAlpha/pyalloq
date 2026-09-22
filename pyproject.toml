@@ -116,6 +116,7 @@ pyalloq-core = { workspace = true }
 pyalloq-data-connector = { workspace = true }
 pyalloq-features = { workspace = true }
 pyalloq-backtest = { workspace = true }
+pyalloq-simulation = {workspace = true }
 
 
 [tool.uv.workspace]
@@ -124,6 +125,7 @@ members = [
   "src/pyalloq-backtest",
   "src/pyalloq-data-connector",
   "src/pyalloq-features",
+  "src/pyalloq-simulation"
 ]
 
 [tool.pytest.ini_options]
@@ -135,6 +137,7 @@ pythonpath = [
   "src/pyalloq-backtest/src",
   "src/pyalloq-data-connector/src",
   "src/pyalloq-features/src",
+  "src/pyalloq-simulation/src"
 ]
 addopts = "-v --strict-markers -ra"
 markers = [
@@ -156,6 +159,7 @@ source = [
   "pyalloq_backtest",
   "pyalloq_features",
   "pyalloq_data_connector",
+  "pyalloq_simulation"
 ]
 omit = [
   "*/tests/*",

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
+from typing import cast
 
 
 @dataclass(kw_only=True)
@@ -99,8 +100,11 @@ class MarketData:
             risk_free_rate=sliced_rf,
         )
 
-    def get_returns(self, log_returns: bool = False) -> None:
-        pass
+    def get_returns(self, log_returns: bool = False) -> pd.DataFrame:
+        returns = self.prices.pct_change()
+        if log_returns:
+            returns = cast(pd.DataFrame, np.log1p(returns))
+        return returns.dropna()
 
 
 @dataclass(kw_only=True)
