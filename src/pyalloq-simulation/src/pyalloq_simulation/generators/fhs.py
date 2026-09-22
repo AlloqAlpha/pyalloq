@@ -25,11 +25,12 @@ class FHSGenerator(BaseScenarioGenerator):
         self.last_volatility: dict[str, Any] = {}
         self.is_fitted = False
 
-    def fit(self, data: MarketData, log_returns: bool = False):
+    def fit(self, data: MarketData, log_returns: bool = False) -> None:
         """
-        De-volatizes the historical time series to extract empirical shocks.
+        De-Volatizes the historical time series to extract empirical shocks.
         """
-        self.data = data
+        self.initial_prices = self.data.prices.iloc[-1].to_numpy(dtype=float)
+        self.data: MarketData = data
         self.std_residuals = pd.DataFrame(
             index=self.data.prices.index, columns=self.data.assets
         )
@@ -98,8 +99,9 @@ class FHSGenerator(BaseScenarioGenerator):
             )
             current_vol = np.sqrt(current_var)
 
-        initial_prices = self.data.prices.iloc[-1].to_numpy(dtype=float)
-        synthetic_prices = initial_prices * np.cumprod(1 + synthetic_returns, axis=1)
+        synthetic_prices = self.initial_prices * np.cumprod(
+            1 + synthetic_returns, axis=1
+        )
 
         return ScenarioMarketData(
             prices=synthetic_prices,
