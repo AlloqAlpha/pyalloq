@@ -34,7 +34,8 @@ dependencies = [
   "pyalloq-core",
   "pyalloq-data-connector",
   "pyalloq-backtest",
-  "pyalloq-features"
+  "pyalloq-features",
+  "pyalloq-simulation"
 ]
 
 [dependency-groups]
@@ -88,7 +89,8 @@ mypy_path = [
   "src/pyalloq-core/src",
   "src/pyalloq-data-connector/src",
   "src/pyalloq-features/src",
-  "src/pyalloq-backtest/src"
+  "src/pyalloq-backtest/src",
+  "src/pyalloq-simulation/src"
 ]
 explicit_package_bases = true
 namespace_packages = true
