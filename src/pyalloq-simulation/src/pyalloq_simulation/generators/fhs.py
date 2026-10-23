@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
-from typing import Any
+from typing import Any, Literal, cast
 import warnings
-from arch import arch_model  # type: ignore[import-not-found]
+from arch import arch_model
 
-from pyalloq_core.interfaces import BaseScenarioGenerator, ScenarioMarketData
-from pyalloq_core.data import MarketData
+from pyalloq_core.interfaces import BaseScenarioGenerator
+from pyalloq_core.data import MarketData, ScenarioMarketData
+from pyalloq_simulation.utils.imputation import FactorBackcastImputer
 
 
 class FHSGenerator(BaseScenarioGenerator):
@@ -17,43 +18,70 @@ class FHSGenerator(BaseScenarioGenerator):
     correlation, and re-injects dynamic volatility forward.
     """
 
-    def __init__(self, dist: str = "Normal") -> None:
+    def __init__(
+        self,
+        dist: str = "Normal",
+        dtype: Any = np.float32,
+        impute_missing: bool = True,
+    ) -> None:
         if dist not in ("Normal", "t", "skewt"):
             raise KeyError(f"dist: {dist} needs to be 'Normal', 't' or 'skewt'")
         self.dist = dist
+        self.dtype = np.dtype(dtype)
+        self.impute_missing = impute_missing
         self.garch_params: dict[str, Any] = {}
         self.last_volatility: dict[str, Any] = {}
+        self.log_returns: bool = False
         self.is_fitted = False
 
     def fit(self, data: MarketData, log_returns: bool = False) -> None:
         """
         De-Volatizes the historical time series to extract empirical shocks.
         """
-        self.initial_prices = self.data.prices.iloc[-1].to_numpy(dtype=float)
-        self.data: MarketData = data
+        self.data: MarketData = (
+            FactorBackcastImputer().fit_transform(data) if self.impute_missing else data
+        )
+        self.log_returns = log_returns
+        self._record_index_metadata(self.data.prices.index)
+        self.initial_prices = self.data.prices.iloc[-1].to_numpy(dtype=self.dtype)
         self.std_residuals = pd.DataFrame(
-            index=self.data.prices.index, columns=self.data.assets
+            index=self.data.prices.index, columns=self.data.assets, dtype=np.float64
         )
         self.N = len(self.data.assets)
-        returns = data.get_returns(log_returns)
+        returns = self.data.get_returns(log_returns)
+        self._fit_exogenous_features(self.data, returns)
+
         # Suppress arch convergence warnings for cleaner SDK output
         warnings.filterwarnings("ignore", category=FutureWarning)
+        scale = 100.0
+        arch_dist = cast(
+            Literal["normal", "t", "skewt"],
+            "normal" if self.dist == "Normal" else self.dist,
+        )
         for asset in self.data.assets:
+            scaled_ret = returns[asset].dropna() * scale
             am = arch_model(
-                returns[asset].dropna(),
+                scaled_ret,
                 mean="Constant",
-                vol="Garch",
+                vol="GARCH",
                 p=1,
                 q=1,
-                dist=self.dist,
+                dist=arch_dist,
+                rescale=False,
             )
 
             res = am.fit(disp="off")
-            self.garch_params[asset] = res.params
-            # z_t = (r_t - mu) / sigma_t
-            self.std_residuals[asset] = res.resid / res.conditional_volatility
-            # Store the final historical volatility state to seed t=0 of the simulation
-            self.last_volatility[asset] = res.conditional_volatility.iloc[-1]
+            params = res.params.copy()
+            params["mu"] = params["mu"] / scale
+            params["omega"] = params["omega"] / (scale**2)
+            self.garch_params[asset] = params
+
+            # z_t = (r_t - mu) / sigma_t (scale cancels out in ratio)
+            cond_vol = pd.Series(res.conditional_volatility, index=scaled_ret.index)
+            resid_s = pd.Series(res.resid, index=scaled_ret.index)
+            self.std_residuals[asset] = resid_s / cond_vol
+            # Store the final historical volatility state (unscaled) to seed t=0 of the simulation
+            self.last_volatility[asset] = float(cond_vol.iloc[-1]) / scale
 
         # Drop rows with any NaNs to ensure a perfectly synchronous residual matrix
         self.std_residuals.dropna(inplace=True)
@@ -77,16 +105,29 @@ class FHSGenerator(BaseScenarioGenerator):
 
         T_hist = len(self.std_residuals)
 
-        mu = np.array([self.garch_params[a]["mu"] for a in self.data.assets])
-        omega = np.array([self.garch_params[a]["omega"] for a in self.data.assets])
-        alpha = np.array([self.garch_params[a]["alpha[1]"] for a in self.data.assets])
-        beta = np.array([self.garch_params[a]["beta[1]"] for a in self.data.assets])
-
-        Z_hist = self.std_residuals.to_numpy()
-        current_vol = np.tile(
-            [self.last_volatility[a] for a in self.data.assets], (n_paths, 1)
+        mu = np.array(
+            [self.garch_params[a]["mu"] for a in self.data.assets], dtype=self.dtype
         )
-        synthetic_returns = np.zeros((n_paths, horizon, self.N))
+        omega = np.array(
+            [self.garch_params[a]["omega"] for a in self.data.assets], dtype=self.dtype
+        )
+        alpha = np.array(
+            [self.garch_params[a]["alpha[1]"] for a in self.data.assets],
+            dtype=self.dtype,
+        )
+        beta = np.array(
+            [self.garch_params[a]["beta[1]"] for a in self.data.assets],
+            dtype=self.dtype,
+        )
+
+        Z_hist = self.std_residuals.to_numpy(dtype=self.dtype)
+        current_vol = np.tile(
+            np.array(
+                [self.last_volatility[a] for a in self.data.assets], dtype=self.dtype
+            ),
+            (n_paths, 1),
+        )
+        synthetic_returns = np.zeros((n_paths, horizon, self.N), dtype=self.dtype)
         random_indices = np.random.randint(0, T_hist, size=(n_paths, horizon))
 
         for t in range(horizon):
@@ -97,14 +138,28 @@ class FHSGenerator(BaseScenarioGenerator):
             current_var = (
                 omega + alpha * (current_vol * Z_t) ** 2 + beta * (current_vol**2)
             )
-            current_vol = np.sqrt(current_var)
+            current_vol = np.sqrt(np.maximum(current_var, 1e-12)).astype(
+                self.dtype, copy=False
+            )
 
-        synthetic_prices = self.initial_prices * np.cumprod(
-            1 + synthetic_returns, axis=1
-        )
+        if self.log_returns:
+            synthetic_prices = self.initial_prices * np.exp(
+                np.cumsum(synthetic_returns, axis=1)
+            )
+        else:
+            synthetic_prices = self.initial_prices * np.cumprod(
+                1.0 + synthetic_returns, axis=1
+            )
+
+        synthetic_prices = synthetic_prices.astype(self.dtype, copy=False)
+        sim_features, feat_cols = self._simulate_exogenous_features(synthetic_returns)
 
         return ScenarioMarketData(
             prices=synthetic_prices,
             returns=synthetic_returns,
             asset_names=list(self.data.assets),
+            initial_prices=self.initial_prices.copy(),
+            timestamps=self._build_future_timestamps(horizon),
+            features=sim_features,
+            feature_columns=feat_cols,
         )
