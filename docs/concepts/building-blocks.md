@@ -203,7 +203,7 @@ results = engine.run(data)
 
 **Package:** `pyalloq-simulation` & `pyalloq-core`
 
-Generates 3D $(M, T, N)$ synthetic price and feature tensors (`ScenarioMarketData`), blends non-Gaussian return and volatility views via `EntropyPooler`, and executes `WalkForwardEngine` across all $M$ paths in parallel via `ParallelMonteCarloEngine`.
+Generates 3D \((M, T, N)\) synthetic price and feature tensors (`ScenarioMarketData`), blends non-Gaussian return and volatility views via `EntropyPooler`, and executes `WalkForwardEngine` across all \(M\) paths in parallel via `ParallelMonteCarloEngine`.
 
 ```python
 from pyalloq_simulation import GARCHEVTCopulaGenerator

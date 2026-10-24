@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq-simulation"
-version = "0.1.19"
+version = "0.1.20"
 description = "Core simulation engine for PyAlloq."
 readme = "README.md"
 requires-python = ">=3.11"

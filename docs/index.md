@@ -58,7 +58,7 @@ flowchart LR
 | Block | Interface | What it does |
 |-------|-----------|--------------|
 | **Data Connector** | `BaseDataConnector` | Fetches & normalizes market data from any vendor |
-| **MarketData / ScenarioMarketData** | `@dataclass` | Single source of truth — 2D historical data and 3D $(M, T, N)$ synthetic scenario tensors |
+| **MarketData / ScenarioMarketData** | `@dataclass` | Single source of truth — 2D historical data and 3D \((M, T, N)\) synthetic scenario tensors |
 | **Return Estimator** | `BaseReturnEstimator` | Estimates expected returns for each asset |
 | **Covariance Estimator** | `BaseCovarianceEstimator` | Estimates the NxN covariance matrix |
 | **Allocator** | `BaseAllocator` | Solves for optimal portfolio weights |
@@ -74,7 +74,7 @@ flowchart LR
 - 🌳 **3 graph-based ML allocators**: HRP, HERC, NCO — no covariance inversion required
 - 📈 **6 return estimators**: EWMA, Momentum, Factor, James-Stein, Implied, Black-Litterman
 - 📊 **5 covariance estimators**: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance
-- 🎲 **5 Monte Carlo scenario generators**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-$t$ Copula, and GMM Markov Regimes
+- 🎲 **5 Monte Carlo scenario generators**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-\(t\) Copula, and GMM Markov Regimes
 - 🔭 **Meucci Entropy Pooling**: First- and second-moment views (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin
 - 🔁 **3 backtest splitters**: Rolling Window, Expanding Window, Purged K-Fold (ML-safe)
 - 💸 **2 transaction cost models**: Flat Bps, Almgren-Chriss market impact
