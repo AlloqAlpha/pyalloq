@@ -795,6 +795,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#block-8-monte-carlo-simulation-entropy-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block 8: Monte Carlo Simulation &amp; Entropy Pooling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-they-fit-together" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -885,6 +896,8 @@
   
     
     
+      
+        
       
         
       
@@ -1143,6 +1156,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/monte-carlo-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1158,6 +1199,8 @@
   
     
     
+      
+        
       
         
       
@@ -1296,6 +1339,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mathematics/monte-carlo-and-views/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo &amp; Entropy Pooling Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1404,6 +1475,8 @@
   
     
     
+      
+        
       
         
       
@@ -1632,6 +1705,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1749,6 +1850,17 @@
     <span class="md-ellipsis">
       
         Block 7: WalkForwardEngine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#block-8-monte-carlo-simulation-entropy-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Block 8: Monte Carlo Simulation &amp; Entropy Pooling
       
     </span>
   </a>
@@ -2055,13 +2167,26 @@
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># → {&quot;returns&quot;: pd.Series, &quot;weights&quot;: pd.DataFrame, &quot;tear_sheet&quot;: pd.DataFrame}</span>
 </span></code></pre></div>
 <hr />
+<h2 id="block-8-monte-carlo-simulation-entropy-pooling">Block 8: Monte Carlo Simulation &amp; Entropy Pooling<a class="headerlink" href="#block-8-monte-carlo-simulation-entropy-pooling" title="Permanent link">&para;</a></h2>
+<p><strong>Package:</strong> <code>pyalloq-simulation</code> &amp; <code>pyalloq-core</code></p>
+<p>Generates 3D <span class="arithmatex">\((M, T, N)\)</span> synthetic price and feature tensors (<code>ScenarioMarketData</code>), blends non-Gaussian return and volatility views via <code>EntropyPooler</code>, and executes <code>WalkForwardEngine</code> across all <span class="arithmatex">\(M\)</span> paths in parallel via <code>ParallelMonteCarloEngine</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_simulation</span><span class="w"> </span><span class="kn">import</span> <span class="n">GARCHEVTCopulaGenerator</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.engines</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParallelMonteCarloEngine</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">gen</span> <span class="o">=</span> <span class="n">GARCHEVTCopulaGenerator</span><span class="p">(</span><span class="n">nu</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">gen</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">mc_engine</span> <span class="o">=</span> <span class="n">ParallelMonteCarloEngine</span><span class="p">(</span><span class="n">backtest_engine</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">mc_result</span> <span class="o">=</span> <span class="n">mc_engine</span><span class="o">.</span><span class="n">run_batches</span><span class="p">(</span><span class="n">gen</span><span class="o">.</span><span class="n">generate_batches</span><span class="p">(</span><span class="n">n_paths</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="mi">252</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span>
+</span></code></pre></div>
+<hr />
 <h2 id="how-they-fit-together">How They Fit Together<a class="headerlink" href="#how-they-fit-together" title="Permanent link">&para;</a></h2>
 <p>Every portfolio optimization workflow in PyAlloq follows the same linear data flow:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Data Connector → MarketData → [Return Estimator + Covariance Estimator] → Allocator
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                                         ↕ (via StrategyPipeline)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>                              WalkForwardEngine [+ Splitter + Cost Model]
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>                                         ↓
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                                     TearSheet
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Data Connector → MarketData → [Return Estimator + Covariance Estimator] → Allocator
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>                                         ↕ (via StrategyPipeline)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                              WalkForwardEngine [+ Splitter + Cost Model]
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                                         ↓
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                                     TearSheet
 </span></code></pre></div>
 <p>This separation of concerns means you can:</p>
 <ul>

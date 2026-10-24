@@ -851,6 +851,8 @@
       
         
       
+        
+      
     
     
     
@@ -1094,6 +1096,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="user-guide/monte-carlo-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1109,6 +1139,8 @@
   
     
     
+      
+        
       
         
       
@@ -1247,6 +1279,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mathematics/monte-carlo-and-views/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo &amp; Entropy Pooling Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1355,6 +1415,8 @@
   
     
     
+      
+        
       
         
       
@@ -1583,6 +1645,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1753,9 +1843,9 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <td>Fetches &amp; normalizes market data from any vendor</td>
 </tr>
 <tr>
-<td><strong>MarketData</strong></td>
+<td><strong>MarketData / ScenarioMarketData</strong></td>
 <td><code>@dataclass</code></td>
-<td>Single source of truth — prices, features, risk-free rate</td>
+<td>Single source of truth — 2D historical data and 3D <span class="arithmatex">\((M, T, N)\)</span> synthetic scenario tensors</td>
 </tr>
 <tr>
 <td><strong>Return Estimator</strong></td>
@@ -1773,14 +1863,19 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <td>Solves for optimal portfolio weights</td>
 </tr>
 <tr>
+<td><strong>Scenario Generator</strong></td>
+<td><code>BaseScenarioGenerator</code></td>
+<td>Simulates multi-path synthetic futures (Gaussian, PCA, FHS, GARCH-EVT-Copula, GMM Regimes)</td>
+</tr>
+<tr>
 <td><strong>StrategyPipeline</strong></td>
 <td>—</td>
 <td>Wires estimators + allocator together</td>
 </tr>
 <tr>
-<td><strong>WalkForwardEngine</strong></td>
+<td><strong>WalkForwardEngine / ParallelMonteCarloEngine</strong></td>
 <td>—</td>
-<td>Zero-lookahead backtesting with cost models</td>
+<td>Zero-lookahead historical and parallel multi-path Monte Carlo backtesting</td>
 </tr>
 </tbody>
 </table>
@@ -1791,6 +1886,8 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <li>🌳 <strong>3 graph-based ML allocators</strong>: HRP, HERC, NCO — no covariance inversion required</li>
 <li>📈 <strong>6 return estimators</strong>: EWMA, Momentum, Factor, James-Stein, Implied, Black-Litterman</li>
 <li>📊 <strong>5 covariance estimators</strong>: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance</li>
+<li>🎲 <strong>5 Monte Carlo scenario generators</strong>: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-<span class="arithmatex">\(t\)</span> Copula, and GMM Markov Regimes</li>
+<li>🔭 <strong>Meucci Entropy Pooling</strong>: First- and second-moment views (<code>AbsoluteView</code>, <code>RelativeView</code>, <code>VolatilityView</code>, <code>CovarianceView</code>) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin</li>
 <li>🔁 <strong>3 backtest splitters</strong>: Rolling Window, Expanding Window, Purged K-Fold (ML-safe)</li>
 <li>💸 <strong>2 transaction cost models</strong>: Flat Bps, Almgren-Chriss market impact</li>
 <li>🔬 <strong>Zero-lookahead guarantee</strong> via <code>MarketData.validate_alignment()</code> and <code>slice_time()</code></li>
@@ -1808,7 +1905,7 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <tbody>
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core"><code>pyalloq-core</code></a></td>
-<td>Interfaces, <code>MarketData</code>, <code>StrategyPipeline</code>, <code>OptimizationResult</code></td>
+<td>Interfaces, <code>MarketData</code>, <code>ScenarioMarketData</code>, <code>StrategyPipeline</code>, <code>ParallelMonteCarloEngine</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-data-connector"><code>pyalloq-data-connector</code></a></td>
@@ -1821,6 +1918,10 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features"><code>pyalloq-features</code></a></td>
 <td>Feature engineering: technical, cross-sectional, scalers</td>
+</tr>
+<tr>
+<td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation"><code>pyalloq-simulation</code></a></td>
+<td>Monte Carlo generators, <code>FactorBackcastImputer</code>, Meucci <code>EntropyPooler</code>, <code>ScenarioEvaluator</code></td>
 </tr>
 <tr>
 <td><code>pyalloq</code></td>

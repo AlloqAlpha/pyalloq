@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://pyalloq.alloq-alpha.com/references/papers/">
       
       
-        <link rel="prev" href="../../mathematics/graph-allocators/">
+        <link rel="prev" href="../../mathematics/monte-carlo-and-views/">
       
       
         <link rel="next" href="../../api/core/">
@@ -749,6 +749,8 @@
       
         
       
+        
+      
     
     
     
@@ -992,6 +994,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/monte-carlo-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1007,6 +1037,8 @@
   
     
     
+      
+        
       
         
       
@@ -1132,6 +1164,34 @@
     
   
     Graph-Based Allocator Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mathematics/monte-carlo-and-views/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo &amp; Entropy Pooling Mathematics
   
 
     
@@ -1443,6 +1503,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#monte-carlo-simulation-entropy-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monte Carlo Simulation &amp; Entropy Pooling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monte Carlo Simulation &amp; Entropy Pooling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meucci-2008" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Meucci (2008) — Fully Flexible Views: Theory and Practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fhs-1999" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Barone-Adesi, Giannopoulos &amp; Vosper (1999) — Filtered Historical Simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#garch-evt-2000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        McNeil &amp; Frey (2000) &amp; Demarta &amp; McNeil (2005) — GARCH-EVT &amp; Student-\(t\) Copula
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1467,6 +1577,8 @@
   
     
     
+      
+        
       
         
       
@@ -1695,6 +1807,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1892,6 +2032,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#monte-carlo-simulation-entropy-pooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monte Carlo Simulation &amp; Entropy Pooling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monte Carlo Simulation &amp; Entropy Pooling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meucci-2008" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Meucci (2008) — Fully Flexible Views: Theory and Practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fhs-1999" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Barone-Adesi, Giannopoulos &amp; Vosper (1999) — Filtered Historical Simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#garch-evt-2000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        McNeil &amp; Frey (2000) &amp; Demarta &amp; McNeil (2005) — GARCH-EVT &amp; Student-\(t\) Copula
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2002,6 +2192,34 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 \text{impact}_i = \gamma \sqrt{\frac{\text{trade_size}_i}{\text{daily_volume}_i}}
 ]</p>
 <p><strong>Implemented in:</strong> <code>AlmgrenChrissCostModel</code></p>
+<hr />
+<h2 id="monte-carlo-simulation-entropy-pooling">Monte Carlo Simulation &amp; Entropy Pooling<a class="headerlink" href="#monte-carlo-simulation-entropy-pooling" title="Permanent link">&para;</a></h2>
+<h3 id="meucci-2008">Meucci (2008) — Fully Flexible Views: Theory and Practice<a class="headerlink" href="#meucci-2008" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Meucci, A. (2008). Fully Flexible Views: Theory and Practice. <em>Risk</em>, 21(10), 97–102.
+<a href="https://ssrn.com/abstract=1213325">https://ssrn.com/abstract=1213325</a></p>
+</blockquote>
+<p><strong>Contribution:</strong> Introduced Entropy Pooling to blend arbitrary non-Gaussian Monte Carlo distributions with linear equality and inequality views on returns, volatilities, and correlations via Relative Entropy (Kullback-Leibler) minimization solved in the low-dimensional Lagrange dual space.</p>
+<p><strong>Key formula:</strong>
+[
+x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln!\left(\frac{x_m}{p_m}\right) \quad \text{s.t.} \quad A x \le b, \; C x = d
+]</p>
+<p><strong>Implemented in:</strong> <code>EntropyPooler</code>, <code>ViewBuilder</code> (<code>AbsoluteView</code>, <code>RelativeView</code>, <code>VolatilityView</code>, <code>CovarianceView</code>)</p>
+<hr />
+<h3 id="fhs-1999">Barone-Adesi, Giannopoulos &amp; Vosper (1999) — Filtered Historical Simulation<a class="headerlink" href="#fhs-1999" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Barone-Adesi, G., Giannopoulos, K., &amp; Vosper, L. (1999). VaR Without Correlations for Portfolios of Derivative Securities. <em>Journal of Futures Markets</em>, 19(5), 583–602.</p>
+</blockquote>
+<p><strong>Contribution:</strong> Combined parametric GARCH volatility filtration with non-parametric historical residual bootstrapping, preserving empirical fat tails and cross-asset co-movement while adapting dynamically to current volatility regimes.</p>
+<p><strong>Implemented in:</strong> <code>FHSGenerator</code></p>
+<hr />
+<h3 id="garch-evt-2000">McNeil &amp; Frey (2000) &amp; Demarta &amp; McNeil (2005) — GARCH-EVT &amp; Student-<span class="arithmatex">\(t\)</span> Copula<a class="headerlink" href="#garch-evt-2000" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>McNeil, A. J., &amp; Frey, R. (2000). Estimation of Tail-Related Risk Measures for Heteroscedastic Financial Time Series: An Extreme Value Approach. <em>Journal of Empirical Finance</em>, 7(3–4), 271–300.</p>
+<p>Demarta, S., &amp; McNeil, A. J. (2005). The <span class="arithmatex">\(t\)</span> Copula and Related Copulas. <em>International Statistical Review</em>, 73(1), 111–129.</p>
+</blockquote>
+<p><strong>Contribution:</strong> Modeled conditional heteroscedasticity via AR-GARCH filtration, fitted Generalized Pareto Distributions (GPD) to extreme tail exceedances, and coupled marginals with a Student-<span class="arithmatex">\(t\)</span> Copula to capture asymmetric tail risk and positive lower-tail crash dependence (<span class="arithmatex">\(\lambda_L &gt; 0\)</span>).</p>
+<p><strong>Implemented in:</strong> <code>GARCHEVTCopulaGenerator</code></p>
 
 
 

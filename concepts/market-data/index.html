@@ -817,6 +817,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#scenariomarketdata-3d-synthetic-tensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ScenarioMarketData (3D Synthetic Tensors)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -869,6 +880,8 @@
   
     
     
+      
+        
       
         
       
@@ -1127,6 +1140,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/monte-carlo-simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1142,6 +1183,8 @@
   
     
     
+      
+        
       
         
       
@@ -1280,6 +1323,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mathematics/monte-carlo-and-views/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monte Carlo &amp; Entropy Pooling Mathematics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1388,6 +1459,8 @@
   
     
     
+      
+        
       
         
       
@@ -1616,6 +1689,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/simulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1728,6 +1829,17 @@
     <span class="md-ellipsis">
       
         Design Philosophy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scenariomarketdata-3d-synthetic-tensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ScenarioMarketData (3D Synthetic Tensors)
       
     </span>
   </a>
@@ -1882,6 +1994,65 @@
 <li>Time alignment is validated once at construction, not repeatedly inside each component</li>
 <li>The backtest engine can slice the data safely without knowing what's inside it</li>
 </ul>
+<hr />
+<h2 id="scenariomarketdata-3d-synthetic-tensors"><code>ScenarioMarketData</code> (3D Synthetic Tensors)<a class="headerlink" href="#scenariomarketdata-3d-synthetic-tensors" title="Permanent link">&para;</a></h2>
+<p>For Monte Carlo simulation (<code>pyalloq-simulation</code>), <code>ScenarioMarketData</code> wraps 3D <span class="arithmatex">\((M, T, N)\)</span> synthetic price, return, and exogenous feature tensors while providing a zero-copy bridge back to 2D <code>MarketData</code> per path:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScenarioMarketData</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># Slice path m into a standard 2D MarketData instance compatible with WalkForwardEngine</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">path_data</span> <span class="o">=</span> <span class="n">scenario_data</span><span class="o">.</span><span class="n">get_path</span><span class="p">(</span><span class="n">path_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">feature_pipeline</span><span class="o">=</span><span class="n">my_feature_pipeline</span><span class="p">)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Compute full-horizon cumulative asset returns (M × N) anchored at t=0 initial_prices</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">cum_returns</span> <span class="o">=</span> <span class="n">scenario_data</span><span class="o">.</span><span class="n">get_cumulative_returns</span><span class="p">()</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Shape</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prices</code></td>
+<td><code>np.ndarray</code></td>
+<td><code>(M, T, N)</code></td>
+<td>Simulated asset price paths</td>
+</tr>
+<tr>
+<td><code>returns</code></td>
+<td><code>np.ndarray</code></td>
+<td><code>(M, T, N)</code></td>
+<td>Simulated single-step asset returns</td>
+</tr>
+<tr>
+<td><code>asset_names</code></td>
+<td><code>list[str]</code></td>
+<td><code>(N,)</code></td>
+<td>Ordered ticker symbols</td>
+</tr>
+<tr>
+<td><code>initial_prices</code></td>
+<td><code>np.ndarray \| None</code></td>
+<td><code>(N,)</code></td>
+<td><span class="arithmatex">\(t=0\)</span> anchor prices from the end of historical data</td>
+</tr>
+<tr>
+<td><code>timestamps</code></td>
+<td><code>pd.Index</code></td>
+<td><code>(T,)</code></td>
+<td>Forward-projected <code>DatetimeIndex</code> (or <code>RangeIndex</code>)</td>
+</tr>
+<tr>
+<td><code>features</code></td>
+<td><code>dict[str, np.ndarray]</code></td>
+<td><code>(M, T, K)</code></td>
+<td>Jointly synthesized exogenous feature tensors</td>
+</tr>
+</tbody>
+</table>
 
 
 
