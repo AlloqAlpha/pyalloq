@@ -122,7 +122,7 @@ us_data = MarketData(
 
 ## `ScenarioMarketData` (3D Synthetic Tensors)
 
-For Monte Carlo simulation (`pyalloq-simulation`), `ScenarioMarketData` wraps 3D $(M, T, N)$ synthetic price, return, and exogenous feature tensors while providing a zero-copy bridge back to 2D `MarketData` per path:
+For Monte Carlo simulation (`pyalloq-simulation`), `ScenarioMarketData` wraps 3D \((M, T, N)\) synthetic price, return, and exogenous feature tensors while providing a zero-copy bridge back to 2D `MarketData` per path:
 
 ```python
 from pyalloq_core.data import ScenarioMarketData
@@ -139,6 +139,6 @@ cum_returns = scenario_data.get_cumulative_returns()
 | `prices` | `np.ndarray` | `(M, T, N)` | Simulated asset price paths |
 | `returns` | `np.ndarray` | `(M, T, N)` | Simulated single-step asset returns |
 | `asset_names` | `list[str]` | `(N,)` | Ordered ticker symbols |
-| `initial_prices` | `np.ndarray \| None` | `(N,)` | $t=0$ anchor prices from the end of historical data |
+| `initial_prices` | `np.ndarray \| None` | `(N,)` | \(t=0\) anchor prices from the end of historical data |
 | `timestamps` | `pd.Index` | `(T,)` | Forward-projected `DatetimeIndex` (or `RangeIndex`) |
 | `features` | `dict[str, np.ndarray]` | `(M, T, K)` | Jointly synthesized exogenous feature tensors |

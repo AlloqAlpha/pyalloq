@@ -25,9 +25,9 @@ flowchart LR
 
 ## 1. Missing Data Imputation (`FactorBackcastImputer`)
 
-When your portfolio universe includes recent IPOs or assets with interior data gaps, a naive `.dropna()` truncates the entire $N$-asset matrix down to the shortest asset's history.
+When your portfolio universe includes recent IPOs or assets with interior data gaps, a naive `.dropna()` truncates the entire \(N\)-asset matrix down to the shortest asset's history.
 
-`FactorBackcastImputer` preserves the full historical length $T$ by extracting principal component factors from anchor assets in return space, regressing partial-history assets onto those factors, injecting matched idiosyncratic volatility, and back-casting continuous price paths.
+`FactorBackcastImputer` preserves the full historical length \(T\) by extracting principal component factors from anchor assets in return space, regressing partial-history assets onto those factors, injecting matched idiosyncratic volatility, and back-casting continuous price paths.
 
 ```python
 from pyalloq_simulation import FactorBackcastImputer
@@ -52,10 +52,10 @@ All generators implement `BaseScenarioGenerator` and output a `ScenarioMarketDat
 | Generator | Distribution & Dynamics | Best Used For |
 |-----------|-------------------------|---------------|
 | `GaussianGenerator` | Multivariate Normal with Ledoit-Wolf shrinkage & Cholesky factorization | Fast baseline testing and isolating optimizer behavior |
-| `PCAFactorGenerator` | $K$ latent PCA factors + idiosyncratic Gaussian noise | High-dimensional portfolios ($N \gg K$) |
+| `PCAFactorGenerator` | \(K\) latent PCA factors + idiosyncratic Gaussian noise | High-dimensional portfolios (\(N \gg K\)) |
 | `FHSGenerator` | Univariate GARCH(1,1) filtering + synchronous empirical residual bootstrap | Preserving historical volatility clustering and empirical fat tails |
-| `GARCHEVTCopulaGenerator` | AR(1)-GARCH(1,1) marginals + Generalized Pareto (EVT) tails + Student-$t$ Copula | Modeling extreme tail risk and simultaneous crash dependence ($\lambda_L > 0$) |
-| `GMMRegimeGenerator` | $K$-state Gaussian Mixture Model + Markov transition matrix | Stress-testing structural breaks and Bull/Bear regime shifts |
+| `GARCHEVTCopulaGenerator` | AR(1)-GARCH(1,1) marginals + Generalized Pareto (EVT) tails + Student-\(t\) Copula | Modeling extreme tail risk and simultaneous crash dependence (\(\lambda_L > 0\)) |
+| `GMMRegimeGenerator` | \(K\)-state Gaussian Mixture Model + Markov transition matrix | Stress-testing structural breaks and Bull/Bear regime shifts |
 
 ### Generating Scenarios
 
@@ -85,7 +85,7 @@ print(scenario_data.prices.shape)  # (2000, 252, N)
 
 ### Memory Management & Tensor Batching
 
-A $10,000 \times 252 \times 500$ simulation in `float64` consumes over 20 GB of RAM across price and return tensors. To prevent out-of-memory (OOM) spikes in cloud containers or parallel workers:
+A \(10,000 \times 252 \times 500\) simulation in `float64` consumes over 20 GB of RAM across price and return tensors. To prevent out-of-memory (OOM) spikes in cloud containers or parallel workers:
 
 1. **Precision Control:** All generators default to `dtype=np.float32` (configurable to `np.float64`).
 2. **Streamed Batch Generation:** Use `generate_batches()` to yield memory-bounded `ScenarioMarketData` chunks:
@@ -100,7 +100,7 @@ for batch in generator.generate_batches(n_paths=10_000, horizon=252, batch_size=
 
 ## 3. Expressing Market Views & Entropy Pooling
 
-Unlike Black-Litterman—which is restricted to normal distributions and linear return views—**Meucci's Entropy Pooling** blends any non-Gaussian Monte Carlo prior with first-moment (return) and second-moment (volatility and correlation/covariance) views by minimizing the Kullback-Leibler divergence between prior probabilities $p$ and posterior probabilities $x^*$.
+Unlike Black-Litterman—which is restricted to normal distributions and linear return views—**Meucci's Entropy Pooling** blends any non-Gaussian Monte Carlo prior with first-moment (return) and second-moment (volatility and correlation/covariance) views by minimizing the Kullback-Leibler divergence between prior probabilities \(p\) and posterior probabilities \(x^*\).
 
 ### Supported View Types
 
@@ -141,13 +141,13 @@ print(f"Converged: {entropy_result.success}, KL Divergence: {entropy_result.kl_d
 
 ## 4. Path-Dependent Risk Evaluation (`ScenarioEvaluator`)
 
-Terminal metrics alone miss intra-horizon crashes that trigger margin calls or risk limits. `ScenarioEvaluator` evaluates both terminal and intra-horizon path metrics across all $t \in [0, T]$ weighted by the posterior scenario probabilities `entropy_result.weights`:
+Terminal metrics alone miss intra-horizon crashes that trigger margin calls or risk limits. `ScenarioEvaluator` evaluates both terminal and intra-horizon path metrics across all \(t \in [0, T]\) weighted by the posterior scenario probabilities `entropy_result.weights`:
 
 - `expected_return`: Posterior probability-weighted cumulative return.
 - `volatility`: Posterior probability-weighted return standard deviation.
 - `sharpe_ratio`: View-adjusted horizon Sharpe ratio.
 - `cvar_95`: Posterior probability-weighted 95% Conditional Value-at-Risk (Expected Shortfall).
-- `view_adjusted_mdd`: Posterior probability-weighted Maximum Drawdown across the $(M, T+1)$ wealth trajectory.
+- `view_adjusted_mdd`: Posterior probability-weighted Maximum Drawdown across the \((M, T+1)\) wealth trajectory.
 - `probability_of_ruin`: Posterior probability mass of paths whose intra-horizon drawdown or equity drop breaches `ruin_threshold` (default `-0.30`, i.e., a 30% loss).
 
 ```python
