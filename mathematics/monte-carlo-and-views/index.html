@@ -1988,41 +1988,37 @@ x^*_m = \frac{p_m \exp\!\left(-[G^\top \gamma^*]_m\right)}{\sum_{k=1}^M p_k \exp
 \]</div>
 <h3 id="first-and-second-moment-view-linearization">First- and Second-Moment View Linearization<a class="headerlink" href="#first-and-second-moment-view-linearization" title="Permanent link">&para;</a></h3>
 <p>Because expectation under the scenario measure is a linear inner product <span class="arithmatex">\(\mathbb{E}_x[g(R)] = \sum_{m=1}^M x_m g(R_m)\)</span>, both first- and second-moment views are <strong>linear</strong> in the probability vector <span class="arithmatex">\(x\)</span>:</p>
-<ul>
-<li><strong>Absolute Return View (<code>AbsoluteView</code>):</strong>
-  [
-  \sum_{m=1}^M x_m R_{m, i} \;\ {\le, =, \ge}\; \mu_i^{\text{target}}
-  ]</li>
-<li><strong>Relative Return View (<code>RelativeView</code>):</strong>
-  [
-  \sum_{m=1}^M x_m (R_{m, i} - R_{m, j}) \;\ {\le, =, \ge}\; \delta_{ij}^{\text{target}}
-  ]</li>
-<li><strong>Volatility View (<code>VolatilityView</code>):</strong> Centered around the reference mean <span class="arithmatex">\(\bar{\mu}_i\)</span>:
-  [
-  \sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)^2 \;\ {\le, =, \ge}\; \left(\sigma_i^{\text{target}}\right)^2
-  ]</li>
-<li><strong>Covariance / Correlation View (<code>CovarianceView</code>):</strong>
-  [
-  \sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}<em j="j" m_="m,">i)(R</em>} - \bar{\mu<em ij="ij">j) \;\ {\le, =, \ge}\; \rho</em>_j
-  ]}^{\text{target}} \bar{\sigma}_i \bar{\sigma</li>
-</ul>
+<p><strong>Absolute Return View (<code>AbsoluteView</code>):</strong></p>
+<div class="arithmatex">\[
+\sum_{m=1}^M x_m R_{m, i} \;\in\; \{\le, =, \ge\}\; \mu_i^{\text{target}}
+\]</div>
+<p><strong>Relative Return View (<code>RelativeView</code>):</strong></p>
+<div class="arithmatex">\[
+\sum_{m=1}^M x_m (R_{m, i} - R_{m, j}) \;\in\; \{\le, =, \ge\}\; \delta_{ij}^{\text{target}}
+\]</div>
+<p><strong>Volatility View (<code>VolatilityView</code>)</strong> — centered around the reference mean <span class="arithmatex">\(\bar{\mu}_i\)</span>:</p>
+<div class="arithmatex">\[
+\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)^2 \;\in\; \{\le, =, \ge\}\; \left(\sigma_i^{\text{target}}\right)^2
+\]</div>
+<p><strong>Covariance / Correlation View (<code>CovarianceView</code>):</strong></p>
+<div class="arithmatex">\[
+\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)(R_{m, j} - \bar{\mu}_j) \;\in\; \{\le, =, \ge\}\; \rho_{ij}^{\text{target}} \bar{\sigma}_i \bar{\sigma}_j
+\]</div>
 <hr />
 <h2 id="4-path-dependent-risk-metrics-scenarioevaluator">4. Path-Dependent Risk Metrics (<code>ScenarioEvaluator</code>)<a class="headerlink" href="#4-path-dependent-risk-metrics-scenarioevaluator" title="Permanent link">&para;</a></h2>
 <p>Let <span class="arithmatex">\(W_{m, t}\)</span> denote the simulated portfolio wealth on path <span class="arithmatex">\(m \in \{1, \dots, M\}\)</span> at time step <span class="arithmatex">\(t \in \{0, \dots, T\}\)</span> with <span class="arithmatex">\(W_{m, 0} = 1\)</span>:</p>
-<ul>
-<li><strong>Path Maximum Drawdown (<span class="arithmatex">\(\text{MDD}_m\)</span>):</strong>
-  [
-  \text{MDD}<em 0="0" T="T" _le="\le" t="t">m = \min</em> \le 0
-  ]} \frac{W_{m, t} - \max_{0 \le \tau \le t} W_{m, \tau}}{\max_{0 \le \tau \le t} W_{m, \tau}</li>
-<li><strong>View-Adjusted Maximum Drawdown:</strong>
-  [
-  \text{MDD}<em m="1">{\text{view}} = \sum</em>_m
-  ]}^M x^*_m \, \text{MDD</li>
-<li><strong>Probability of Ruin (<span class="arithmatex">\(\mathbb{P}_{\text{ruin}}\)</span>):</strong> For critical drawdown threshold <span class="arithmatex">\(\theta_{\text{ruin}} &lt; 0\)</span> (e.g., <span class="arithmatex">\(-0.30\)</span>):
-  [
-  \mathbb{P}<em _text_ruin="\text{ruin">{\text{ruin}}(\theta</em>^M x^*}}) = \sum_{m=1<em _text_ruin="\text{ruin">m \, \mathbb{I}!\left(\text{MDD}_m \le \theta</em>\right)
-  ]}</li>
-</ul>
+<p><strong>Path Maximum Drawdown (<span class="arithmatex">\(\text{MDD}_m\)</span>):</strong></p>
+<div class="arithmatex">\[
+\text{MDD}_m = \min_{0 \le t \le T} \frac{W_{m, t} - \max_{0 \le \tau \le t} W_{m, \tau}}{\max_{0 \le \tau \le t} W_{m, \tau}} \le 0
+\]</div>
+<p><strong>View-Adjusted Maximum Drawdown:</strong></p>
+<div class="arithmatex">\[
+\text{MDD}_{\text{view}} = \sum_{m=1}^M x^*_m \, \text{MDD}_m
+\]</div>
+<p><strong>Probability of Ruin (<span class="arithmatex">\(\mathbb{P}_{\text{ruin}}\)</span>)</strong> — for critical drawdown threshold <span class="arithmatex">\(\theta_{\text{ruin}} &lt; 0\)</span> (e.g., <span class="arithmatex">\(-0.30\)</span>):</p>
+<div class="arithmatex">\[
+\mathbb{P}_{\text{ruin}}(\theta_{\text{ruin}}) = \sum_{m=1}^M x^*_m \, \mathbb{I}\!\left(\text{MDD}_m \le \theta_{\text{ruin}}\right)
+\]</div>
 
 
 
