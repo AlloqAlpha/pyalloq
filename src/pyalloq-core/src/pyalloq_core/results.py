@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, ClassVar
 import pandas as pd
 import numpy as np
 
@@ -13,10 +13,44 @@ class BacktestResult:
     weights: pd.DataFrame
     tear_sheet: pd.DataFrame
 
+    _ACCESSIBLE_KEYS: ClassVar[tuple[str, ...]] = (
+        "name",
+        "returns",
+        "weights",
+        "tear_sheet",
+        "equity_curve",
+    )
+
     @property
     def equity_curve(self) -> pd.Series:
         """Dynamically computes the equity curve from daily returns."""
         return (1.0 + self.returns).cumprod()
+
+    def __getitem__(self, key: str) -> Any:
+        if key in self._ACCESSIBLE_KEYS:
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._ACCESSIBLE_KEYS
+
+    def __iter__(self):
+        return iter(self._ACCESSIBLE_KEYS)
+
+    def __len__(self) -> int:
+        return len(self._ACCESSIBLE_KEYS)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key) if key in self._ACCESSIBLE_KEYS else default
+
+    def keys(self) -> list[str]:
+        return list(self._ACCESSIBLE_KEYS)
+
+    def items(self) -> list[tuple[str, Any]]:
+        return [(k, getattr(self, k)) for k in self._ACCESSIBLE_KEYS]
+
+    def values(self) -> list[Any]:
+        return [getattr(self, k) for k in self._ACCESSIBLE_KEYS]
 
 
 @dataclass
