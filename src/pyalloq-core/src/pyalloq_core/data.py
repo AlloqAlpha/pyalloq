@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 from dataclasses import dataclass, field
+from typing import cast
 
 
 @dataclass(kw_only=True)
@@ -98,5 +100,73 @@ class MarketData:
             risk_free_rate=sliced_rf,
         )
 
-    def get_returns(self, log_returns: bool = False) -> None:
-        pass
+    def get_returns(self, log_returns: bool = False) -> pd.DataFrame:
+        returns = self.prices.pct_change()
+        if log_returns:
+            returns = cast(pd.DataFrame, np.log1p(returns))
+        return returns.dropna()
+
+
+@dataclass(kw_only=True)
+class ScenarioMarketData:
+    """
+    Core 3D tensor container for multi-path synthetic futures in PyAlloq.
+    Shapes:
+        prices: (M, T, N) - M paths, T time steps, N assets
+        returns: (M, T, N)
+    """
+
+    prices: np.ndarray
+    returns: np.ndarray
+    asset_names: list[str]
+    initial_prices: np.ndarray | None = None
+    timestamps: pd.Index = field(default_factory=lambda: pd.RangeIndex(0))
+    features: dict[str, np.ndarray] = field(default_factory=dict)
+    feature_columns: dict[str, list[str]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.n_paths, self.horizon, self.n_assets = self.prices.shape
+        if len(self.timestamps) == 0:
+            self.timestamps = pd.RangeIndex(start=0, stop=self.horizon, step=1)
+
+    def get_cumulative_returns(self) -> np.ndarray:
+        """
+        Returns total cumulative asset returns of shape (M, N) over the full horizon,
+        incorporating t=0 initial_prices when available.
+        """
+        final_prices = self.prices[:, -1, :]
+        if self.initial_prices is not None:
+            init_p = np.asarray(self.initial_prices, dtype=final_prices.dtype)
+            return (final_prices - init_p) / init_p
+        initial_prices = self.prices[:, 0, :]
+        return (final_prices - initial_prices) / initial_prices
+
+    def get_path(
+        self, path_idx: int, feature_pipeline: object | None = None
+    ) -> MarketData:
+        """
+        Slices the 3D tensor at index `path_idx` and returns a standard 2D MarketData
+        object mathematically compatible with the existing StrategyPipeline.
+        """
+        path_prices = pd.DataFrame(
+            self.prices[path_idx], index=self.timestamps, columns=self.asset_names
+        )
+
+        path_features: dict[str, pd.DataFrame] = {}
+        for feature_name, feature_tensor in self.features.items():
+            # Support for both asset-specific features (M, T, N) and exogenous macro features (M, T, K)
+            if feature_tensor.ndim == 3 and feature_tensor.shape[0] == self.n_paths:
+                if feature_name in self.feature_columns:
+                    columns: list[str] | None = self.feature_columns[feature_name]
+                elif feature_tensor.shape[2] == self.n_assets:
+                    columns = self.asset_names
+                else:
+                    columns = None
+                path_features[feature_name] = pd.DataFrame(
+                    feature_tensor[path_idx], index=self.timestamps, columns=columns
+                )
+
+        market_data = MarketData(prices=path_prices, features=path_features)
+        if feature_pipeline is not None and hasattr(feature_pipeline, "run"):
+            market_data = getattr(feature_pipeline, "run")(market_data)
+        return market_data

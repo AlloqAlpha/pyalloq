@@ -6,10 +6,11 @@ A modern Python SDK and workspace for quantitative portfolio optimization, featu
 
 `pyalloq` is organized as a multi-package `uv` workspace:
 
-- **[`pyalloq-core`](src/pyalloq-core)**: Core data abstractions (`MarketData`), pure interfaces (`BaseAllocator`, `BaseReturnEstimator`, `BaseCovarianceEstimator`), `StrategyPipeline`, and optimization results.
+- **[`pyalloq-core`](src/pyalloq-core)**: Core data abstractions (`MarketData`, `ScenarioMarketData`), pure interfaces (`BaseAllocator`, `BaseReturnEstimator`, `BaseCovarianceEstimator`, `BaseScenarioGenerator`), `StrategyPipeline`, `ParallelMonteCarloEngine`, and optimization/simulation results.
 - **[`pyalloq-data-connector`](src/pyalloq-data-connector)**: Vendor-agnostic data adapters (Yahoo Finance, Alpha Vantage, Finnhub, EOD) standardizing raw payloads into aligned `MarketData`.
 - **[`pyalloq-backtest`](src/pyalloq-backtest)**: Zero-lookahead historical simulation engines, cross-validation splitters, transaction cost models, and performance metrics.
 - **[`pyalloq-features`](src/pyalloq-features)**: Feature engineering transformers, TA-Lib integration, scaling tools, and feature pipelines.
+- **[`pyalloq-simulation`](src/pyalloq-simulation)**: Institutional Monte Carlo scenario generators (`GaussianGenerator`, `PCAFactorGenerator`, `FHSGenerator`, `GARCHEVTCopulaGenerator`, `GMMRegimeGenerator`), `FactorBackcastImputer`, Meucci `EntropyPooler` (first- and second-moment views), and path-dependent `ScenarioEvaluator`.
 - **`pyalloq`**: Main SDK combining classical optimization (Markowitz, Risk Parity, Black-Litterman, HRP, NCO) and deep learning models.
 
 ## Development Setup

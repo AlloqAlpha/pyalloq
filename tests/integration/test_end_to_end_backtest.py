@@ -7,6 +7,7 @@ from pyalloq_backtest.splitters import RollingWindowSplitter
 from pyalloq_core.data import MarketData
 from pyalloq_core.enums import ObjectiveFunction
 from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_core.results import BacktestResult
 
 from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq.classical.estimators.covariance.random_matrix_theory import (
@@ -44,8 +45,10 @@ class TestEndToEndBacktests:
         results = engine.run(static_market_data)
 
         assert results is not None
+        assert isinstance(results, BacktestResult)
         assert "tear_sheet" in results
         tear_sheet = results["tear_sheet"]
+        assert results.tear_sheet is tear_sheet
         assert isinstance(tear_sheet, pd.DataFrame)
         assert not np.isnan(tear_sheet.loc["annualized_return", "Value"])
         assert not np.isnan(tear_sheet.loc["sharpe_ratio", "Value"])
@@ -75,8 +78,10 @@ class TestEndToEndBacktests:
         results = engine.run(synthetic_market_data)
 
         assert results is not None
+        assert isinstance(results, BacktestResult)
         assert "tear_sheet" in results
         tear_sheet = results["tear_sheet"]
+        assert results.tear_sheet is tear_sheet
         assert tear_sheet.loc["maximum_drawdown", "Value"] <= 0.0
 
         weights = results["weights"].dropna()

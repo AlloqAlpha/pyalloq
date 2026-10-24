@@ -199,6 +199,25 @@ results = engine.run(data)
 
 ---
 
+## Block 8: Monte Carlo Simulation & Entropy Pooling
+
+**Package:** `pyalloq-simulation` & `pyalloq-core`
+
+Generates 3D $(M, T, N)$ synthetic price and feature tensors (`ScenarioMarketData`), blends non-Gaussian return and volatility views via `EntropyPooler`, and executes `WalkForwardEngine` across all $M$ paths in parallel via `ParallelMonteCarloEngine`.
+
+```python
+from pyalloq_simulation import GARCHEVTCopulaGenerator
+from pyalloq_core.engines import ParallelMonteCarloEngine
+
+gen = GARCHEVTCopulaGenerator(nu=5.0)
+gen.fit(data)
+
+mc_engine = ParallelMonteCarloEngine(backtest_engine=engine, max_workers=4)
+mc_result = mc_engine.run_batches(gen.generate_batches(n_paths=500, horizon=252, batch_size=100))
+```
+
+---
+
 ## How They Fit Together
 
 Every portfolio optimization workflow in PyAlloq follows the same linear data flow:

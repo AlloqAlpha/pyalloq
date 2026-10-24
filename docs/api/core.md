@@ -4,21 +4,29 @@ This page auto-generates documentation from the `pyalloq-core` package docstring
 
 ---
 
-## MarketData
+## MarketData & ScenarioMarketData
 
 ::: pyalloq_core.data.MarketData
 
+::: pyalloq_core.data.ScenarioMarketData
+
 ---
 
-## OptimizationResult
+## Results
 
 ::: pyalloq_core.results.OptimizationResult
 
+::: pyalloq_core.results.BacktestResult
+
+::: pyalloq_core.results.MonteCarloResult
+
 ---
 
-## StrategyPipeline
+## StrategyPipeline & Execution Engines
 
 ::: pyalloq_core.pipeline.StrategyPipeline
+
+::: pyalloq_core.engines.MonteCarloEngine
 
 ---
 
@@ -35,6 +43,10 @@ This page auto-generates documentation from the `pyalloq-core` package docstring
 ### BaseCovarianceEstimator
 
 ::: pyalloq_core.interfaces.BaseCovarianceEstimator
+
+### BaseScenarioGenerator
+
+::: pyalloq_core.interfaces.BaseScenarioGenerator
 
 ---
 

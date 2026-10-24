@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from pyalloq_core.data import MarketData
 from pyalloq_core.pipeline import StrategyPipeline
-from pyalloq_core.results import OptimizationResult
+from pyalloq_core.results import BacktestResult, OptimizationResult
 from pyalloq_core.utils import cov_to_corr
 
 from pyalloq.classical.optimizers.naive import EqualWeightAllocator
@@ -104,3 +104,65 @@ class TestStrategyPipeline:
         assert np.isclose(weights.sum(), 1.0)
         for asset in sample_assets:
             assert np.isclose(weights[asset], 1.0 / len(sample_assets))
+
+
+class TestBacktestResult:
+    def test_backtest_result_mapping_and_attribute_access(self) -> None:
+        dates = pd.date_range("2023-01-01", periods=5, freq="B")
+        returns = pd.Series([0.01, -0.005, 0.02, 0.0, 0.015], index=dates)
+        weights = pd.DataFrame({"A": [0.5] * 5, "B": [0.5] * 5}, index=dates)
+        tear_sheet = pd.DataFrame(
+            {"Value": [0.15, 1.2]}, index=["annualized_return", "sharpe_ratio"]
+        )
+
+        res = BacktestResult(
+            name="TestStrategy",
+            returns=returns,
+            weights=weights,
+            tear_sheet=tear_sheet,
+        )
+
+        # Attribute access
+        assert res.name == "TestStrategy"
+        assert res.returns is returns
+        assert res.weights is weights
+        assert res.tear_sheet is tear_sheet
+        assert isinstance(res.equity_curve, pd.Series)
+
+        # Dict / Mapping access
+        assert "returns" in res
+        assert "weights" in res
+        assert "tear_sheet" in res
+        assert "equity_curve" in res
+        assert "name" in res
+        assert "nonexistent" not in res
+
+        assert res["name"] == "TestStrategy"
+        assert res["returns"] is returns
+        assert res["weights"] is weights
+        assert res["tear_sheet"] is tear_sheet
+        assert isinstance(res["equity_curve"], pd.Series)
+
+        # get method
+        assert res.get("name") == "TestStrategy"
+        assert res.get("missing", "default") == "default"
+
+        # keys, items, values, len, iter
+        assert set(res.keys()) == {
+            "name",
+            "returns",
+            "weights",
+            "tear_sheet",
+            "equity_curve",
+        }
+        assert len(res) == 5
+        assert set(iter(res)) == {
+            "name",
+            "returns",
+            "weights",
+            "tear_sheet",
+            "equity_curve",
+        }
+
+        with pytest.raises(KeyError):
+            _ = res["missing"]

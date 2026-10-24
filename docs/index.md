@@ -58,12 +58,13 @@ flowchart LR
 | Block | Interface | What it does |
 |-------|-----------|--------------|
 | **Data Connector** | `BaseDataConnector` | Fetches & normalizes market data from any vendor |
-| **MarketData** | `@dataclass` | Single source of truth — prices, features, risk-free rate |
+| **MarketData / ScenarioMarketData** | `@dataclass` | Single source of truth — 2D historical data and 3D $(M, T, N)$ synthetic scenario tensors |
 | **Return Estimator** | `BaseReturnEstimator` | Estimates expected returns for each asset |
 | **Covariance Estimator** | `BaseCovarianceEstimator` | Estimates the NxN covariance matrix |
 | **Allocator** | `BaseAllocator` | Solves for optimal portfolio weights |
+| **Scenario Generator** | `BaseScenarioGenerator` | Simulates multi-path synthetic futures (Gaussian, PCA, FHS, GARCH-EVT-Copula, GMM Regimes) |
 | **StrategyPipeline** | — | Wires estimators + allocator together |
-| **WalkForwardEngine** | — | Zero-lookahead backtesting with cost models |
+| **WalkForwardEngine / ParallelMonteCarloEngine** | — | Zero-lookahead historical and parallel multi-path Monte Carlo backtesting |
 
 ---
 
@@ -73,6 +74,8 @@ flowchart LR
 - 🌳 **3 graph-based ML allocators**: HRP, HERC, NCO — no covariance inversion required
 - 📈 **6 return estimators**: EWMA, Momentum, Factor, James-Stein, Implied, Black-Litterman
 - 📊 **5 covariance estimators**: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance
+- 🎲 **5 Monte Carlo scenario generators**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-$t$ Copula, and GMM Markov Regimes
+- 🔭 **Meucci Entropy Pooling**: First- and second-moment views (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin
 - 🔁 **3 backtest splitters**: Rolling Window, Expanding Window, Purged K-Fold (ML-safe)
 - 💸 **2 transaction cost models**: Flat Bps, Almgren-Chriss market impact
 - 🔬 **Zero-lookahead guarantee** via `MarketData.validate_alignment()` and `slice_time()`
@@ -85,10 +88,11 @@ PyAlloq is organized as a multi-package `uv` workspace:
 
 | Package | Description |
 |---------|-------------|
-| [`pyalloq-core`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core) | Interfaces, `MarketData`, `StrategyPipeline`, `OptimizationResult` |
+| [`pyalloq-core`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core) | Interfaces, `MarketData`, `ScenarioMarketData`, `StrategyPipeline`, `ParallelMonteCarloEngine` |
 | [`pyalloq-data-connector`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-data-connector) | Data adapters: Yahoo Finance, Alpha Vantage, Finnhub, EOD |
 | [`pyalloq-backtest`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest) | `WalkForwardEngine`, splitters, cost models, metrics |
 | [`pyalloq-features`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features) | Feature engineering: technical, cross-sectional, scalers |
+| [`pyalloq-simulation`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation) | Monte Carlo generators, `FactorBackcastImputer`, Meucci `EntropyPooler`, `ScenarioEvaluator` |
 | `pyalloq` | Classical + ML optimizers, estimators, deep learning models |
 
 ---

@@ -122,3 +122,43 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 \]
 
 **Implemented in:** `AlmgrenChrissCostModel`
+
+---
+
+## Monte Carlo Simulation & Entropy Pooling
+
+### Meucci (2008) — Fully Flexible Views: Theory and Practice {#meucci-2008}
+
+> Meucci, A. (2008). Fully Flexible Views: Theory and Practice. *Risk*, 21(10), 97–102.
+> [https://ssrn.com/abstract=1213325](https://ssrn.com/abstract=1213325)
+
+**Contribution:** Introduced Entropy Pooling to blend arbitrary non-Gaussian Monte Carlo distributions with linear equality and inequality views on returns, volatilities, and correlations via Relative Entropy (Kullback-Leibler) minimization solved in the low-dimensional Lagrange dual space.
+
+**Key formula:**
+\[
+x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\right) \quad \text{s.t.} \quad A x \le b, \; C x = d
+\]
+
+**Implemented in:** `EntropyPooler`, `ViewBuilder` (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`)
+
+---
+
+### Barone-Adesi, Giannopoulos & Vosper (1999) — Filtered Historical Simulation {#fhs-1999}
+
+> Barone-Adesi, G., Giannopoulos, K., & Vosper, L. (1999). VaR Without Correlations for Portfolios of Derivative Securities. *Journal of Futures Markets*, 19(5), 583–602.
+
+**Contribution:** Combined parametric GARCH volatility filtration with non-parametric historical residual bootstrapping, preserving empirical fat tails and cross-asset co-movement while adapting dynamically to current volatility regimes.
+
+**Implemented in:** `FHSGenerator`
+
+---
+
+### McNeil & Frey (2000) & Demarta & McNeil (2005) — GARCH-EVT & Student-$t$ Copula {#garch-evt-2000}
+
+> McNeil, A. J., & Frey, R. (2000). Estimation of Tail-Related Risk Measures for Heteroscedastic Financial Time Series: An Extreme Value Approach. *Journal of Empirical Finance*, 7(3–4), 271–300.
+>
+> Demarta, S., & McNeil, A. J. (2005). The $t$ Copula and Related Copulas. *International Statistical Review*, 73(1), 111–129.
+
+**Contribution:** Modeled conditional heteroscedasticity via AR-GARCH filtration, fitted Generalized Pareto Distributions (GPD) to extreme tail exceedances, and coupled marginals with a Student-$t$ Copula to capture asymmetric tail risk and positive lower-tail crash dependence ($\lambda_L > 0$).
+
+**Implemented in:** `GARCHEVTCopulaGenerator`

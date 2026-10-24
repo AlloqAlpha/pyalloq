@@ -6,6 +6,7 @@ from pyalloq_backtest.costs import BaseCostModel, FlatBpsCostModel
 from pyalloq_backtest.metrics import MetricsTearSheet
 from pyalloq_core.data import MarketData
 from pyalloq_backtest.costs import CostData
+from pyalloq_core.results import BacktestResult
 
 
 class WalkForwardEngine:
@@ -25,7 +26,7 @@ class WalkForwardEngine:
     def run(
         self,
         data: MarketData,
-    ) -> dict[str, Any]:
+    ) -> BacktestResult:
         asset_returns = data.prices.pct_change().dropna()
 
         raw_index = data.prices.resample(self.rebalance_freq).last().index
@@ -64,8 +65,9 @@ class WalkForwardEngine:
 
         tear_sheet = MetricsTearSheet.generate(portfolio_returns)
 
-        return {
-            "returns": portfolio_returns,
-            "weights": df_weights_daily,
-            "tear_sheet": tear_sheet,
-        }
+        return BacktestResult(
+            name=self.pipeline.allocator.__class__.__name__,
+            returns=portfolio_returns,
+            weights=df_weights_daily,
+            tear_sheet=tear_sheet,
+        )

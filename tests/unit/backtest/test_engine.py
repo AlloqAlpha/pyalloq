@@ -5,6 +5,7 @@ from pyalloq_backtest.engine import WalkForwardEngine
 from pyalloq_backtest.splitters import RollingWindowSplitter
 from pyalloq_core.data import MarketData
 from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_core.results import BacktestResult
 
 from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
 from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
@@ -34,12 +35,14 @@ class TestBacktestEngine:
         results = engine.run(synthetic_market_data)
 
         # 1. Output structure
+        assert isinstance(results, BacktestResult)
         assert "tear_sheet" in results
         assert "weights" in results
         assert "returns" in results
 
         # 2. Tear sheet metrics exist
         tear_sheet = results["tear_sheet"]
+        assert results.tear_sheet is tear_sheet
         assert isinstance(tear_sheet, pd.DataFrame)
         assert "annualized_return" in tear_sheet.index
         assert "maximum_drawdown" in tear_sheet.index

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq"
-version = "0.1.18"
+version = "0.1.19"
 description = "A modern Python SDK for quant portfolio optimization."
 readme = "README.md"
 authors = [
@@ -34,7 +34,8 @@ dependencies = [
   "pyalloq-core",
   "pyalloq-data-connector",
   "pyalloq-backtest",
-  "pyalloq-features"
+  "pyalloq-features",
+  "pyalloq-simulation"
 ]
 
 [dependency-groups]
@@ -54,6 +55,7 @@ dev = [
     "build>=1",
     "types-requests>=2",
     "types-setuptools>=75",
+    "scipy-stubs>=1.17.1.5",
 ]
 
 [project.optional-dependencies]
@@ -71,6 +73,7 @@ dev = [
   "build>=1",
   "types-requests>=2",
   "types-setuptools>=75",
+  "scipy-stubs>=1.17",
 ]
 
 [project.urls]
@@ -88,7 +91,8 @@ mypy_path = [
   "src/pyalloq-core/src",
   "src/pyalloq-data-connector/src",
   "src/pyalloq-features/src",
-  "src/pyalloq-backtest/src"
+  "src/pyalloq-backtest/src",
+  "src/pyalloq-simulation/src"
 ]
 explicit_package_bases = true
 namespace_packages = true
@@ -116,6 +120,7 @@ pyalloq-core = { workspace = true }
 pyalloq-data-connector = { workspace = true }
 pyalloq-features = { workspace = true }
 pyalloq-backtest = { workspace = true }
+pyalloq-simulation = {workspace = true }
 
 
 [tool.uv.workspace]
@@ -124,6 +129,7 @@ members = [
   "src/pyalloq-backtest",
   "src/pyalloq-data-connector",
   "src/pyalloq-features",
+  "src/pyalloq-simulation"
 ]
 
 [tool.pytest.ini_options]
@@ -135,6 +141,7 @@ pythonpath = [
   "src/pyalloq-backtest/src",
   "src/pyalloq-data-connector/src",
   "src/pyalloq-features/src",
+  "src/pyalloq-simulation/src"
 ]
 addopts = "-v --strict-markers -ra"
 markers = [
@@ -156,6 +163,7 @@ source = [
   "pyalloq_backtest",
   "pyalloq_features",
   "pyalloq_data_connector",
+  "pyalloq_simulation"
 ]
 omit = [
   "*/tests/*",
