@@ -27,6 +27,7 @@ members = [
     "pyalloq-data-connector",
     "pyalloq-features",
     "pyalloq-simulation",
+    "pyalloq-viz",
 ]
 
 [[package]]
@@ -2733,6 +2734,19 @@ wheels = [
 ]
 
 [[package]]
+name = "plotly"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/c3/72b369f5ed7701b04ab0ea3dcf83e9bbce71c0b3bc6f07f87568550d09ea/plotly-7.1.0.tar.gz", hash = "sha256:f860166a4a3d78c69cb1f4a15f28a5c8283eade98a282a698f3bb853a449ace5", size = 6689315, upload-time = "2026-09-15T19:21:21.75Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/7d/905a3a3d51087515719058c94cfbda2ff0fc14417c20d557ae3e82d8b250/plotly-7.1.0-py3-none-any.whl", hash = "sha256:dbb7fa18afce40d0a8e80d1bf162eceb3faa0ce5a77fe741ad09a74cf78f53f3", size = 9692368, upload-time = "2026-09-15T19:21:18.331Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2783,11 +2797,13 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
+    { name = "plotly" },
     { name = "pyalloq-backtest" },
     { name = "pyalloq-core" },
     { name = "pyalloq-data-connector" },
     { name = "pyalloq-features" },
     { name = "pyalloq-simulation" },
+    { name = "pyalloq-viz" },
     { name = "scikit-learn" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -2854,12 +2870,14 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.0" },
+    { name = "plotly", specifier = ">=5.18.0" },
     { name = "pyalloq", extras = ["torch", "rl"], marker = "extra == 'all-ml'" },
     { name = "pyalloq-backtest", editable = "src/pyalloq-backtest" },
     { name = "pyalloq-core", editable = "src/pyalloq-core" },
     { name = "pyalloq-data-connector", editable = "src/pyalloq-data-connector" },
     { name = "pyalloq-features", editable = "src/pyalloq-features" },
     { name = "pyalloq-simulation", editable = "src/pyalloq-simulation" },
+    { name = "pyalloq-viz", editable = "src/pyalloq-viz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12" },
@@ -3070,6 +3088,53 @@ requires-dist = [
     { name = "pyalloq-core", editable = "src/pyalloq-core" },
     { name = "scikit-learn", specifier = ">=1.3" },
     { name = "scipy", specifier = ">=1.11" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "ruff", specifier = ">=0.6" },
+]
+
+[[package]]
+name = "pyalloq-viz"
+version = "0.1.20"
+source = { editable = "src/pyalloq-viz" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "matplotlib" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "pyalloq-backtest" },
+    { name = "pyalloq-core" },
+    { name = "pyalloq-simulation" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "seaborn" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jinja2", specifier = ">=3.1" },
+    { name = "matplotlib", specifier = ">=3.7" },
+    { name = "numpy", specifier = ">=1.24" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "plotly", specifier = ">=5.18.0" },
+    { name = "pyalloq-backtest", editable = "src/pyalloq-backtest" },
+    { name = "pyalloq-core", editable = "src/pyalloq-core" },
+    { name = "pyalloq-simulation", editable = "src/pyalloq-simulation" },
+    { name = "scipy", specifier = ">=1.11" },
+    { name = "seaborn", specifier = ">=0.13" },
 ]
 
 [package.metadata.requires-dev]
