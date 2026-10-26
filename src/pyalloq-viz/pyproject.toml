@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyalloq-viz"
-version = "0.1.20"
+version = "0.1.21"
 description = "Interactive and static visualization tear sheets for PyAlloq portfolio optimization, backtesting, and simulation."
 readme = "README.md"
 requires-python = ">=3.11"
