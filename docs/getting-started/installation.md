@@ -55,7 +55,7 @@ cd pyalloq
 uv sync --all-extras
 ```
 
-This installs `pyalloq`, `pyalloq-core`, `pyalloq-backtest`, `pyalloq-data-connector`, and `pyalloq-features` as editable workspace packages.
+This installs `pyalloq`, `pyalloq-core`, `pyalloq-backtest`, `pyalloq-data-connector`, `pyalloq-features`, `pyalloq-simulation`, and `pyalloq-viz` as editable workspace packages.
 
 ---
 
@@ -76,6 +76,8 @@ import pyalloq
 import pyalloq_core
 import pyalloq_backtest
 import pyalloq_data_connector
+import pyalloq_simulation
+import pyalloq_viz
 
 print("PyAlloq installed successfully!")
 ```

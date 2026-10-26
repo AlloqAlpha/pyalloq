@@ -65,6 +65,7 @@ flowchart LR
 | **Scenario Generator** | `BaseScenarioGenerator` | Simulates multi-path synthetic futures (Gaussian, PCA, FHS, GARCH-EVT-Copula, GMM Regimes) |
 | **StrategyPipeline** | — | Wires estimators + allocator together |
 | **WalkForwardEngine / ParallelMonteCarloEngine** | — | Zero-lookahead historical and parallel multi-path Monte Carlo backtesting |
+| **Visualization & Tear Sheets** | `BaseTearSheet` | Interactive Plotly figures & HTML dashboards (`Simulation`, `Robustness`, `MacroRegime`, `Allocation`) |
 
 ---
 
@@ -76,7 +77,8 @@ flowchart LR
 - 📊 **5 covariance estimators**: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance
 - 🎲 **5 Monte Carlo scenario generators**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-\(t\) Copula, and GMM Markov Regimes
 - 🔭 **Meucci Entropy Pooling**: First- and second-moment views (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin
-- 🔁 **3 backtest splitters**: Rolling Window, Expanding Window, Purged K-Fold (ML-safe)
+- 🔁 **4 backtest splitters & validation engines**: Rolling Window, Expanding Window, Purged K-Fold, plus Combinatorial Purged CV (`CPCVSplitter`) and Probability of Backtest Overfitting (`PBOEvaluator`)
+- 🎨 **4 interactive visualization Tear Sheets (`pyalloq-viz`)**: Multiverse & Simulation, Robustness & Overfitting (PBO/CPCV), Macro Regime & Entropy, and Allocation Mechanics & Risk
 - 💸 **2 transaction cost models**: Flat Bps, Almgren-Chriss market impact
 - 🔬 **Zero-lookahead guarantee** via `MarketData.validate_alignment()` and `slice_time()`
 
@@ -90,9 +92,10 @@ PyAlloq is organized as a multi-package `uv` workspace:
 |---------|-------------|
 | [`pyalloq-core`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core) | Interfaces, `MarketData`, `ScenarioMarketData`, `StrategyPipeline`, `ParallelMonteCarloEngine` |
 | [`pyalloq-data-connector`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-data-connector) | Data adapters: Yahoo Finance, Alpha Vantage, Finnhub, EOD |
-| [`pyalloq-backtest`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest) | `WalkForwardEngine`, splitters, cost models, metrics |
+| [`pyalloq-backtest`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest) | `WalkForwardEngine`, splitters, `CPCVSplitter`, `PBOEvaluator`, cost models, metrics |
 | [`pyalloq-features`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features) | Feature engineering: technical, cross-sectional, scalers |
 | [`pyalloq-simulation`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation) | Monte Carlo generators, `FactorBackcastImputer`, Meucci `EntropyPooler`, `ScenarioEvaluator` |
+| [`pyalloq-viz`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-viz) | Interactive Plotly charts & HTML Tear Sheets (`Simulation`, `Robustness`, `MacroRegime`, `Allocation`) |
 | `pyalloq` | Classical + ML optimizers, estimators, deep learning models |
 
 ---

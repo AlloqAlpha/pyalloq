@@ -35,9 +35,24 @@ class HRPAllocator(BaseAllocator):
         for idx in sort_ix:
             final_weights.iloc[idx] = weights.iloc[idx]
 
+        # Extract flat cluster assignment (default 2-4 clusters based on tree depth) for visualization
+        n_assets = len(cov_matrix.columns)
+        n_clust = min(max(2, int(np.sqrt(n_assets))), n_assets)
+        cluster_labels = sch.fcluster(link, t=n_clust, criterion="maxclust")
+        cluster_map = {
+            str(asset): f"Cluster {int(c)}"
+            for asset, c in zip(cov_matrix.columns, cluster_labels)
+        }
+
         return OptimizationResult(
             weights=final_weights,
             status="OPTIMAL_HRP",
+            metadata={
+                "linkage_matrix": link,
+                "sort_ix": sort_ix.tolist(),
+                "ordered_assets": [str(cov_matrix.columns[i]) for i in sort_ix],
+                "clusters": cluster_map,
+            },
         )
 
     def _get_quasi_diag(self, link: np.ndarray) -> np.ndarray:

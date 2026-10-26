@@ -1,0 +1,30 @@
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[project]
+name = "pyalloq-viz"
+version = "0.1.21"
+description = "Interactive and static visualization tear sheets for PyAlloq portfolio optimization, backtesting, and simulation."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Siddeshkanth", email = "pyalloq-info@alloq-alpha.com" }]
+
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scipy>=1.11",
+  "plotly>=5.18.0",
+  "matplotlib>=3.7",
+  "seaborn>=0.13",
+  "jinja2>=3.1",
+  "pyalloq-core",
+  "pyalloq-backtest",
+  "pyalloq-simulation",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.setuptools.packages.find]
+where = ["src/"]

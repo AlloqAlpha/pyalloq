@@ -59,3 +59,29 @@
 ### MetricsTearSheet
 
 ::: pyalloq_backtest.metrics.MetricsTearSheet
+
+---
+
+## Overfitting & Combinatorial Validation
+
+### CPCVSplitter
+
+::: pyalloq_backtest.overfitting.CPCVSplitter
+
+---
+
+### CPCVResult
+
+::: pyalloq_backtest.overfitting.CPCVResult
+
+---
+
+### PBOEvaluator
+
+::: pyalloq_backtest.overfitting.PBOEvaluator
+
+---
+
+### PBOResult
+
+::: pyalloq_backtest.overfitting.PBOResult

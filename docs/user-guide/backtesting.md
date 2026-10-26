@@ -93,6 +93,33 @@ for train_data, test_data in splitter.split(data):
 
 ---
 
+### Combinatorial Purged Cross-Validation & Scrambling (`CPCVSplitter` & `PBOEvaluator`)
+
+To guard against backtest overfitting and chronological regime luck, `pyalloq-backtest` includes **Combinatorial Purged Cross-Validation (`CPCVSplitter`)** and **Probability of Backtest Overfitting (`PBOEvaluator`)**:
+
+1. **Regime Scrambling (`CPCVSplitter.scramble_timelines`)**: Partitions historical strategy returns into \(N\) chronological regime blocks and recombines them into scrambled timelines to test whether a strategy's Sharpe ratio and drawdowns survive when the sequence of market regimes is reordered.
+2. **Probability of Backtest Overfitting (`PBOEvaluator`)**:
+   - `evaluate_cscv(strategy_returns_matrix)`: Runs Bailey & López de Prado's Combinatorial Symmetric Cross-Validation (CSCV) across a \((T \times M)\) matrix of \(M\) strategy trials to compute the exact probability that the In-Sample optimal strategy underperforms the median Out-of-Sample (\(\mathbb{P}[\lambda_c \le 0]\)).
+   - `evaluate_benchmark(historical_result, cpcv_or_mc_result)`: Evaluates a single strategy's historical Sharpe against a distribution of CPCV or Monte Carlo paths.
+
+```python
+from pyalloq_backtest import CPCVSplitter, PBOEvaluator
+
+# 1. Scramble historical backtest across 6 regime blocks
+cpcv = CPCVSplitter(n_groups=6, k_test_groups=2, max_paths=100)
+cpcv_result = cpcv.scramble_timelines(results)
+
+# 2. Evaluate single-strategy survival vs. scrambled timelines
+pbo_eval = PBOEvaluator(n_partitions=8)
+pbo_bench = pbo_eval.evaluate_benchmark(results, cpcv_result)
+print(f"Prob(OOS Sharpe < 0): {pbo_bench.prob_oos_loss:.1%}")
+```
+
+!!! tip "Interactive Robustness Visualizations"
+    Pass `results`, `cpcv_result`, or `pbo_result` directly to `RobustnessTearSheet` in [`pyalloq-viz`](visualization.md#2-robustness-overfitting-tear-sheet) to plot Rank Logit distributions, IS-vs-OOS Sharpe degradation, and scrambled equity cones.
+
+---
+
 ## Transaction Cost Models
 
 ### Flat Bps (`FlatBpsCostModel`)

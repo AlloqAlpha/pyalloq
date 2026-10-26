@@ -60,6 +60,7 @@ plugins:
             - src/pyalloq-data-connector/src
             - src/pyalloq-features/src
             - src/pyalloq-simulation/src
+            - src/pyalloq-viz/src
           options:
             docstring_style: google
             show_source: true
@@ -118,6 +119,7 @@ nav:
       - user-guide/backtesting.md
       - user-guide/feature-engineering.md
       - user-guide/monte-carlo-simulation.md
+      - user-guide/visualization.md
   - Mathematics:
       - mathematics/portfolio-theory.md
       - mathematics/estimators.md
@@ -133,3 +135,4 @@ nav:
       - api/data-connector.md
       - api/features.md
       - api/simulation.md
+      - api/viz.md

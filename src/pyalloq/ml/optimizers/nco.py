@@ -66,4 +66,17 @@ class NCOAllocator(BaseAllocator):
                 inner_weights_dict[i] * outer_result.weights.iloc[i]
             )
 
-        return OptimizationResult(weights=final_weights, status="OPTIMAL_NCO")
+        cluster_map = {
+            str(asset): f"Cluster {int(c) + 1}"
+            for asset, c in zip(cov_matrix.columns, clusters)
+        }
+
+        return OptimizationResult(
+            weights=final_weights,
+            status="OPTIMAL_NCO",
+            metadata={
+                "clusters": cluster_map,
+                "cluster_labels": clusters.tolist(),
+                "outer_weights": outer_result.weights.to_dict(),
+            },
+        )
