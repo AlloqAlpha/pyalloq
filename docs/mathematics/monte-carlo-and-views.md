@@ -168,3 +168,29 @@ Let \(W_{m, t}\) denote the simulated portfolio wealth on path \(m \in \{1, \dot
 \[
 \mathbb{P}_{\text{ruin}}(\theta_{\text{ruin}}) = \sum_{m=1}^M x^*_m \, \mathbb{I}\!\left(\text{MDD}_m \le \theta_{\text{ruin}}\right)
 \]
+
+---
+
+## 5. Probability of Backtest Overfitting (PBO) & CPCV
+
+### Combinatorial Symmetric Cross-Validation (`PBOEvaluator`)
+
+Given a return matrix \(M_{\text{trials}} \in \mathbb{R}^{T \times M}\) of \(M\) candidate strategy configurations evaluated over \(T\) observations, **CSCV** (Bailey et al., 2017) partitions time into \(S\) even submatrices and forms all \(C = \binom{S}{S/2}\) training (In-Sample, \(J\)) and testing (Out-of-Sample, \(\bar{J}\)) combinations:
+
+1. For each split \(c \in \{1, \dots, C\}\), compute the vector of In-Sample Sharpe ratios \(R_c \in \mathbb{R}^M\) on \(J_c\) and Out-of-Sample Sharpe ratios \(\bar{R}_c \in \mathbb{R}^M\) on \(\bar{J}_c\).
+2. Select the In-Sample optimal strategy \(m^* = \arg\max_m R_{c, m}\) and find its relative rank \(\omega_c \in (0, 1)\) within the Out-of-Sample distribution \(\bar{R}_c\).
+3. Define the **Rank Logit** \(\lambda_c\):
+
+\[
+\lambda_c = \ln\!\left(\frac{\omega_c}{1 - \omega_c}\right)
+\]
+
+When \(\lambda_c \le 0\), the strategy selected as best In-Sample performs worse than the median strategy Out-of-Sample. The **Probability of Backtest Overfitting (PBO)** is the empirical probability mass in the left tail:
+
+\[
+\text{PBO} = \frac{1}{C} \sum_{c=1}^C \mathbb{I}\!\left(\lambda_c \le 0\right)
+\]
+
+### Combinatorial Purged Cross-Validation (`CPCVSplitter`)
+
+Given \(N\) chronological groups and \(k\) test groups per split, there are \(\binom{N}{k}\) train/test splits with purge window \(p\) and embargo window \(e\) applied around every test block boundary. Because each group appears in exactly \(\varphi(N, k) = \binom{N - 1}{k - 1}\) test sets across all splits, the out-of-sample predictions can be reassembled into \(\varphi(N, k)\) full-horizon backtest paths rather than a single point estimate (López de Prado, 2018).

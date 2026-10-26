@@ -162,3 +162,26 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Modeled conditional heteroscedasticity via AR-GARCH filtration, fitted Generalized Pareto Distributions (GPD) to extreme tail exceedances, and coupled marginals with a Student-\(t\) Copula to capture asymmetric tail risk and positive lower-tail crash dependence (\(\lambda_L > 0\)).
 
 **Implemented in:** `GARCHEVTCopulaGenerator`
+
+---
+
+## Backtest Overfitting & Combinatorial Validation
+
+### Bailey, Borwein, López de Prado & Zhu (2017) — Probability of Backtest Overfitting {#pbo-2017}
+
+> Bailey, D. H., Borwein, J., López de Prado, M., & Zhu, Q. J. (2017). The Probability of Backtest Overfitting. *Journal of Computational Finance*, 20(4), 39–69.
+> [https://ssrn.com/abstract=2326253](https://ssrn.com/abstract=2326253)
+
+**Contribution:** Introduced the non-parametric Combinatorial Symmetric Cross-Validation (CSCV) framework to estimate the probability that a strategy configuration selected for optimal In-Sample performance underperforms the median Out-of-Sample (\(\text{PBO} = \mathbb{P}[\lambda_c \le 0]\)).
+
+**Implemented in:** `PBOEvaluator`, `plot_pbo_distribution`, `RobustnessTearSheet`
+
+---
+
+### López de Prado (2018) — Combinatorial Purged Cross-Validation {#cpcv-2018}
+
+> López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley. (Chapter 12: Backtesting through Cross-Validation).
+
+**Contribution:** Formulated Combinatorial Purged Cross-Validation (CPCV) to eliminate look-ahead leakage via purging and embargoing while generating \(\varphi(N, k) = \binom{N-1}{k-1}\) complete out-of-sample backtest paths across recombined market regimes.
+
+**Implemented in:** `CPCVSplitter`, `plot_cpcv_paths`, `RobustnessTearSheet`
