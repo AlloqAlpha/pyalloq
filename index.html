@@ -853,6 +853,8 @@
       
         
       
+        
+      
     
     
     
@@ -1111,6 +1113,34 @@
     
   
     Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="user-guide/visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization &amp; Tear Sheets (pyalloq-viz)
   
 
     
@@ -1430,6 +1460,8 @@
       
         
       
+        
+      
     
     
     
@@ -1673,6 +1705,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/viz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1877,6 +1937,11 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <td>—</td>
 <td>Zero-lookahead historical and parallel multi-path Monte Carlo backtesting</td>
 </tr>
+<tr>
+<td><strong>Visualization &amp; Tear Sheets</strong></td>
+<td><code>BaseTearSheet</code></td>
+<td>Interactive Plotly figures &amp; HTML dashboards (<code>Simulation</code>, <code>Robustness</code>, <code>MacroRegime</code>, <code>Allocation</code>)</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1888,7 +1953,8 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <li>📊 <strong>5 covariance estimators</strong>: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance</li>
 <li>🎲 <strong>5 Monte Carlo scenario generators</strong>: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-<span class="arithmatex">\(t\)</span> Copula, and GMM Markov Regimes</li>
 <li>🔭 <strong>Meucci Entropy Pooling</strong>: First- and second-moment views (<code>AbsoluteView</code>, <code>RelativeView</code>, <code>VolatilityView</code>, <code>CovarianceView</code>) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin</li>
-<li>🔁 <strong>3 backtest splitters</strong>: Rolling Window, Expanding Window, Purged K-Fold (ML-safe)</li>
+<li>🔁 <strong>4 backtest splitters &amp; validation engines</strong>: Rolling Window, Expanding Window, Purged K-Fold, plus Combinatorial Purged CV (<code>CPCVSplitter</code>) and Probability of Backtest Overfitting (<code>PBOEvaluator</code>)</li>
+<li>🎨 <strong>4 interactive visualization Tear Sheets (<code>pyalloq-viz</code>)</strong>: Multiverse &amp; Simulation, Robustness &amp; Overfitting (PBO/CPCV), Macro Regime &amp; Entropy, and Allocation Mechanics &amp; Risk</li>
 <li>💸 <strong>2 transaction cost models</strong>: Flat Bps, Almgren-Chriss market impact</li>
 <li>🔬 <strong>Zero-lookahead guarantee</strong> via <code>MarketData.validate_alignment()</code> and <code>slice_time()</code></li>
 </ul>
@@ -1913,7 +1979,7 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 </tr>
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest"><code>pyalloq-backtest</code></a></td>
-<td><code>WalkForwardEngine</code>, splitters, cost models, metrics</td>
+<td><code>WalkForwardEngine</code>, splitters, <code>CPCVSplitter</code>, <code>PBOEvaluator</code>, cost models, metrics</td>
 </tr>
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features"><code>pyalloq-features</code></a></td>
@@ -1922,6 +1988,10 @@ Build, backtest, and iterate on any portfolio strategy using a fully modular, pl
 <tr>
 <td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation"><code>pyalloq-simulation</code></a></td>
 <td>Monte Carlo generators, <code>FactorBackcastImputer</code>, Meucci <code>EntropyPooler</code>, <code>ScenarioEvaluator</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-viz"><code>pyalloq-viz</code></a></td>
+<td>Interactive Plotly charts &amp; HTML Tear Sheets (<code>Simulation</code>, <code>Robustness</code>, <code>MacroRegime</code>, <code>Allocation</code>)</td>
 </tr>
 <tr>
 <td><code>pyalloq</code></td>

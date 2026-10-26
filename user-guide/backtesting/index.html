@@ -753,6 +753,8 @@
       
         
       
+        
+      
     
     
     
@@ -1093,6 +1095,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#combinatorial-purged-cross-validation-scrambling-cpcvsplitter-pboevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Purged Cross-Validation &amp; Scrambling (CPCVSplitter &amp; PBOEvaluator)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1211,6 +1224,34 @@
     
   
     Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization &amp; Tear Sheets (pyalloq-viz)
   
 
     
@@ -1530,6 +1571,8 @@
       
         
       
+        
+      
     
     
     
@@ -1773,6 +1816,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/viz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1886,6 +1957,17 @@
     <span class="md-ellipsis">
       
         Purged K-Fold (PurgedKFoldSplitter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combinatorial-purged-cross-validation-scrambling-cpcvsplitter-pboevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Purged Cross-Validation &amp; Scrambling (CPCVSplitter &amp; PBOEvaluator)
       
     </span>
   </a>
@@ -2073,15 +2155,39 @@
 <p><code>PurgedKFoldSplitter</code> is designed for ML training loops, not for <code>WalkForwardEngine</code>. Use <code>RollingWindowSplitter</code> or <code>ExpandingWindowSplitter</code> for standard portfolio backtests.</p>
 </div>
 <hr />
+<h3 id="combinatorial-purged-cross-validation-scrambling-cpcvsplitter-pboevaluator">Combinatorial Purged Cross-Validation &amp; Scrambling (<code>CPCVSplitter</code> &amp; <code>PBOEvaluator</code>)<a class="headerlink" href="#combinatorial-purged-cross-validation-scrambling-cpcvsplitter-pboevaluator" title="Permanent link">&para;</a></h3>
+<p>To guard against backtest overfitting and chronological regime luck, <code>pyalloq-backtest</code> includes <strong>Combinatorial Purged Cross-Validation (<code>CPCVSplitter</code>)</strong> and <strong>Probability of Backtest Overfitting (<code>PBOEvaluator</code>)</strong>:</p>
+<ol>
+<li><strong>Regime Scrambling (<code>CPCVSplitter.scramble_timelines</code>)</strong>: Partitions historical strategy returns into <span class="arithmatex">\(N\)</span> chronological regime blocks and recombines them into scrambled timelines to test whether a strategy's Sharpe ratio and drawdowns survive when the sequence of market regimes is reordered.</li>
+<li><strong>Probability of Backtest Overfitting (<code>PBOEvaluator</code>)</strong>:</li>
+<li><code>evaluate_cscv(strategy_returns_matrix)</code>: Runs Bailey &amp; López de Prado's Combinatorial Symmetric Cross-Validation (CSCV) across a <span class="arithmatex">\((T \times M)\)</span> matrix of <span class="arithmatex">\(M\)</span> strategy trials to compute the exact probability that the In-Sample optimal strategy underperforms the median Out-of-Sample (<span class="arithmatex">\(\mathbb{P}[\lambda_c \le 0]\)</span>).</li>
+<li><code>evaluate_benchmark(historical_result, cpcv_or_mc_result)</code>: Evaluates a single strategy's historical Sharpe against a distribution of CPCV or Monte Carlo paths.</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPCVSplitter</span><span class="p">,</span> <span class="n">PBOEvaluator</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># 1. Scramble historical backtest across 6 regime blocks</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">cpcv</span> <span class="o">=</span> <span class="n">CPCVSplitter</span><span class="p">(</span><span class="n">n_groups</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">k_test_groups</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_paths</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">cpcv_result</span> <span class="o">=</span> <span class="n">cpcv</span><span class="o">.</span><span class="n">scramble_timelines</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># 2. Evaluate single-strategy survival vs. scrambled timelines</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">pbo_eval</span> <span class="o">=</span> <span class="n">PBOEvaluator</span><span class="p">(</span><span class="n">n_partitions</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">pbo_bench</span> <span class="o">=</span> <span class="n">pbo_eval</span><span class="o">.</span><span class="n">evaluate_benchmark</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">cpcv_result</span><span class="p">)</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prob(OOS Sharpe &lt; 0): </span><span class="si">{</span><span class="n">pbo_bench</span><span class="o">.</span><span class="n">prob_oos_loss</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Interactive Robustness Visualizations</p>
+<p>Pass <code>results</code>, <code>cpcv_result</code>, or <code>pbo_result</code> directly to <code>RobustnessTearSheet</code> in <a href="../visualization/#2-robustness-overfitting-tear-sheet"><code>pyalloq-viz</code></a> to plot Rank Logit distributions, IS-vs-OOS Sharpe degradation, and scrambled equity cones.</p>
+</div>
+<hr />
 <h2 id="transaction-cost-models">Transaction Cost Models<a class="headerlink" href="#transaction-cost-models" title="Permanent link">&para;</a></h2>
 <h3 id="flat-bps-flatbpscostmodel">Flat Bps (<code>FlatBpsCostModel</code>)<a class="headerlink" href="#flat-bps-flatbpscostmodel" title="Permanent link">&para;</a></h3>
 <p>A flat percentage fee applied to the <strong>absolute change in weights</strong> at each rebalance. Suitable for retail or small-AUM use cases.</p>
 <div class="arithmatex">\[
 \text{cost}_i = |\Delta w_i| \times \frac{\text{bps}}{10000}
 \]</div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">FlatBpsCostModel</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">cost_model</span> <span class="o">=</span> <span class="n">FlatBpsCostModel</span><span class="p">(</span><span class="n">bps</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>  <span class="c1"># 10 basis points per unit of turnover</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">FlatBpsCostModel</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">cost_model</span> <span class="o">=</span> <span class="n">FlatBpsCostModel</span><span class="p">(</span><span class="n">bps</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>  <span class="c1"># 10 basis points per unit of turnover</span>
 </span></code></pre></div>
 <hr />
 <h3 id="almgren-chriss-almgrenchrisscostmodel">Almgren-Chriss (<code>AlmgrenChrissCostModel</code>)<a class="headerlink" href="#almgren-chriss-almgrenchrisscostmodel" title="Permanent link">&para;</a></h3>
@@ -2089,21 +2195,21 @@
 <div class="arithmatex">\[
 \text{cost}_i = \left(\text{spread} + \gamma \sqrt{\frac{\text{trade\_size}_i}{\text{volume}_i}}\right) \times |\Delta w_i|
 \]</div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlmgrenChrissCostModel</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">cost_model</span> <span class="o">=</span> <span class="n">AlmgrenChrissCostModel</span><span class="p">(</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">portfolio_aum</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span>  <span class="c1"># portfolio size in USD</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">spread_bps</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>            <span class="c1"># bid-ask spread</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">gamma</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>                 <span class="c1"># market impact coefficient</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlmgrenChrissCostModel</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">cost_model</span> <span class="o">=</span> <span class="n">AlmgrenChrissCostModel</span><span class="p">(</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">portfolio_aum</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span>  <span class="c1"># portfolio size in USD</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">spread_bps</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>            <span class="c1"># bid-ask spread</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">gamma</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>                 <span class="c1"># market impact coefficient</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">)</span>
 </span></code></pre></div>
 <div class="admonition info">
 <p class="admonition-title">Requires volume data</p>
 <p><code>AlmgrenChrissCostModel</code> requires <code>data.features["volume"]</code> to be set on your <code>MarketData</code>. Volume is used to compute trade size as a fraction of daily market volume.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">data</span> <span class="o">=</span> <span class="n">MarketData</span><span class="p">(</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">prices</span><span class="o">=</span><span class="n">prices_df</span><span class="p">,</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">volume_df</span><span class="p">},</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">data</span> <span class="o">=</span> <span class="n">MarketData</span><span class="p">(</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">prices</span><span class="o">=</span><span class="n">prices_df</span><span class="p">,</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">volume_df</span><span class="p">},</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <hr />
@@ -2150,43 +2256,43 @@
 </tr>
 </tbody>
 </table>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricsTearSheet</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">tear_sheet</span> <span class="o">=</span> <span class="n">MetricsTearSheet</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">portfolio_returns</span><span class="o">=</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">],</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">risk_free_rate</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">tear_sheet</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricsTearSheet</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">tear_sheet</span> <span class="o">=</span> <span class="n">MetricsTearSheet</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">portfolio_returns</span><span class="o">=</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">],</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">risk_free_rate</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">)</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">tear_sheet</span><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h2 id="full-backtest-example">Full Backtest Example<a class="headerlink" href="#full-backtest-example" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_data_connector.yahoo_finance</span><span class="w"> </span><span class="kn">import</span> <span class="n">YahooFinanceClient</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_parity</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskParityAllocator</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.estimators.covariance.ledoit_wolf</span><span class="w"> </span><span class="kn">import</span> <span class="n">LedoitWolfShrinkage</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyPipeline</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">WalkForwardEngine</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.splitters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpandingWindowSplitter</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlmgrenChrissCostModel</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">data</span> <span class="o">=</span> <span class="n">YahooFinanceClient</span><span class="p">()</span><span class="o">.</span><span class="n">get_market_data</span><span class="p">(</span>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="n">tickers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span> <span class="s2">&quot;GOOGL&quot;</span><span class="p">,</span> <span class="s2">&quot;AMZN&quot;</span><span class="p">],</span>
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">start</span><span class="o">=</span><span class="s2">&quot;2018-01-01&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;2024-01-01&quot;</span><span class="p">,</span>
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="p">)</span>
-</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
-</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskParityAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span>
-</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="n">cov_estimator</span><span class="o">=</span><span class="n">LedoitWolfShrinkage</span><span class="p">(),</span>
-</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="p">)</span>
-</span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>
-</span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">WalkForwardEngine</span><span class="p">(</span>
-</span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>    <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
-</span><span id="__span-9-21"><a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>    <span class="n">rebalance_freq</span><span class="o">=</span><span class="s2">&quot;ME&quot;</span><span class="p">,</span>
-</span><span id="__span-9-22"><a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    <span class="n">splitter</span><span class="o">=</span><span class="n">ExpandingWindowSplitter</span><span class="p">(</span><span class="n">min_periods</span><span class="o">=</span><span class="mi">252</span><span class="p">),</span>
-</span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="n">cost_model</span><span class="o">=</span><span class="n">FlatBpsCostModel</span><span class="p">(</span><span class="n">bps</span><span class="o">=</span><span class="mf">5.0</span><span class="p">),</span>
-</span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="p">)</span>
-</span><span id="__span-9-25"><a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>
-</span><span id="__span-9-26"><a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="n">results</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-9-27"><a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;tear_sheet&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_data_connector.yahoo_finance</span><span class="w"> </span><span class="kn">import</span> <span class="n">YahooFinanceClient</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_parity</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskParityAllocator</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.estimators.covariance.ledoit_wolf</span><span class="w"> </span><span class="kn">import</span> <span class="n">LedoitWolfShrinkage</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyPipeline</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">WalkForwardEngine</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.splitters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpandingWindowSplitter</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest.costs</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlmgrenChrissCostModel</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">data</span> <span class="o">=</span> <span class="n">YahooFinanceClient</span><span class="p">()</span><span class="o">.</span><span class="n">get_market_data</span><span class="p">(</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="n">tickers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span> <span class="s2">&quot;GOOGL&quot;</span><span class="p">,</span> <span class="s2">&quot;AMZN&quot;</span><span class="p">],</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="n">start</span><span class="o">=</span><span class="s2">&quot;2018-01-01&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;2024-01-01&quot;</span><span class="p">,</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">)</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskParityAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    <span class="n">cov_estimator</span><span class="o">=</span><span class="n">LedoitWolfShrinkage</span><span class="p">(),</span>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="p">)</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">WalkForwardEngine</span><span class="p">(</span>
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>    <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    <span class="n">rebalance_freq</span><span class="o">=</span><span class="s2">&quot;ME&quot;</span><span class="p">,</span>
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    <span class="n">splitter</span><span class="o">=</span><span class="n">ExpandingWindowSplitter</span><span class="p">(</span><span class="n">min_periods</span><span class="o">=</span><span class="mi">252</span><span class="p">),</span>
+</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    <span class="n">cost_model</span><span class="o">=</span><span class="n">FlatBpsCostModel</span><span class="p">(</span><span class="n">bps</span><span class="o">=</span><span class="mf">5.0</span><span class="p">),</span>
+</span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="p">)</span>
+</span><span id="__span-10-25"><a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>
+</span><span id="__span-10-26"><a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="n">results</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-10-27"><a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;tear_sheet&quot;</span><span class="p">])</span>
 </span></code></pre></div>
 
 

@@ -751,6 +751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1009,6 +1011,34 @@
     
   
     Monte Carlo Simulation &amp; Entropy Pooling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization &amp; Tear Sheets (pyalloq-viz)
   
 
     
@@ -1359,6 +1389,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-probability-of-backtest-overfitting-pbo-cpcv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Probability of Backtest Overfitting (PBO) &amp; CPCV
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Probability of Backtest Overfitting (PBO) &amp; CPCV">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combinatorial-symmetric-cross-validation-pboevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Symmetric Cross-Validation (PBOEvaluator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combinatorial-purged-cross-validation-cpcvsplitter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Purged Cross-Validation (CPCVSplitter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1476,6 +1545,8 @@
   
     
     
+      
+        
       
         
       
@@ -1734,6 +1805,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/viz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1880,6 +1979,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-probability-of-backtest-overfitting-pbo-cpcv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Probability of Backtest Overfitting (PBO) &amp; CPCV
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Probability of Backtest Overfitting (PBO) &amp; CPCV">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#combinatorial-symmetric-cross-validation-pboevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Symmetric Cross-Validation (PBOEvaluator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combinatorial-purged-cross-validation-cpcvsplitter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinatorial Purged Cross-Validation (CPCVSplitter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2019,6 +2157,24 @@ x^*_m = \frac{p_m \exp\!\left(-[G^\top \gamma^*]_m\right)}{\sum_{k=1}^M p_k \exp
 <div class="arithmatex">\[
 \mathbb{P}_{\text{ruin}}(\theta_{\text{ruin}}) = \sum_{m=1}^M x^*_m \, \mathbb{I}\!\left(\text{MDD}_m \le \theta_{\text{ruin}}\right)
 \]</div>
+<hr />
+<h2 id="5-probability-of-backtest-overfitting-pbo-cpcv">5. Probability of Backtest Overfitting (PBO) &amp; CPCV<a class="headerlink" href="#5-probability-of-backtest-overfitting-pbo-cpcv" title="Permanent link">&para;</a></h2>
+<h3 id="combinatorial-symmetric-cross-validation-pboevaluator">Combinatorial Symmetric Cross-Validation (<code>PBOEvaluator</code>)<a class="headerlink" href="#combinatorial-symmetric-cross-validation-pboevaluator" title="Permanent link">&para;</a></h3>
+<p>Given a return matrix <span class="arithmatex">\(M_{\text{trials}} \in \mathbb{R}^{T \times M}\)</span> of <span class="arithmatex">\(M\)</span> candidate strategy configurations evaluated over <span class="arithmatex">\(T\)</span> observations, <strong>CSCV</strong> (Bailey et al., 2017) partitions time into <span class="arithmatex">\(S\)</span> even submatrices and forms all <span class="arithmatex">\(C = \binom{S}{S/2}\)</span> training (In-Sample, <span class="arithmatex">\(J\)</span>) and testing (Out-of-Sample, <span class="arithmatex">\(\bar{J}\)</span>) combinations:</p>
+<ol>
+<li>For each split <span class="arithmatex">\(c \in \{1, \dots, C\}\)</span>, compute the vector of In-Sample Sharpe ratios <span class="arithmatex">\(R_c \in \mathbb{R}^M\)</span> on <span class="arithmatex">\(J_c\)</span> and Out-of-Sample Sharpe ratios <span class="arithmatex">\(\bar{R}_c \in \mathbb{R}^M\)</span> on <span class="arithmatex">\(\bar{J}_c\)</span>.</li>
+<li>Select the In-Sample optimal strategy <span class="arithmatex">\(m^* = \arg\max_m R_{c, m}\)</span> and find its relative rank <span class="arithmatex">\(\omega_c \in (0, 1)\)</span> within the Out-of-Sample distribution <span class="arithmatex">\(\bar{R}_c\)</span>.</li>
+<li>Define the <strong>Rank Logit</strong> <span class="arithmatex">\(\lambda_c\)</span>:</li>
+</ol>
+<div class="arithmatex">\[
+\lambda_c = \ln\!\left(\frac{\omega_c}{1 - \omega_c}\right)
+\]</div>
+<p>When <span class="arithmatex">\(\lambda_c \le 0\)</span>, the strategy selected as best In-Sample performs worse than the median strategy Out-of-Sample. The <strong>Probability of Backtest Overfitting (PBO)</strong> is the empirical probability mass in the left tail:</p>
+<div class="arithmatex">\[
+\text{PBO} = \frac{1}{C} \sum_{c=1}^C \mathbb{I}\!\left(\lambda_c \le 0\right)
+\]</div>
+<h3 id="combinatorial-purged-cross-validation-cpcvsplitter">Combinatorial Purged Cross-Validation (<code>CPCVSplitter</code>)<a class="headerlink" href="#combinatorial-purged-cross-validation-cpcvsplitter" title="Permanent link">&para;</a></h3>
+<p>Given <span class="arithmatex">\(N\)</span> chronological groups and <span class="arithmatex">\(k\)</span> test groups per split, there are <span class="arithmatex">\(\binom{N}{k}\)</span> train/test splits with purge window <span class="arithmatex">\(p\)</span> and embargo window <span class="arithmatex">\(e\)</span> applied around every test block boundary. Because each group appears in exactly <span class="arithmatex">\(\varphi(N, k) = \binom{N - 1}{k - 1}\)</span> test sets across all splits, the out-of-sample predictions can be reassembled into <span class="arithmatex">\(\varphi(N, k)\)</span> full-horizon backtest paths rather than a single point estimate (López de Prado, 2018).</p>
 
 
 
