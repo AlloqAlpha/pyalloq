@@ -62,17 +62,12 @@ class WalkForwardEngine:
         asset_returns = data.prices.pct_change().dropna()
         rebalance_dates = self._resolve_rebalance_dates(data.prices)
 
-        weights_history: list[pd.Series] = []
-        for current_date, data_window in self.splitter.split(data, rebalance_dates):
-            weights = self.pipeline.generate_weights(data_window).copy()
-            if self.max_gross_leverage is not None:
-                gross_lev = float(weights.abs().sum())
-                if gross_lev > self.max_gross_leverage and gross_lev > 1e-12:
-                    weights = weights * (self.max_gross_leverage / gross_lev)
-            weights.name = current_date
-            weights_history.append(weights)
+        split_windows: dict[pd.Timestamp, MarketData] = {
+            pd.Timestamp(cast(Any, current_date)): data_window
+            for current_date, data_window in self.splitter.split(data, rebalance_dates)
+        }
 
-        if not weights_history:
+        if not split_windows:
             empty_ret = pd.Series(dtype=float, index=pd.DatetimeIndex([]))
             empty_w = pd.DataFrame(columns=data.prices.columns, index=data.prices.index)
             tear_sheet = MetricsTearSheet.generate(
@@ -87,13 +82,6 @@ class WalkForwardEngine:
                 turnover=pd.Series(0.0, index=data.prices.index),
                 costs=pd.Series(0.0, index=data.prices.index),
             )
-
-        df_rebalance_targets = pd.DataFrame(weights_history).reindex(
-            columns=data.prices.columns, fill_value=0.0
-        )
-        df_target_daily = (
-            df_rebalance_targets.reindex(data.prices.index).ffill().shift(1)
-        )
 
         all_dates = data.prices.index
         assets = list(data.prices.columns)
@@ -110,10 +98,7 @@ class WalkForwardEngine:
             rf_daily = np.full(n_dates, float(data.risk_free_rate) / 252.0)
 
         rets_aligned = data.prices.pct_change().fillna(0.0).to_numpy(dtype=np.float64)
-        rebalance_map: dict[pd.Timestamp, np.ndarray] = {
-            pd.Timestamp(cast(Any, idx)): row.to_numpy(dtype=np.float64)
-            for idx, row in df_rebalance_targets.iterrows()
-        }
+        weights_history: list[pd.Series] = []
 
         held_weights_arr = np.full((n_dates, n_assets), np.nan, dtype=np.float64)
         turnover_arr = np.zeros(n_dates, dtype=np.float64)
@@ -159,8 +144,23 @@ class WalkForwardEngine:
                 pre_reb_w = np.zeros(n_assets, dtype=np.float64)
 
             # 3. Check if dt is a scheduled rebalance date
-            if dt in rebalance_map:
-                target_w = rebalance_map[dt]
+            if dt in split_windows:
+                data_window = split_windows[dt]
+                current_w_series = (
+                    pd.Series(pre_reb_w, index=assets) if active else None
+                )
+                weights = self.pipeline.generate_weights(
+                    data_window, current_weights=current_w_series
+                ).copy()
+                weights = weights.reindex(assets, fill_value=0.0)
+                if self.max_gross_leverage is not None:
+                    gross_lev = float(weights.abs().sum())
+                    if gross_lev > self.max_gross_leverage and gross_lev > 1e-12:
+                        weights = weights * (self.max_gross_leverage / gross_lev)
+                weights.name = dt
+                weights_history.append(weights)
+
+                target_w = weights.to_numpy(dtype=np.float64)
                 delta_w = target_w - pre_reb_w
                 l1_drift = float(np.sum(np.abs(delta_w)))
 
@@ -185,6 +185,13 @@ class WalkForwardEngine:
                     current_post_rebalance_w = pre_reb_w.copy()
             elif active:
                 current_post_rebalance_w = pre_reb_w.copy()
+
+        df_rebalance_targets = pd.DataFrame(weights_history).reindex(
+            columns=data.prices.columns, fill_value=0.0
+        )
+        df_target_daily = (
+            df_rebalance_targets.reindex(data.prices.index).ffill().shift(1)
+        )
 
         df_weights_daily = pd.DataFrame(
             held_weights_arr, index=all_dates, columns=assets

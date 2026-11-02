@@ -11,8 +11,12 @@ A modern Python SDK and workspace for quantitative portfolio optimization, featu
 - **[`pyalloq-backtest`](src/pyalloq-backtest)**: Zero-lookahead historical simulation engines, cross-validation splitters, transaction cost models, and performance metrics.
 - **[`pyalloq-features`](src/pyalloq-features)**: Feature engineering transformers, TA-Lib integration, scaling tools, and feature pipelines.
 - **[`pyalloq-simulation`](src/pyalloq-simulation)**: Institutional Monte Carlo scenario generators (`GaussianGenerator`, `PCAFactorGenerator`, `FHSGenerator`, `GARCHEVTCopulaGenerator`, `GMMRegimeGenerator`), `FactorBackcastImputer`, Meucci `EntropyPooler` (first- and second-moment views), and path-dependent `ScenarioEvaluator`.
-- **[`pyalloq-viz`](src/pyalloq-viz)**: Interactive Plotly visualizations and standalone HTML tear sheets (`SimulationTearSheet`, `RobustnessTearSheet`, `MacroRegimeTearSheet`, `AllocationTearSheet`) for portfolio optimization, PBO/CPCV robustness testing, entropy pooling, and regime analysis.
-- **`pyalloq`**: Main SDK combining classical optimization (Markowitz, Risk Parity, Black-Litterman, HRP, NCO) and deep learning models.
+- **[`pyalloq-viz`](src/pyalloq-viz)**: Interactive Plotly visualizations and standalone HTML tear sheets (`SimulationTearSheet`, `RobustnessTearSheet`, `MacroRegimeTearSheet`, `AllocationTearSheet`, `MultiPeriodTearSheet`) for portfolio optimization, multi-period trajectories, thermodynamic regime gating, PBO/CPCV robustness testing, entropy pooling, and regime analysis.
+- **`pyalloq`**: Main SDK combining:
+  - **Classical & Multi-Period Convex Optimization (`pyalloq.classical`)**: Markowitz, Risk Parity, CVaR, Black-Litterman, Multi-Horizon `AlphaDecayReturnEstimator`, `MultiPeriodMPCAllocator` (Boyd 2017 & Gârleanu-Pedersen 2013 with `cvxpy` power cones and high-speed `admm` operator splitting), and `StochasticScenarioMPCAllocator`.
+  - **Hierarchical & Graph Machine Learning (`pyalloq.ml`)**: `HRPAllocator`, `NCOAllocator`, and Two-Level Bayesian `BayesianHRPAllocator` (RL-BHRP).
+  - **Decision-Focused Deep Learning (`pyalloq.dl`)**: End-to-End `DeepAllocator` (C-STAN), `DeepCovarianceEstimator`, `MDFPOptimizationLayer` (Entropic Mirror-Descent Fixed-Point with \(O(1)\)-memory implicit differentiation), `SPOPlusLoss`, `HybridDFLLoss`, and `IPMOAllocator`.
+  - **FinRL Deep Reinforcement Learning & Thermodynamic Gates (`pyalloq.rl`)**: `PortfolioGymEnv`, `ScenarioPortfolioEnv`, `TrajectoryPolicyNet`, `DeepHedgingTrajectoryTrainer`, `WassersteinRegimeGate` (Bures-Wasserstein \(W_2\) & Carnot efficiency bound), and `RLAllocator`.
 
 ## Development Setup
 

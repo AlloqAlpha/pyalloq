@@ -32,15 +32,20 @@ class StrategyPipeline:
     def generate_weights(
         self,
         data: MarketData,
+        current_weights: pd.Series | None = None,
     ) -> pd.Series:
         expected_returns = self.returns_estimator.estimate(data)
         cov_matrix = self.cov_estimator.estimate(data)
+
+        call_kwargs = dict(self.allocator_kwargs)
+        if current_weights is not None and "current_weights" not in call_kwargs:
+            call_kwargs["current_weights"] = current_weights
 
         result = self.allocator.allocate(
             data,
             cov_matrix=cov_matrix,
             expected_returns=expected_returns,
-            **self.allocator_kwargs,
+            **call_kwargs,
         )
 
         return (

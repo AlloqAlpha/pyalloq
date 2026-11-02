@@ -185,3 +185,61 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Formulated Combinatorial Purged Cross-Validation (CPCV) to eliminate look-ahead leakage via purging and embargoing while generating \(\varphi(N, k) = \binom{N-1}{k-1}\) complete out-of-sample backtest paths across recombined market regimes.
 
 **Implemented in:** `CPCVSplitter`, `plot_cpcv_paths`, `RobustnessTearSheet`
+
+---
+
+## Multi-Period Portfolio Optimization, Decision-Focused Learning & FinRL
+
+### Boyd, Busseti, Diamond, Kahn, Koh, Nystrup & Speth (2017) — Multi-Period Trading via Convex Optimization {#boyd-2017}
+
+> Boyd, S., Busseti, E., Diamond, S., Kahn, R. N., Koh, K., Nystrup, P., & Speth, J. (2017). Multi-Period Trading via Convex Optimization. *Foundations and Trends in Optimization*, 3(1), 1–76.
+> [https://doi.org/10.1561/2400000023](https://doi.org/10.1561/2400000023)
+
+**Contribution:** Unified multi-period portfolio optimization under a receding-horizon Model Predictive Control (MPC) convex program incorporating proportional bid-ask spread costs (\(\ell_1\)), square-root market impact (\(|z|^{3/2}\) power cones), holding costs, and terminal risk penalties.
+
+**Implemented in:** `MultiPeriodMPCAllocator`, `StochasticScenarioMPCAllocator`
+
+---
+
+### Gârleanu & Pedersen (2013) — Dynamic Trading with Predictable Returns and Transaction Costs {#garleanu-pedersen-2013}
+
+> Gârleanu, N., & Pedersen, L. H. (2013). Dynamic Trading with Predictable Returns and Transaction Costs. *The Journal of Finance*, 68(6), 2309–2340.
+> [https://doi.org/10.1111/jofi.12080](https://doi.org/10.1111/jofi.12080)
+
+**Contribution:** Proved that under multi-horizon mean-reverting alpha signals and quadratic/permanent price impact, the optimal portfolio trades partially at a constant rate toward an intertemporal **Aim Portfolio** — a discounted weighted average of future Markowitz target portfolios.
+
+**Implemented in:** `AlphaDecayReturnEstimator`, `MultiPeriodMPCAllocator`
+
+---
+
+### Elmachtoub & Grigas (2022) & Agrawal et al. (2019) — Decision-Focused Learning & Differentiable Convex Layers {#dfl-2022}
+
+> Elmachtoub, A. N., & Grigas, P. (2022). Smart "Predict, then Optimize". *Management Science*, 68(1), 9–26.
+>
+> Agrawal, A., Amos, B., Barratt, S., Boyd, S., Diamond, S., & Kolter, J. Z. (2019). Differentiable Convex Optimization Layers. *Advances in Neural Information Processing Systems (NeurIPS)*, 32.
+
+**Contribution:** Formulated the convex SPO+ regret surrogate loss and implicit differentiation through fixed-point / KKT optimality conditions so neural predictors are trained directly on downstream multi-period decision utility.
+
+**Implemented in:** `MDFPOptimizationLayer`, `SPOPlusLoss`, `HybridDFLLoss`, `IPMOAllocator`
+
+---
+
+### Buehler, Gonon, Teichmann & Wood (2019) & Liu et al. (2022) — Deep Hedging & FinRL {#deep-hedging-2019}
+
+> Buehler, H., Gonon, L., Teichmann, J., & Wood, B. (2019). Deep Hedging. *Quantitative Finance*, 19(8), 1271–1291.
+>
+> Liu, X.-Y., Xia, Z., Rui, J., Gao, J., Yang, H., Zhu, M., Wang, C., Wang, Z., & Guo, J. (2022). FinRL-Meta: Market Environments and Benchmarks for Data-Driven Financial Reinforcement Learning. *Advances in Neural Information Processing Systems (NeurIPS)*, 35.
+
+**Contribution:** Formulated recurrent pathwise trajectory optimization under proportional/convex market frictions and standardized Gymnasium environments with Mahalanobis turbulence circuit-breakers for continuous portfolio control.
+
+**Implemented in:** `PortfolioGymEnv`, `ScenarioPortfolioEnv`, `TrajectoryPolicyNet`, `DeepHedgingTrajectoryTrainer`, `BayesianHRPAllocator`, `RLAllocator`
+
+---
+
+### Moroke et al. (2026) — Thermodynamic & Bures-Wasserstein Regime Gating {#moroke-2026}
+
+> Moroke, N., et al. (2026). Thermodynamic Efficiency Bounds and Wasserstein Optimal Transport in Non-Equilibrium Portfolio Rebalancing.
+
+**Contribution:** Modeled portfolio rebalancing between fast and slow market covariance baths as a stochastic heat engine bounded by Carnot efficiency \(\eta_{\text{Carnot}} = 1 - T_{\min}/T_{\max}\), using the Bures-Wasserstein \(W_2\) distance to gate frictional turnover during structural regime ruptures.
+
+**Implemented in:** `WassersteinRegimeGate`, `ThermodynamicDiagnostics`
