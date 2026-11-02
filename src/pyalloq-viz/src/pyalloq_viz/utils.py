@@ -214,7 +214,13 @@ def reconstruct_drifted_weights(
         (drifted_weights_df, turnover_series)
     """
     if isinstance(backtest_result, BacktestResult):
-        target_w = backtest_result.weights.dropna(how="all").fillna(0.0)
+        if (
+            getattr(backtest_result, "target_weights", None) is not None
+            and backtest_result.target_weights is not None
+        ):
+            target_w = backtest_result.target_weights.dropna(how="all").fillna(0.0)
+        else:
+            target_w = backtest_result.weights.dropna(how="all").fillna(0.0)
     else:
         target_w = backtest_result.dropna(how="all").fillna(0.0)
 

@@ -1,10 +1,11 @@
-import torch
-import torch.nn as nn
-import pandas as pd
 from typing import Any
-from pyalloq_core.interfaces import BaseAllocator
+
+import pandas as pd
+import torch
 from pyalloq_core.data import MarketData
+from pyalloq_core.interfaces import BaseAllocator
 from pyalloq_core.results import OptimizationResult
+from torch import nn
 
 
 class DeepAllocator(BaseAllocator):
@@ -17,7 +18,9 @@ class DeepAllocator(BaseAllocator):
         model: nn.Module,
         lookback_window: int = 60,
         device: str = "cpu",
+        tickers: list[str] | None = None,
     ) -> None:
+        super().__init__(tickers or [])
         self.device = device
         self.model = model.to(self.device)
         self.model.eval()
@@ -30,6 +33,8 @@ class DeepAllocator(BaseAllocator):
         expected_returns: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
+        if not self.tickers and data.assets:
+            self.tickers = list(data.assets)
         returns_df = data.prices.pct_change().fillna(0.0).iloc[-self.lookback_window :]
         base_tensor = torch.tensor(returns_df.values, dtype=torch.float32).unsqueeze(-1)
         tensor_list = [base_tensor]

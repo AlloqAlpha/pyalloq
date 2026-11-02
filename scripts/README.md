@@ -1,0 +1,23 @@
+# PyAlloq Example Scripts
+
+This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflows. All scripts include an automatic offline synthetic fallback if live market data APIs (e.g., Yahoo Finance) are unreachable.
+
+## Available Scripts
+
+1. **[`run_hrp_simulation_viz.py`](./run_hrp_simulation_viz.py)**
+   - Runs Hierarchical Risk Parity (`HRPAllocator`) inside `WalkForwardEngine`.
+   - Fits a `GMMRegimeGenerator` to simulate 500 multiverse futures and applies Meucci's `EntropyPooler` views.
+   - Performs Combinatorial Purged Cross-Validation (`CPCVSplitter`) timeline scrambling.
+   - Exports all 4 interactive HTML tear sheets to `visualizations_output/`.
+   ```bash
+   uv run python scripts/run_hrp_simulation_viz.py
+   ```
+
+2. **[`run_dl_e2e_allocation.py`](./run_dl_e2e_allocation.py)**
+   - Builds rolling momentum and volatility features on `MarketData`.
+   - Trains a `ConstrainedSpatioTemporalAttentionNet` (C-STAN) end-to-end neural allocator using `WalkForwardTrainer` and transaction-cost-aware `SharpeLoss`.
+   - Evaluates `DeepAllocator` in `WalkForwardEngine` with intra-period weight drift, threshold rebalancing, and benchmark attribution against `EqualWeightAllocator` and `HRPAllocator`.
+   - Exports interactive DL E2E HTML tear sheets to `visualizations_output/dl_e2e/`.
+   ```bash
+   uv run python scripts/run_dl_e2e_allocation.py
+   ```

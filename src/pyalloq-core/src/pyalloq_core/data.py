@@ -1,7 +1,8 @@
-import pandas as pd
-import numpy as np
 from dataclasses import dataclass, field
 from typing import cast
+
+import numpy as np
+import pandas as pd
 
 
 @dataclass(kw_only=True)
@@ -51,6 +52,12 @@ class MarketData:
                     "Data misalignment: 'risk_free_rate' series index does not perfectly match 'prices' index."
                 )
 
+        if isinstance(self.risk_aversion, pd.Series):
+            if not self.prices.index.equals(self.risk_aversion.index):
+                raise ValueError(
+                    "Data misalignment: 'risk_aversion' series index does not perfectly match 'prices' index."
+                )
+
     def slice_time(
         self,
         end_date: pd.Timestamp,
@@ -92,12 +99,20 @@ class MarketData:
             if lookback is not None:
                 sliced_rf = sliced_rf.iloc[-lookback:]
 
+        sliced_ra = self.risk_aversion
+        if isinstance(self.risk_aversion, pd.Series):
+            sliced_ra = self.risk_aversion.loc[:end_date]
+            if lookback is not None:
+                sliced_ra = sliced_ra.iloc[-lookback:]
+
         return self.__class__(
+            assets=list(self.assets),
             prices=sliced_prices,
             features=sliced_features,
             future_features=sliced_futures,
             cross_sectional=self.cross_sectional,
             risk_free_rate=sliced_rf,
+            risk_aversion=sliced_ra,
         )
 
     def get_returns(self, log_returns: bool = False) -> pd.DataFrame:
@@ -168,5 +183,5 @@ class ScenarioMarketData:
 
         market_data = MarketData(prices=path_prices, features=path_features)
         if feature_pipeline is not None and hasattr(feature_pipeline, "run"):
-            market_data = getattr(feature_pipeline, "run")(market_data)
+            market_data = feature_pipeline.run(market_data)
         return market_data

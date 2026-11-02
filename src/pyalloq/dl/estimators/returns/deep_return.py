@@ -1,10 +1,11 @@
-import torch
-import torch.nn as nn
-import pandas as pd
 from typing import Any
 
-from pyalloq_core.interfaces import BaseReturnEstimator
+import pandas as pd
+import torch
 from pyalloq_core.data import MarketData
+from pyalloq_core.interfaces import BaseReturnEstimator
+from torch import nn
+
 from pyalloq.dl.dataset import MarketDataset
 
 
@@ -29,7 +30,7 @@ class DeepReturnEstimator(BaseReturnEstimator):
         data: MarketData,
         **kwargs: Any,
     ) -> pd.Series:
-        if len(data.prices) < self.lookback_window:
+        if len(data.prices) < self.lookback_window + 2:
             return pd.Series(0.0, index=data.prices.columns, name="expected_returns")
 
         dataset = MarketDataset(

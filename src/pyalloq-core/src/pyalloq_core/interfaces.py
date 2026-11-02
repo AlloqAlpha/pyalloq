@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Any
-from .enums import DataFrequency
+
 from .data import MarketData, ScenarioMarketData
+from .enums import DataFrequency
 from .results import OptimizationResult
 
 
@@ -24,7 +26,7 @@ class BaseAllocator(ABC):
             return float(frequency)
         if isinstance(frequency, str):
             try:
-                float(DataFrequency[frequency.upper()].value)
+                return float(DataFrequency[frequency.upper()].value)
             except KeyError:
                 pass
 
@@ -104,14 +106,12 @@ class BaseReturnEstimator(ABC):
         Takes raw prices (and optional macro/technical features) and
         returns an Nx1 pandas Series of expected returns for the assets.
         """
-        pass
 
 
 class BaseCovarianceEstimator(ABC):
     @abstractmethod
     def estimate(self, data: MarketData, **kwargs: Any) -> pd.DataFrame:
         """Takes a price DataFrame and returns an NxN covariance matrix."""
-        pass
 
 
 class BaseScenarioGenerator(ABC):

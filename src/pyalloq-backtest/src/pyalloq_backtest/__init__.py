@@ -1,4 +1,10 @@
-from pyalloq_backtest.costs import BaseCostModel, FlatBpsCostModel
+from pyalloq_backtest.costs import (
+    AlmgrenChrissCostModel,
+    BaseCostModel,
+    CompositeCostModel,
+    FlatBpsCostModel,
+    ProportionalSpreadCostModel,
+)
 from pyalloq_backtest.engine import WalkForwardEngine
 from pyalloq_backtest.metrics import MetricsTearSheet
 from pyalloq_backtest.overfitting import (
@@ -15,15 +21,18 @@ from pyalloq_backtest.splitters import (
 )
 
 __all__ = [
+    "AlmgrenChrissCostModel",
     "BaseCostModel",
     "BaseWindowSplitter",
     "CPCVResult",
     "CPCVSplitter",
+    "CompositeCostModel",
     "ExpandingWindowSplitter",
     "FlatBpsCostModel",
     "MetricsTearSheet",
     "PBOEvaluator",
     "PBOResult",
+    "ProportionalSpreadCostModel",
     "PurgedKFoldSplitter",
     "RollingWindowSplitter",
     "WalkForwardEngine",

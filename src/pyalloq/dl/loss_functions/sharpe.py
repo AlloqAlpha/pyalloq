@@ -1,6 +1,7 @@
 import torch
-import torch.nn as nn
 from pyalloq_backtest.costs import BaseCostModel, FlatBpsCostModel
+from torch import nn
+
 from pyalloq.dl.costs import TorchCostAdapter
 
 
@@ -32,9 +33,10 @@ class SharpeLoss(nn.Module):
 
         if weights_matrix.dim() == 2:
             weights_matrix = weights_matrix.unsqueeze(1)
-            true_returns_matrix = true_returns_matrix.squeeze(1)
-            if volume_matrix is not None:
-                volume_matrix = volume_matrix.unsqueeze(1)
+        if true_returns_matrix.dim() == 2:
+            true_returns_matrix = true_returns_matrix.unsqueeze(1)
+        if volume_matrix is not None and volume_matrix.dim() == 2:
+            volume_matrix = volume_matrix.unsqueeze(1)
 
         gross_returns = torch.sum(weights_matrix * true_returns_matrix, dim=-1)
 

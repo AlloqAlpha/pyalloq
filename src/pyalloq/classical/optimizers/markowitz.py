@@ -1,11 +1,12 @@
-import cvxpy as cp
-import pandas as pd
-import numpy as np
 from typing import Any
+
+import cvxpy as cp
+import numpy as np
+import pandas as pd
+from pyalloq_core.data import MarketData
+from pyalloq_core.enums import ObjectiveFunction
 from pyalloq_core.interfaces import BaseAllocator
 from pyalloq_core.results import OptimizationResult
-from pyalloq_core.enums import ObjectiveFunction
-from pyalloq_core.data import MarketData
 
 
 class MarkowitzAllocator(BaseAllocator):
@@ -75,7 +76,10 @@ class MarkowitzAllocator(BaseAllocator):
                 )
             mu_vals = np.asarray(expected_returns.values, dtype=float)
             w = cp.Variable(N)
-            risk_aversion = data.risk_aversion
+            if isinstance(data.risk_aversion, pd.Series):
+                risk_aversion = float(data.risk_aversion.iloc[-1])
+            else:
+                risk_aversion = float(data.risk_aversion)
             utility = (mu_vals @ w) - risk_aversion * cp.quad_form(w, Sigma_vals)
             prob = cp.Problem(cp.Maximize(utility), [cp.sum(w) == 1, w >= 0])
             prob.solve()
