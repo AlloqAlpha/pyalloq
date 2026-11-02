@@ -21,3 +21,12 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_dl_e2e_allocation.py
    ```
+
+3. **[`run_multi_period_optimization.py`](./run_multi_period_optimization.py)**
+   - Benchmarks all 3 Pillars of PyAlloq's Multi-Period Portfolio Optimization (MPO) architecture inside `WalkForwardEngine` under proportional transaction costs:
+     - **Pillar 1**: `MultiPeriodMPCAllocator` (`backend="cvxpy"` with power cones & Gârleanu-Pedersen permanent impact, and `backend="admm"` operator splitting) paired with `AlphaDecayReturnEstimator`.
+     - **Pillar 2**: `IPMOAllocator` with differentiable `MDFPOptimizationLayer` (implicit fixed-point backprop) trained via `HybridDFLLoss`.
+     - **Pillar 3**: Two-Level `BayesianHRPAllocator` (RL-BHRP) and `RLAllocator` (`TrajectoryPolicyNet` trained via `DeepHedgingTrajectoryTrainer` + `WassersteinRegimeGate`).
+   ```bash
+   uv run python scripts/run_multi_period_optimization.py
+   ```

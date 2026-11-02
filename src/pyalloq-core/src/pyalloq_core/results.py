@@ -85,6 +85,18 @@ class OptimizationResult:
 
 
 @dataclass
+class MultiPeriodOptimizationResult(OptimizationResult):
+    """
+    Standardized output for multi-period portfolio optimizers (MPC, ADMM, IPMO, DRL).
+    `weights` holds the immediate first-step execution weights x_{t+1} = x_t + z_t,
+    while `weights_trajectory` and `trades_trajectory` hold the full (H x N) planned horizon.
+    """
+
+    weights_trajectory: pd.DataFrame | None = None
+    trades_trajectory: pd.DataFrame | None = None
+
+
+@dataclass
 class MonteCarloResult:
     """Standardized output for a multi-path synthetic backtest."""
 

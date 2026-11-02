@@ -115,6 +115,7 @@ nav:
       - user-guide/return-estimators.md
       - user-guide/covariance-estimators.md
       - user-guide/allocators.md
+      - user-guide/multi-period-optimization.md
       - user-guide/strategy-pipeline.md
       - user-guide/backtesting.md
       - user-guide/feature-engineering.md
@@ -125,6 +126,7 @@ nav:
       - mathematics/estimators.md
       - mathematics/graph-allocators.md
       - mathematics/monte-carlo-and-views.md
+      - mathematics/multi-period-optimization.md
   - References:
       - references/papers.md
   - API Reference:
