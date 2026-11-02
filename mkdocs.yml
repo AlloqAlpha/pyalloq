@@ -116,6 +116,7 @@ nav:
       - user-guide/covariance-estimators.md
       - user-guide/allocators.md
       - user-guide/multi-period-optimization.md
+      - user-guide/reinforcement-learning.md
       - user-guide/strategy-pipeline.md
       - user-guide/backtesting.md
       - user-guide/feature-engineering.md

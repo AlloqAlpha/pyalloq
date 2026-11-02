@@ -16,7 +16,7 @@ A modern Python SDK and workspace for quantitative portfolio optimization, featu
   - **Classical & Multi-Period Convex Optimization (`pyalloq.classical`)**: Markowitz, Risk Parity, CVaR, Black-Litterman, Multi-Horizon `AlphaDecayReturnEstimator`, `MultiPeriodMPCAllocator` (Boyd 2017 & Gârleanu-Pedersen 2013 with `cvxpy` power cones and high-speed `admm` operator splitting), and `StochasticScenarioMPCAllocator`.
   - **Hierarchical & Graph Machine Learning (`pyalloq.ml`)**: `HRPAllocator`, `NCOAllocator`, and Two-Level Bayesian `BayesianHRPAllocator` (RL-BHRP).
   - **Decision-Focused Deep Learning (`pyalloq.dl`)**: End-to-End `DeepAllocator` (C-STAN), `DeepCovarianceEstimator`, `MDFPOptimizationLayer` (Entropic Mirror-Descent Fixed-Point with \(O(1)\)-memory implicit differentiation), `SPOPlusLoss`, `HybridDFLLoss`, and `IPMOAllocator`.
-  - **FinRL Deep Reinforcement Learning & Thermodynamic Gates (`pyalloq.rl`)**: `PortfolioGymEnv`, `ScenarioPortfolioEnv`, `TrajectoryPolicyNet`, `DeepHedgingTrajectoryTrainer`, `WassersteinRegimeGate` (Bures-Wasserstein \(W_2\) & Carnot efficiency bound), and `RLAllocator`.
+  - **FinRL Deep Reinforcement Learning & Thermodynamic Gates (`pyalloq.rl`)**: Evolvable `POMDPPortfolioEnv` (`spaces.Dict` + `DictFlattenWrapper` + `FeatureNormalizationWrapper` + `AlmgrenChrissCostModel`), online risk-adjusted rewards (`DifferentialSharpeReward`, `StepwiseSortinoReward`, `CARAUtilReward`), continuous-control `SB3PortfolioAgent` (PPO/SAC/DDPG/TD3/A2C), `HierarchicalMetaRLAllocator` (`MetaPortfolioEnv`), `PortfolioGymEnv`, `ScenarioPortfolioEnv`, `TrajectoryPolicyNet`, `DeepHedgingTrajectoryTrainer`, `WassersteinRegimeGate` (Bures-Wasserstein \(W_2\) & Carnot efficiency bound), and `RLAllocator`.
 
 ## Development Setup
 

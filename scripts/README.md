@@ -30,3 +30,12 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_multi_period_optimization.py
    ```
+
+4. **[`run_rl_multiverse_allocation.py`](./run_rl_multiverse_allocation.py)**
+   - Fits a `GMMRegimeGenerator` to simulate a 3D multiverse (`ScenarioMarketData`) and attaches a `FeaturePipeline` (`RollingVolatility`).
+   - Trains a continuous-control `SB3PortfolioAgent` (`PPO`) inside `POMDPPortfolioEnv` (`spaces.Dict` + `DictFlattenWrapper`) with `AlmgrenChrissCostModel` and Moody-Saffell `DifferentialSharpeReward`.
+   - Trains a `HierarchicalMetaRLAllocator` (`MetaPortfolioEnv`) dynamically blending `MarkowitzAllocator`, `RiskParityAllocator`, `HRPAllocator`, and `MultiPeriodMPCAllocator`.
+   - Evaluates all strategies in `WalkForwardEngine` and exports interactive HTML tear sheets to `visualizations_output/rl/`.
+   ```bash
+   uv run python scripts/run_rl_multiverse_allocation.py
+   ```
