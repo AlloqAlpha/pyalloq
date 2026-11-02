@@ -1,13 +1,16 @@
 """
-End-to-End Multi-Period Portfolio Optimization (MPO) Benchmark & Demonstration Script.
+End-to-End Multi-Period Portfolio Optimization (MPO) Benchmark & Visualization Script.
 
 Compares all 3 Pillars of PyAlloq's Multi-Period Optimization Architecture under
-realistic transaction costs (15 bps proportional spread) inside `WalkForwardEngine`:
+realistic transaction costs (15 bps proportional spread) inside `WalkForwardEngine`,
+and exports interactive HTML tear sheets via `pyalloq-viz`:
 1. Single-Period Baseline (`MarkowitzAllocator`)
 2. Pillar 1: Classical Convex MPC (`MultiPeriodMPCAllocator` with `AlphaDecayReturnEstimator` — both CVXPY & ADMM)
 3. Pillar 2: Decision-Focused Learning (`IPMOAllocator` with `MDFPOptimizationLayer` & `HybridDFLLoss`)
 4. Pillar 3: Two-Level Bayesian HRP (`BayesianHRPAllocator`) & Deep Hedging RL (`RLAllocator` + `WassersteinRegimeGate`)
 """
+
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -18,6 +21,8 @@ from pyalloq_backtest.splitters import RollingWindowSplitter
 from pyalloq_core.data import MarketData
 from pyalloq_core.enums import ObjectiveFunction
 from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_core.results import BacktestResult
+from pyalloq_viz import AllocationTearSheet, MultiPeriodTearSheet
 
 from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
@@ -136,7 +141,7 @@ def train_ipmo_predictor(
 
 def main() -> None:
     print("=" * 80)
-    print("PyAlloq Multi-Period Portfolio Optimization (3-Pillar Benchmark)")
+    print("PyAlloq Multi-Period Portfolio Optimization (3-Pillar Benchmark & Viz)")
     print("=" * 80)
 
     market_data = build_synthetic_market_data(TICKERS, n_days=300)
@@ -154,17 +159,18 @@ def main() -> None:
     )
 
     # 2. Pillar 1a: Classical Convex MPC (CVXPY with p=1 spread, p=1.5 impact, Gârleanu-Pedersen permanent impact)
+    mpc_allocator = MultiPeriodMPCAllocator(
+        tickers=TICKERS,
+        horizon=5,
+        risk_aversion=3.0,
+        proportional_cost_bps=15.0,
+        market_impact_coeff=0.02,
+        quadratic_cost_coeff=0.01,
+        permanent_impact_coeff=0.01,
+        backend="cvxpy",
+    )
     mpc_cvxpy = StrategyPipeline(
-        allocator=MultiPeriodMPCAllocator(
-            tickers=TICKERS,
-            horizon=5,
-            risk_aversion=3.0,
-            proportional_cost_bps=15.0,
-            market_impact_coeff=0.02,
-            quadratic_cost_coeff=0.01,
-            permanent_impact_coeff=0.01,
-            backend="cvxpy",
-        ),
+        allocator=mpc_allocator,
         returns_estimator=alpha_decay_est,
         cov_estimator=cov_est,
     )
@@ -196,13 +202,14 @@ def main() -> None:
     )
 
     # 5. Pillar 3a: Two-Level Bayesian HRP (RL-BHRP)
+    bhrp_allocator = BayesianHRPAllocator(
+        tickers=TICKERS,
+        tau=0.3,
+        return_tilt_strength=2.0,
+        turnover_penalty=0.6,
+    )
     bhrp_pipeline = StrategyPipeline(
-        allocator=BayesianHRPAllocator(
-            tickers=TICKERS,
-            tau=0.3,
-            return_tilt_strength=2.0,
-            turnover_penalty=0.6,
-        ),
+        allocator=bhrp_allocator,
         returns_estimator=alpha_decay_est,
         cov_estimator=cov_est,
     )
@@ -239,6 +246,8 @@ def main() -> None:
     }
 
     summary_rows = []
+    backtest_results: dict[str, BacktestResult] = {}
+
     for name, pipe in strategies.items():
         engine = WalkForwardEngine(
             pipeline=pipe,
@@ -247,6 +256,7 @@ def main() -> None:
             cost_model=cost_model,
         )
         res = engine.run(market_data)
+        backtest_results[name] = res
         ts = res.tear_sheet["Value"]
         summary_rows.append(
             {
@@ -264,6 +274,49 @@ def main() -> None:
         "\nWalk-Forward Net-of-Cost Performance Comparison (15 bps Transaction Cost):"
     )
     print(summary_df.to_string(index=False))
+
+    # Generate MultiPeriodTearSheet & AllocationTearSheet HTML reports
+    out_dir = Path("visualizations_output/mpo")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cov_full = cov_est.estimate(market_data)
+    horizon_forecasts = alpha_decay_est.estimate_horizon(market_data)
+    pre_trade_w = pd.Series(1.0 / len(TICKERS), index=TICKERS)
+    mpo_res = mpc_allocator.allocate(
+        market_data,
+        cov_matrix=cov_full,
+        expected_returns=horizon_forecasts,
+        current_weights=pre_trade_w,
+    )
+
+    mpo_ts = MultiPeriodTearSheet(
+        mpo_result=mpo_res,
+        horizon_forecasts=horizon_forecasts,
+        market_data=market_data,
+        strategy_comparison=backtest_results,
+        current_weights=pre_trade_w,
+    )
+    mpo_html_path = out_dir / "1_multi_period_optimization_tearsheet.html"
+    mpo_ts.to_html(path=mpo_html_path)
+
+    bhrp_res = bhrp_allocator.allocate(
+        market_data,
+        cov_matrix=cov_full,
+        expected_returns=alpha_decay_est.estimate(market_data),
+        current_weights=pre_trade_w,
+    )
+    bhrp_alloc_ts = AllocationTearSheet(
+        optimization_result=bhrp_res,
+        backtest_result=backtest_results["Pillar 3: Bayesian HRP (RL-BHRP)"],
+        market_data=market_data,
+        cov_matrix=cov_full,
+    )
+    bhrp_html_path = out_dir / "2_bayesian_hrp_allocation_tearsheet.html"
+    bhrp_alloc_ts.to_html(path=bhrp_html_path)
+
+    print(f"\nSaved interactive MPO Tear Sheets to: {out_dir.resolve()}")
+    print(f"  - {mpo_html_path.name}")
+    print(f"  - {bhrp_html_path.name}")
 
 
 if __name__ == "__main__":

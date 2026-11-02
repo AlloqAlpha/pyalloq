@@ -21,8 +21,10 @@ from pyalloq_simulation import (
 from pyalloq_viz import (
     AllocationTearSheet,
     MacroRegimeTearSheet,
+    MultiPeriodTearSheet,
     RobustnessTearSheet,
     SimulationTearSheet,
+    plot_alpha_decay_surface,
     plot_correlation_and_periodic_returns,
     plot_cpcv_paths,
     plot_cvar_tail_risk,
@@ -30,15 +32,22 @@ from pyalloq_viz import (
     plot_entropy_pooling,
     plot_fan_chart,
     plot_hierarchical_composition,
+    plot_mpc_trajectory,
+    plot_mpo_pillar_comparison,
     plot_multi_universe_frontier,
     plot_pbo_distribution,
     plot_regime_transitions,
     plot_risk_contributions,
     plot_terminal_wealth_ruin,
+    plot_thermodynamic_regime_gate,
     plot_weight_drift_turnover,
 )
 
 from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
+from pyalloq.classical.estimators.returns.multi_horizon import (
+    AlphaDecayReturnEstimator,
+)
+from pyalloq.classical.optimizers.multi_period import MultiPeriodMPCAllocator
 from pyalloq.classical.optimizers.risk_budgeting import RiskBudgetingAllocator
 from pyalloq.ml.optimizers.hrp import HRPAllocator
 from pyalloq.ml.optimizers.nco import NCOAllocator
@@ -302,4 +311,58 @@ def test_allocation_mechanics_and_risk_tearsheet(
 
     html_path = tmp_path / "allocation_tearsheet.html"
     ts_alloc.to_html(path=html_path)
+    assert html_path.exists()
+
+
+def test_multi_period_optimization_tearsheet(
+    viz_market_data: MarketData,
+    viz_backtest_result: BacktestResult,
+    tmp_path: Path,
+) -> None:
+    cov = EmpiricalCovariance().estimate(viz_market_data)
+    alpha_est = AlphaDecayReturnEstimator(horizon=5, alpha_decay=0.15)
+    mu_traj = alpha_est.estimate_horizon(viz_market_data)
+
+    mpc = MultiPeriodMPCAllocator(
+        tickers=viz_market_data.assets,
+        horizon=5,
+        risk_aversion=3.0,
+        proportional_cost_bps=15.0,
+        market_impact_coeff=0.02,
+        backend="cvxpy",
+    )
+    curr_w = pd.Series(1.0 / len(viz_market_data.assets), index=viz_market_data.assets)
+    mpo_res = mpc.allocate(
+        viz_market_data,
+        cov_matrix=cov,
+        expected_returns=mu_traj,
+        current_weights=curr_w,
+    )
+
+    fig_traj = plot_mpc_trajectory(mpo_res, current_weights=curr_w)
+    assert isinstance(fig_traj, go.Figure)
+
+    fig_alpha = plot_alpha_decay_surface(mu_traj)
+    assert isinstance(fig_alpha, go.Figure)
+
+    fig_thermo = plot_thermodynamic_regime_gate(viz_market_data)
+    assert isinstance(fig_thermo, go.Figure)
+
+    fig_comp = plot_mpo_pillar_comparison({"MPC": viz_backtest_result})
+    assert isinstance(fig_comp, go.Figure)
+
+    ts_mpo = MultiPeriodTearSheet(
+        mpo_result=mpo_res,
+        horizon_forecasts=mu_traj,
+        market_data=viz_market_data,
+        strategy_comparison={"MPC": viz_backtest_result},
+        current_weights=curr_w,
+    )
+    kpis = ts_mpo.get_kpis()
+    assert "Immediate Step Turnover" in kpis
+    assert "Current Bures-W₂" in kpis
+    assert isinstance(ts_mpo.to_figure(), go.Figure)
+
+    html_path = tmp_path / "multi_period_tearsheet.html"
+    ts_mpo.to_html(path=html_path)
     assert html_path.exists()

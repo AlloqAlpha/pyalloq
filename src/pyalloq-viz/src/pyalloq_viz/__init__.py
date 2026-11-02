@@ -5,6 +5,12 @@ from pyalloq_viz.allocation import (
     plot_risk_contributions,
     plot_weight_drift_turnover,
 )
+from pyalloq_viz.multi_period import (
+    plot_alpha_decay_surface,
+    plot_mpc_trajectory,
+    plot_mpo_pillar_comparison,
+    plot_thermodynamic_regime_gate,
+)
 from pyalloq_viz.regime import plot_entropy_pooling, plot_regime_transitions
 from pyalloq_viz.robustness import plot_cpcv_paths, plot_pbo_distribution
 from pyalloq_viz.simulation import (
@@ -17,6 +23,7 @@ from pyalloq_viz.tearsheets import (
     AllocationTearSheet,
     BaseTearSheet,
     MacroRegimeTearSheet,
+    MultiPeriodTearSheet,
     RobustnessTearSheet,
     SimulationTearSheet,
 )
@@ -45,6 +52,7 @@ __all__ = [
     # Base & Themes
     "BaseTearSheet",
     "MacroRegimeTearSheet",
+    "MultiPeriodTearSheet",
     "RobustnessTearSheet",
     "SimulationTearSheet",
     "ThemeName",
@@ -56,6 +64,7 @@ __all__ = [
     "extract_equity_paths",
     "get_theme",
     "hex_to_rgba",
+    "plot_alpha_decay_surface",
     "plot_correlation_and_periodic_returns",
     "plot_cpcv_paths",
     "plot_cvar_tail_risk",
@@ -65,6 +74,8 @@ __all__ = [
     # Simulation & Multiverse
     "plot_fan_chart",
     "plot_hierarchical_composition",
+    "plot_mpc_trajectory",
+    "plot_mpo_pillar_comparison",
     # Allocation Mechanics & Risk
     "plot_multi_universe_frontier",
     # Robustness & Overfitting
@@ -72,6 +83,7 @@ __all__ = [
     "plot_regime_transitions",
     "plot_risk_contributions",
     "plot_terminal_wealth_ruin",
+    "plot_thermodynamic_regime_gate",
     "plot_weight_drift_turnover",
     "reconstruct_drifted_weights",
     # Utilities
