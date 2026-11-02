@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, ClassVar
-import pandas as pd
+from typing import Any, ClassVar
+
 import numpy as np
+import pandas as pd
 
 
 @dataclass
@@ -12,6 +13,9 @@ class BacktestResult:
     returns: pd.Series
     weights: pd.DataFrame
     tear_sheet: pd.DataFrame
+    target_weights: pd.DataFrame | None = None
+    turnover: pd.Series | None = None
+    costs: pd.Series | None = None
 
     _ACCESSIBLE_KEYS: ClassVar[tuple[str, ...]] = (
         "name",
@@ -57,22 +61,27 @@ class BacktestResult:
 class OptimizationResult:
     """Standardized output for all portfolio optimizers."""
 
-    name = str
     weights: pd.Series
     status: str  # e.g., "OPTIMAL", "INFEASIBLE", "SUBOPTIMAL"
+    name: str = ""
 
-    expected_return: Optional[float] = None
-    volatility: Optional[float] = None
-    sharpe_ratio: Optional[float] = None
+    expected_return: float | None = None
+    volatility: float | None = None
+    sharpe_ratio: float | None = None
 
     # Store solver-specific data (e.g., cvxpy objective value, RL episode reward, HRP linkages)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def clean_weights(self, cutoff: float = 1e-4) -> pd.Series:
+        orig_sum = float(self.weights.sum())
         clean = self.weights.copy()
         clean[np.abs(clean) < cutoff] = 0.0
-
-        return clean / clean.sum()
+        total = float(clean.sum())
+        if np.abs(total) > 1e-12 and np.abs(orig_sum) > 1e-12:
+            if np.isclose(orig_sum, 1.0, atol=1e-2):
+                return clean / total
+            return clean * (orig_sum / total)
+        return clean
 
 
 @dataclass

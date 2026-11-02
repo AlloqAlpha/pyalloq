@@ -1,10 +1,11 @@
-import torch
-import torch.nn as nn
-import pandas as pd
 from typing import Any
 
-from pyalloq_core.interfaces import BaseCovarianceEstimator
+import pandas as pd
+import torch
 from pyalloq_core.data import MarketData
+from pyalloq_core.interfaces import BaseCovarianceEstimator
+from torch import nn
+
 from pyalloq.dl.dataset import MarketDataset
 
 
@@ -29,7 +30,7 @@ class DeepCovarianceEstimator(BaseCovarianceEstimator):
         data: MarketData,
         **kwargs: Any,
     ) -> pd.DataFrame:
-        if len(data.prices) < self.lookback_window:
+        if len(data.prices) < self.lookback_window + 2:
             cov_np = data.prices.pct_change().cov().fillna(0.0).values
             return pd.DataFrame(
                 cov_np, index=data.prices.columns, columns=data.prices.columns
