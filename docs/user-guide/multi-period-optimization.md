@@ -176,3 +176,34 @@ rl_allocator = RLAllocator(
     regime_gate=regime_gate,
 )
 ```
+
+---
+
+## Visualizing Multi-Period Optimization with `pyalloq-viz`
+
+[`pyalloq-viz`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq-viz/src/pyalloq_viz/__init__.py) provides dedicated interactive Plotly charts and [`MultiPeriodTearSheet`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq-viz/src/pyalloq_viz/tearsheets/multi_period_ts.py) for multi-period trajectories, alpha decay surfaces, thermodynamic regime gates, and cross-pillar net-of-cost comparisons:
+
+```python
+from pyalloq_viz import (
+    MultiPeriodTearSheet,
+    plot_alpha_decay_surface,
+    plot_mpc_trajectory,
+    plot_mpo_pillar_comparison,
+    plot_thermodynamic_regime_gate,
+)
+
+# 1. Individual interactive figures
+fig_traj = plot_mpc_trajectory(res, current_weights=current_w)
+fig_decay = plot_alpha_decay_surface(return_estimator.estimate_horizon(market_data))
+fig_gate = plot_thermodynamic_regime_gate(market_data, fast_window=15, slow_window=45)
+fig_bench = plot_mpo_pillar_comparison({"MPC": bt_result})
+
+# 2. Standalone HTML Tear Sheet Dashboard
+ts = MultiPeriodTearSheet(
+    mpo_result=res,
+    horizon_forecasts=return_estimator.estimate_horizon(market_data),
+    market_data=market_data,
+    strategy_comparison={"MPC": bt_result},
+)
+ts.to_html("visualizations_output/mpo/multi_period_tearsheet.html")
+```
