@@ -2814,6 +2814,8 @@ dependencies = [
 all-ml = [
     { name = "gymnasium" },
     { name = "stable-baselines3" },
+    { name = "timesfm" },
+    { name = "torch" },
 ]
 dev = [
     { name = "build" },
@@ -2871,7 +2873,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "plotly", specifier = ">=5.18.0" },
-    { name = "pyalloq", extras = ["torch", "rl"], marker = "extra == 'all-ml'" },
+    { name = "pyalloq", extras = ["dl", "rl"], marker = "extra == 'all-ml'" },
     { name = "pyalloq-backtest", editable = "src/pyalloq-backtest" },
     { name = "pyalloq-core", editable = "src/pyalloq-core" },
     { name = "pyalloq-data-connector", editable = "src/pyalloq-data-connector" },
