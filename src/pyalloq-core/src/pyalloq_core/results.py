@@ -16,6 +16,9 @@ class BacktestResult:
     target_weights: pd.DataFrame | None = None
     turnover: pd.Series | None = None
     costs: pd.Series | None = None
+    gross_returns: pd.Series | None = None
+    paper_returns: pd.Series | None = None
+    cost_breakdown: pd.DataFrame | None = None
 
     _ACCESSIBLE_KEYS: ClassVar[tuple[str, ...]] = (
         "name",

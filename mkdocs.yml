@@ -128,6 +128,7 @@ nav:
       - mathematics/graph-allocators.md
       - mathematics/monte-carlo-and-views.md
       - mathematics/multi-period-optimization.md
+      - mathematics/attribution-and-dsr.md
   - References:
       - references/papers.md
   - API Reference:

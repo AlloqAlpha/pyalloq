@@ -20,3 +20,16 @@ class TorchCostAdapter(nn.Module):
         costs_tensor = self.cost_model.calculate_costs(weights_delta, features_slice)
 
         return cast(torch.Tensor, costs_tensor)
+
+    def decompose(
+        self,
+        weights_delta: torch.Tensor,
+        volume: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        features_slice: dict[str, CostData] | None = None
+        if volume is not None:
+            features_slice = {"volume": volume}
+        spread_t, impact_t = self.cost_model.decompose_costs(
+            weights_delta, features_slice
+        )
+        return cast(torch.Tensor, spread_t), cast(torch.Tensor, impact_t)

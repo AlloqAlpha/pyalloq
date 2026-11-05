@@ -36,6 +36,12 @@ This page auto-generates documentation from the `pyalloq-viz` package docstrings
 
 ---
 
+### ComparisonTearSheet
+
+::: pyalloq_viz.tearsheets.comparison_ts.ComparisonTearSheet
+
+---
+
 ## 1. Multiverse & Simulation Plots
 
 ### plot_fan_chart
@@ -119,6 +125,32 @@ This page auto-generates documentation from the `pyalloq-viz` package docstrings
 ### plot_correlation_and_periodic_returns
 
 ::: pyalloq_viz.allocation.plot_correlation_and_periodic_returns
+
+---
+
+## 5. Multi-Strategy Comparison & Attribution Plots
+
+### plot_equity_drawdown_overlay
+
+::: pyalloq_viz.comparison.plot_equity_drawdown_overlay
+
+---
+
+### plot_multi_strategy_fan_chart
+
+::: pyalloq_viz.comparison.plot_multi_strategy_fan_chart
+
+---
+
+### plot_multi_turnover_drift
+
+::: pyalloq_viz.comparison.plot_multi_turnover_drift
+
+---
+
+### plot_attribution_waterfall
+
+::: pyalloq_viz.comparison.plot_attribution_waterfall
 
 ---
 

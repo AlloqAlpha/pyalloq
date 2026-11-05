@@ -5,6 +5,12 @@ from pyalloq_viz.allocation import (
     plot_risk_contributions,
     plot_weight_drift_turnover,
 )
+from pyalloq_viz.comparison import (
+    plot_attribution_waterfall,
+    plot_equity_drawdown_overlay,
+    plot_multi_strategy_fan_chart,
+    plot_multi_turnover_drift,
+)
 from pyalloq_viz.multi_period import (
     plot_alpha_decay_surface,
     plot_mpc_trajectory,
@@ -22,6 +28,7 @@ from pyalloq_viz.simulation import (
 from pyalloq_viz.tearsheets import (
     AllocationTearSheet,
     BaseTearSheet,
+    ComparisonTearSheet,
     MacroRegimeTearSheet,
     MultiPeriodTearSheet,
     RobustnessTearSheet,
@@ -51,6 +58,7 @@ __all__ = [
     "AllocationTearSheet",
     # Base & Themes
     "BaseTearSheet",
+    "ComparisonTearSheet",
     "MacroRegimeTearSheet",
     "MultiPeriodTearSheet",
     "RobustnessTearSheet",
@@ -65,17 +73,21 @@ __all__ = [
     "get_theme",
     "hex_to_rgba",
     "plot_alpha_decay_surface",
+    "plot_attribution_waterfall",
     "plot_correlation_and_periodic_returns",
     "plot_cpcv_paths",
     "plot_cvar_tail_risk",
     "plot_drawdown_fan_chart",
     # Macro Regime & Entropy
     "plot_entropy_pooling",
+    "plot_equity_drawdown_overlay",
     # Simulation & Multiverse
     "plot_fan_chart",
     "plot_hierarchical_composition",
     "plot_mpc_trajectory",
     "plot_mpo_pillar_comparison",
+    "plot_multi_strategy_fan_chart",
+    "plot_multi_turnover_drift",
     # Allocation Mechanics & Risk
     "plot_multi_universe_frontier",
     # Robustness & Overfitting

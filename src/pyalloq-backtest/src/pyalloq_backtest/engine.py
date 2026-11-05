@@ -6,6 +6,7 @@ from pyalloq_core.data import MarketData
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_core.results import BacktestResult
 
+from pyalloq_backtest.benchmark import BacktestTracker
 from pyalloq_backtest.costs import BaseCostModel, CostData, FlatBpsCostModel
 from pyalloq_backtest.metrics import MetricsTearSheet
 from pyalloq_backtest.splitters import BaseWindowSplitter, RollingWindowSplitter
@@ -23,6 +24,7 @@ class WalkForwardEngine:
         short_borrow_bps: float = 0.0,
         max_gross_leverage: float | None = None,
         benchmark_returns: pd.Series | None = None,
+        track_trial: bool = True,
     ) -> None:
         self.pipeline = pipeline
         self.rebalance_freq = rebalance_freq
@@ -31,6 +33,7 @@ class WalkForwardEngine:
         self.short_borrow_bps = short_borrow_bps
         self.max_gross_leverage = max_gross_leverage
         self.benchmark_returns = benchmark_returns
+        self.track_trial = track_trial
 
         self.splitter = splitter or RollingWindowSplitter(lookback_window=252)
         self.cost_model = cost_model or FlatBpsCostModel(bps=10.0)
@@ -103,10 +106,15 @@ class WalkForwardEngine:
         held_weights_arr = np.full((n_dates, n_assets), np.nan, dtype=np.float64)
         turnover_arr = np.zeros(n_dates, dtype=np.float64)
         costs_arr = np.zeros(n_dates, dtype=np.float64)
+        spread_costs_arr = np.zeros(n_dates, dtype=np.float64)
+        impact_costs_arr = np.zeros(n_dates, dtype=np.float64)
+        borrow_costs_arr = np.zeros(n_dates, dtype=np.float64)
         gross_port_ret_arr = np.full(n_dates, np.nan, dtype=np.float64)
+        paper_port_ret_arr = np.full(n_dates, np.nan, dtype=np.float64)
 
         active = False
         current_post_rebalance_w = np.zeros(n_assets, dtype=np.float64)
+        current_target_w = np.zeros(n_assets, dtype=np.float64)
         daily_borrow_rate = (self.short_borrow_bps / 10000.0) / 252.0
 
         for t_idx, raw_dt in enumerate(all_dates):
@@ -125,6 +133,14 @@ class WalkForwardEngine:
                     rf_daily[t_idx]
                 )
                 gross_port_ret_arr[t_idx] = gross_r
+
+                paper_cash_w = max(0.0, 1.0 - float(np.sum(current_target_w)))
+                paper_r = float(
+                    np.dot(current_target_w, asset_r)
+                ) + paper_cash_w * float(rf_daily[t_idx])
+                paper_port_ret_arr[t_idx] = paper_r
+
+                borrow_costs_arr[t_idx] += borrow_cost
                 costs_arr[t_idx] += borrow_cost
 
                 # 2. Drift weights to end of day t_idx (pre-rebalance w_t^-)
@@ -161,6 +177,7 @@ class WalkForwardEngine:
                 weights_history.append(weights)
 
                 target_w = weights.to_numpy(dtype=np.float64)
+                current_target_w = target_w.copy()
                 delta_w = target_w - pre_reb_w
                 l1_drift = float(np.sum(np.abs(delta_w)))
 
@@ -176,8 +193,15 @@ class WalkForwardEngine:
                     step_costs = self.cost_model.calculate_costs(
                         delta_series, features_slice=feats_slice
                     )
+                    spread_part, impact_part = self.cost_model.decompose_costs(
+                        delta_series, features_slice=feats_slice
+                    )
                     cost_val = float(pd.Series(step_costs).sum())
+                    spread_val = float(pd.Series(spread_part).sum())
+                    impact_val = float(pd.Series(impact_part).sum())
                     turnover_arr[t_idx] = l1_drift
+                    spread_costs_arr[t_idx] += spread_val
+                    impact_costs_arr[t_idx] += impact_val
                     costs_arr[t_idx] += cost_val
                     current_post_rebalance_w = target_w.copy()
                     active = True
@@ -198,6 +222,15 @@ class WalkForwardEngine:
         )
         turnover_series = pd.Series(turnover_arr, index=all_dates, name="Turnover")
         costs_series = pd.Series(costs_arr, index=all_dates, name="Costs")
+        cost_breakdown_df = pd.DataFrame(
+            {
+                "spread_cost": spread_costs_arr,
+                "impact_cost": impact_costs_arr,
+                "borrow_cost": borrow_costs_arr,
+                "total_cost": costs_arr,
+            },
+            index=all_dates,
+        )
 
         net_returns_arr = gross_port_ret_arr - costs_arr
         portfolio_returns = pd.Series(net_returns_arr, index=all_dates).reindex(
@@ -205,20 +238,45 @@ class WalkForwardEngine:
         )
         portfolio_returns = portfolio_returns.dropna()
 
+        gross_returns_series = (
+            pd.Series(gross_port_ret_arr, index=all_dates)
+            .reindex(portfolio_returns.index)
+            .dropna()
+        )
+        paper_returns_series = (
+            pd.Series(paper_port_ret_arr, index=all_dates)
+            .reindex(portfolio_returns.index)
+            .dropna()
+        )
+
+        strat_name = self.pipeline.allocator.__class__.__name__
+        tracker = BacktestTracker.instance()
+        if self.track_trial:
+            tracker.record(
+                strategy_name=strat_name,
+                returns=portfolio_returns,
+                risk_free_rate=data.risk_free_rate,
+            )
+
         tear_sheet = MetricsTearSheet.generate(
             portfolio_returns,
             risk_free_rate=data.risk_free_rate,
             weights=df_weights_daily.reindex(portfolio_returns.index),
             turnover=turnover_series.reindex(portfolio_returns.index),
             benchmark_returns=self.benchmark_returns,
+            n_trials=max(tracker.n_trials, 1),
+            trial_sharpes=tracker.trial_sharpes if tracker.n_trials >= 2 else None,
         )
 
         return BacktestResult(
-            name=self.pipeline.allocator.__class__.__name__,
+            name=strat_name,
             returns=portfolio_returns,
             weights=df_weights_daily,
             tear_sheet=tear_sheet,
             target_weights=df_target_daily,
             turnover=turnover_series,
             costs=costs_series,
+            gross_returns=gross_returns_series,
+            paper_returns=paper_returns_series,
+            cost_breakdown=cost_breakdown_df,
         )

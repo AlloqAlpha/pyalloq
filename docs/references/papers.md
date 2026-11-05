@@ -243,3 +243,45 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Modeled portfolio rebalancing between fast and slow market covariance baths as a stochastic heat engine bounded by Carnot efficiency \(\eta_{\text{Carnot}} = 1 - T_{\min}/T_{\max}\), using the Bures-Wasserstein \(W_2\) distance to gate frictional turnover during structural regime ruptures.
 
 **Implemented in:** `WassersteinRegimeGate`, `ThermodynamicDiagnostics`
+
+---
+
+## Multi-Strategy Evaluation, Deflated Sharpe Ratio & Performance Attribution
+
+### Bailey & López de Prado (2014) — The Deflated Sharpe Ratio {#dsr-2014}
+
+> Bailey, D. H., & López de Prado, M. (2014). The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality. *The Journal of Portfolio Management*, 40(5), 94–107.
+> [https://doi.org/10.3905/jpm.2014.40.5.094](https://doi.org/10.3905/jpm.2014.40.5.094)
+
+**Contribution:** Formulated the Deflated Sharpe Ratio (DSR) to correct for selection bias under multiple testing (\(N\) trials) and non-Normal return distributions (skewness \(\hat{\gamma}_3\) and kurtosis \(\hat{\gamma}_4\)), deriving the analytical expected maximum Sharpe hurdle \(\widehat{\text{SR}}_0\) via extreme value theory.
+
+**Key formula:**
+\[
+\widehat{\text{SR}}_0 = \sqrt{\text{Var}[\{\widehat{\text{SR}}_n\}]} \left( (1 - \gamma)\,\Phi^{-1}\!\left(1 - \frac{1}{N}\right) + \gamma\,\Phi^{-1}\!\left(1 - \frac{1}{N e}\right) \right)
+\]
+
+**Implemented in:** `BacktestTracker`, `MultiStrategyComparator` (`BenchmarkSuite`), `MetricsTearSheet`, `compute_deflated_sharpe_ratio`, `ComparisonTearSheet`
+
+---
+
+### Brinson & Fachler (1985) & Carino (1999) — Active Performance Attribution {#brinson-fachler-1985}
+
+> Brinson, G. P., & Fachler, N. (1985). Measuring Non-U.S. Equity Portfolio Performance. *The Journal of Portfolio Management*, 11(3), 73–76.
+> [https://doi.org/10.3905/jpm.1985.409005](https://doi.org/10.3905/jpm.1985.409005)
+>
+> Carino, D. R. (1999). Combining Attribution Effects Over Time. *The Journal of Performance Measurement*, 3(4), 5–14.
+
+**Contribution:** Decomposed active return \(R_p - R_b\) into Allocation, Selection, and Interaction effects across sectors or asset clusters, with logarithmic multi-period geometric linking so multi-period attribution sums exactly to total geometric active return.
+
+**Implemented in:** `PerformanceAttributor`, `BrinsonAttributionResult`, `plot_attribution_waterfall`, `ComparisonTearSheet`
+
+---
+
+### Ma & Smith (2025) — Alpha Decay and Transaction Costs in Multi-Period Trading {#ma-smith-2025}
+
+> Ma, C., & Smith, P. (2025). On the Effect of Alpha Decay and Transaction Costs on the Multi-period Optimal Trading Strategy. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2502.04284](https://doi.org/10.48550/arxiv.2502.04284)
+
+**Contribution:** Analyzed the compounding interaction between multi-horizon alpha decay, intra-period weight drift, and linear/non-linear transaction costs when transitioning from theoretical paper signals to executed multi-period trajectories.
+
+**Implemented in:** `PerformanceAttributor.compute_frictional_drag`, `FrictionalDragResult`, `WalkForwardEngine`, `plot_attribution_waterfall`

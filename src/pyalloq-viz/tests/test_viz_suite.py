@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from pyalloq_backtest import BenchmarkSuite
 from pyalloq_backtest.engine import WalkForwardEngine
 from pyalloq_backtest.overfitting import CPCVSplitter, PBOEvaluator
 from pyalloq_backtest.splitters import RollingWindowSplitter
@@ -20,20 +21,25 @@ from pyalloq_simulation import (
 )
 from pyalloq_viz import (
     AllocationTearSheet,
+    ComparisonTearSheet,
     MacroRegimeTearSheet,
     MultiPeriodTearSheet,
     RobustnessTearSheet,
     SimulationTearSheet,
     plot_alpha_decay_surface,
+    plot_attribution_waterfall,
     plot_correlation_and_periodic_returns,
     plot_cpcv_paths,
     plot_cvar_tail_risk,
     plot_drawdown_fan_chart,
     plot_entropy_pooling,
+    plot_equity_drawdown_overlay,
     plot_fan_chart,
     plot_hierarchical_composition,
     plot_mpc_trajectory,
     plot_mpo_pillar_comparison,
+    plot_multi_strategy_fan_chart,
+    plot_multi_turnover_drift,
     plot_multi_universe_frontier,
     plot_pbo_distribution,
     plot_regime_transitions,
@@ -48,6 +54,7 @@ from pyalloq.classical.estimators.returns.multi_horizon import (
     AlphaDecayReturnEstimator,
 )
 from pyalloq.classical.optimizers.multi_period import MultiPeriodMPCAllocator
+from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 from pyalloq.classical.optimizers.risk_budgeting import RiskBudgetingAllocator
 from pyalloq.ml.optimizers.hrp import HRPAllocator
 from pyalloq.ml.optimizers.nco import NCOAllocator
@@ -366,3 +373,66 @@ def test_multi_period_optimization_tearsheet(
     html_path = tmp_path / "multi_period_tearsheet.html"
     ts_mpo.to_html(path=html_path)
     assert html_path.exists()
+
+
+def test_comparison_and_attribution_tearsheet(
+    viz_market_data: MarketData,
+    viz_scenario_data: ScenarioMarketData,
+    tmp_path: Path,
+) -> None:
+    pipelines = {
+        "EqualWeight": StrategyPipeline(
+            allocator=EqualWeightAllocator(tickers=viz_market_data.assets)
+        ),
+        "HRP": StrategyPipeline(
+            allocator=HRPAllocator(tickers=viz_market_data.assets),
+            cov_estimator=EmpiricalCovariance(),
+        ),
+        "RiskBudgeting": StrategyPipeline(
+            allocator=RiskBudgetingAllocator(tickers=viz_market_data.assets),
+            cov_estimator=EmpiricalCovariance(),
+        ),
+    }
+
+    suite = BenchmarkSuite(
+        pipelines=pipelines,
+        splitter=RollingWindowSplitter(lookback_window=40),
+        rebalance_freq="ME",
+        benchmark="EqualWeight",
+        reset_tracker=True,
+    )
+    comp_res = suite.run(viz_market_data, scenario_data=viz_scenario_data)
+
+    fig_eq_dd = plot_equity_drawdown_overlay(
+        comp_res, benchmark=comp_res.results["EqualWeight"]
+    )
+    assert isinstance(fig_eq_dd, go.Figure)
+    assert len(fig_eq_dd.data) >= 6
+
+    fig_fan = plot_multi_strategy_fan_chart(comp_res)
+    assert isinstance(fig_fan, go.Figure)
+    assert len(fig_fan.data) >= 6
+
+    fig_to = plot_multi_turnover_drift(comp_res, market_data=viz_market_data)
+    assert isinstance(fig_to, go.Figure)
+    assert len(fig_to.data) >= 6
+
+    fig_attr = plot_attribution_waterfall(comp_res, market_data=viz_market_data)
+    assert isinstance(fig_attr, go.Figure)
+    assert len(fig_attr.data) >= 4
+
+    ts_comp = ComparisonTearSheet(
+        comp_res,
+        market_data=viz_market_data,
+        scenario_data=viz_scenario_data,
+        benchmark=comp_res.results["EqualWeight"],
+    )
+    kpis = ts_comp.get_kpis()
+    assert "Top Deflated Sharpe (DSR)" in kpis
+    assert "Trials Accounted (N)" in kpis
+    assert isinstance(ts_comp.to_figure(), go.Figure)
+
+    html_path = tmp_path / "comparison_tearsheet.html"
+    html_str = ts_comp.to_html(path=html_path)
+    assert html_path.exists()
+    assert "Multi-Strategy Comparison & Attribution Tear Sheet" in html_str

@@ -178,6 +178,9 @@ cost_model = AlmgrenChrissCostModel(
 | `annualized_return` | \((1 + \text{total\_return})^{1/Y} - 1\) | Geometric annualized return |
 | `annualized_volatility` | \(\sigma_r \times \sqrt{252}\) | Annualized standard deviation |
 | `sharpe_ratio` | \(\frac{r_a - r_f}{\sigma_a}\) | Risk-adjusted return |
+| `probabilistic_sharpe_ratio` | \(\Phi\!\left(\frac{(\widehat{SR} - SR^*)\sqrt{T-1}}{\sqrt{1 - \hat{\gamma}_3 \widehat{SR} + \frac{\hat{\gamma}_4 - 1}{4}\widehat{SR}^2}}\right)\) | Probability that Sharpe exceeds target \(SR^*\) |
+| `deflated_sharpe_ratio` | \(\text{PSR}(\widehat{SR}_0)\) | Probability that Sharpe is statistically significant after penalizing for \(N\) trials, skewness, and kurtosis |
+| `expected_max_sharpe_ratio` | \(\widehat{SR}_0(N, \text{Var}[\{\widehat{SR}_n\}])\) | Expected maximum Sharpe hurdle under the False Strategy Theorem |
 | `maximum_drawdown` | \(\min_t \frac{V_t - \max_{\tau \leq t} V_\tau}{\max_{\tau \leq t} V_\tau}\) | Largest peak-to-trough decline |
 | `calmar_ratio` | \(\frac{r_a}{|\text{MDD}|}\) | Return per unit of max drawdown |
 
@@ -189,6 +192,71 @@ tear_sheet = MetricsTearSheet.generate(
     risk_free_rate=0.04,
 )
 print(tear_sheet)
+```
+
+---
+
+## Multi-Strategy Comparison & Deflated Sharpe Ratio (`BenchmarkSuite`)
+
+Evaluating multiple allocators simultaneously on the same historical trajectory introduces **Selection Bias** (the Multiple Testing Problem). `pyalloq-backtest` solves this via two integrated components:
+
+1. **`BacktestTracker` (Singleton Ledger)**: Thread-safe singleton inside `WalkForwardEngine` that automatically increments the trial counter \(N\) and records each executed pipeline's Sharpe ratio, skewness, and kurtosis so cross-trial variance \(\text{Var}[\{\widehat{\text{SR}}_n\}]\) and the False Strategy hurdle \(\widehat{\text{SR}}_0\) are tracked automatically.
+2. **`MultiStrategyComparator` (`BenchmarkSuite`)**: Runs a dictionary of `StrategyPipeline` (or `WalkForwardEngine`) instances concurrently over identical `MarketData` (and optional `ScenarioMarketData`), outputting a `ComparisonResult` with `.summary_table`, `.results`, `.scenario_results`, and `.attributions`.
+
+```python
+from pyalloq_backtest import BacktestTracker, BenchmarkSuite, RollingWindowSplitter, AlmgrenChrissCostModel
+from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq.classical import EqualWeightAllocator, RiskParityAllocator, MarkowitzAllocator, MultiPeriodMPCAllocator, LedoitWolfShrinkage
+from pyalloq.ml import HRPAllocator
+
+pipelines = {
+    "EqualWeight": StrategyPipeline(allocator=EqualWeightAllocator(tickers=data.assets)),
+    "RiskParity": StrategyPipeline(allocator=RiskParityAllocator(tickers=data.assets), cov_estimator=LedoitWolfShrinkage()),
+    "HRP": StrategyPipeline(allocator=HRPAllocator(tickers=data.assets), cov_estimator=LedoitWolfShrinkage()),
+    "Markowitz": StrategyPipeline(allocator=MarkowitzAllocator(tickers=data.assets), cov_estimator=LedoitWolfShrinkage()),
+    "MultiPeriodMPC": StrategyPipeline(allocator=MultiPeriodMPCAllocator(tickers=data.assets), cov_estimator=LedoitWolfShrinkage()),
+}
+
+with BacktestTracker.session(reset=True) as tracker:
+    suite = BenchmarkSuite(
+        pipelines=pipelines,
+        splitter=RollingWindowSplitter(lookback_window=252),
+        cost_model=AlmgrenChrissCostModel(portfolio_aum=10_000_000, spread_bps=4.0, gamma=0.1),
+        rebalance_freq="ME",
+        benchmark="EqualWeight",
+    )
+    comp_result = suite.run(data)
+    print(f"Total Trials Accounted (N): {tracker.n_trials}")
+    print(comp_result.summary_table[["annualized_return", "sharpe_ratio", "deflated_sharpe_ratio", "maximum_drawdown"]])
+```
+
+---
+
+## Brinson-Fachler, Factor & Frictional Drag Attribution (`PerformanceAttributor`)
+
+To prove whether an allocator's outperformance stems from genuine skill, passive factor beta, or is eroded by execution mechanics, `PerformanceAttributor` decomposes active return \(R_p - R_b\) across three pillars:
+
+1. **Classical Brinson-Fachler Decomposition (`compute_brinson_fachler`)**:
+   - Decomposes active return into **Allocation Effect**, **Selection Effect**, and **Interaction Effect** across sectors or hierarchical asset clusters.
+   - Supports **Carino (1999)** geometric multi-period linking (default) and arithmetic linking, with a 3-tier cluster resolution hierarchy (explicit `sector_map` \(\rightarrow\) `MarketData.cross_sectional["sector"]` \(\rightarrow\) automatic Ward/HRP correlation clustering).
+2. **Factor-Implied Attribution (`compute_factor_attribution`)**:
+   - Regresses active returns against systematic risk premia (`Market`, `Momentum`, `LowVolatility`, plus `Size` and `Value` when available, or custom `factor_returns`) using OLS with **Newey-West HAC** \(t\)-statistics.
+3. **Frictional Drag Accounting (`compute_frictional_drag`, Ma & Smith, 2025)**:
+   - Bridges **Theoretical Paper Return** (un-drifted target weights) \(\rightarrow\) **Alpha Decay & Drift Drag** \(\rightarrow\) **Gross Executed Return** \(\rightarrow\) **Proportional Spread/Commission Drag** \(\rightarrow\) **Almgren-Chriss Square-Root Market Impact Drag** \(\rightarrow\) **Short Borrow Drag** \(\rightarrow\) **Net Realized Return**.
+
+```python
+from pyalloq_backtest import PerformanceAttributor
+
+attributor = PerformanceAttributor(linking_method="carino", hac_lags=5)
+attr_res = attributor.attribute(
+    backtest_result=comp_result.results["MultiPeriodMPC"],
+    market_data=data,
+    benchmark_weights=comp_result.results["EqualWeight"],
+)
+
+print(attr_res.brinson.sector_summary)        # Allocation, Selection, Interaction by sector/cluster
+print(attr_res.factor.factor_summary)         # Factor exposures, Newey-West t-stats, annualized alpha
+print(attr_res.frictional.waterfall_summary)  # Paper -> Drift/Decay -> Spread -> Market Impact -> Net
 ```
 
 ---
