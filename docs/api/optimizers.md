@@ -10,6 +10,18 @@
 
 ---
 
+### InverseVolatilityAllocator
+
+::: pyalloq.classical.optimizers.naive.InverseVolatilityAllocator
+
+---
+
+### MarketCapWeightAllocator
+
+::: pyalloq.classical.optimizers.naive.MarketCapWeightAllocator
+
+---
+
 ### RandomAllocator
 
 ::: pyalloq.classical.optimizers.naive.RandomAllocator
@@ -19,6 +31,18 @@
 ### MarkowitzAllocator
 
 ::: pyalloq.classical.optimizers.markowitz.MarkowitzAllocator
+
+---
+
+### MeanCVaRAllocator
+
+::: pyalloq.classical.optimizers.cvar.MeanCVaRAllocator
+
+---
+
+### CDaRAllocator
+
+::: pyalloq.classical.optimizers.cvar.CDaRAllocator
 
 ---
 
@@ -40,6 +64,20 @@
 
 ---
 
+## Multi-Period & Scenario Allocators
+
+### MultiPeriodMPCAllocator
+
+::: pyalloq.classical.optimizers.multi_period.MultiPeriodMPCAllocator
+
+---
+
+### StochasticScenarioMPCAllocator
+
+::: pyalloq.classical.optimizers.stochastic_mpc.StochasticScenarioMPCAllocator
+
+---
+
 ## Machine Learning Allocators
 
 ### HRPAllocator
@@ -57,3 +95,9 @@
 ### NCOAllocator
 
 ::: pyalloq.ml.optimizers.nco.NCOAllocator
+
+---
+
+### BayesianHRPAllocator
+
+::: pyalloq.ml.optimizers.bhrp.BayesianHRPAllocator

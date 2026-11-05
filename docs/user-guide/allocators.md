@@ -6,34 +6,43 @@ Allocators solve for optimal portfolio weights given market data, a covariance m
 
 ## Classical Allocators
 
-### Equal Weight (`EqualWeightAllocator`)
+### Equal Weight, Inverse Volatility & Market Cap Baselines
 
-Assigns identical weight \(1/N\) to every asset. The simplest possible portfolio. Surprisingly hard to beat out-of-sample.
+PyAlloq provides four fast analytical baselines in `pyalloq.classical.optimizers.naive`:
+
+- **`EqualWeightAllocator`**: Assigns identical weight \(1/N\) to every asset.
+- **`InverseVolatilityAllocator`**: Assigns weights inversely proportional to standalone asset volatility \(w_i \propto 1/\sigma_i\) (ignoring cross-correlations).
+- **`MarketCapWeightAllocator`**: Assigns weights proportional to `data.cross_sectional["market_cap"]` (or falls back to \(1/N\)).
+- **`RandomAllocator`**: Samples simplex weights from a symmetric Dirichlet distribution.
 
 \[
-w_i = \frac{1}{N}, \quad \forall i
+w_i^{\text{EW}} = \frac{1}{N}, \qquad w_i^{\text{IV}} = \frac{1/\sigma_i}{\sum_{j=1}^N 1/\sigma_j}, \qquad w_i^{\text{MCap}} = \frac{\text{MCap}_i}{\sum_{j=1}^N \text{MCap}_j}
 \]
 
 ```python
-from pyalloq.classical.optimizers.naive import EqualWeightAllocator
-
-pipeline = StrategyPipeline(
-    allocator=EqualWeightAllocator(tickers=data.assets)
+from pyalloq import (
+    EqualWeightAllocator,
+    InverseVolatilityAllocator,
+    MarketCapWeightAllocator,
+    StrategyPipeline,
 )
+
+pipeline_ew = StrategyPipeline(allocator=EqualWeightAllocator(tickers=data.assets))
+pipeline_iv = StrategyPipeline(allocator=InverseVolatilityAllocator(tickers=data.assets))
+pipeline_mc = StrategyPipeline(allocator=MarketCapWeightAllocator(tickers=data.assets))
 ```
 
-!!! tip "Use as a baseline"
-    Always include `EqualWeightAllocator` as a benchmark in your backtest comparisons.
+!!! tip "Use as baselines"
+    Always include `EqualWeightAllocator` and `InverseVolatilityAllocator` as benchmarks in your backtest comparisons.
 
 ---
 
 ### Markowitz (`MarkowitzAllocator`)
 
-Classical mean-variance optimizer. Supports three objective functions via the `ObjectiveFunction` enum.
+Classical mean-variance optimizer supporting five objectives (`MIN_VOLATILITY`, `MAX_SHARPE`, `MAX_RETURN`, `EFFICIENT_RETURN`, `EFFICIENT_RISK`), institutional constraints, and efficient frontier tracing.
 
 ```python
-from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
-from pyalloq_core.enums import ObjectiveFunction
+from pyalloq import MarkowitzAllocator, ObjectiveFunction
 ```
 
 === "Min Volatility"
@@ -51,10 +60,10 @@ from pyalloq_core.enums import ObjectiveFunction
     ```
 
 === "Max Sharpe"
-    Maximizes the Sharpe ratio using the Tobin substitution trick. Requires expected returns.
+    Maximizes the Sharpe ratio using the homogenized Cornuéjols-Tütüncü / Tobin transformation. Requires expected returns.
 
     \[
-    \max_w \frac{w^\top \mu - r_f}{\sqrt{w^\top \Sigma w}} \;\equiv\; \min_y \; y^\top \Sigma y \quad \text{s.t.} \quad (\mu - r_f)^\top y = 1,\; y \geq 0
+    \max_w \frac{w^\top \mu - r_f}{\sqrt{w^\top \Sigma w}} \;\equiv\; \min_{y, \kappa \ge 0} \; y^\top \Sigma y \quad \text{s.t.} \quad (\mu - r_f)^\top y = 1,\; \mathbf{1}^\top y = \kappa
     \]
 
     ```python
@@ -62,7 +71,6 @@ from pyalloq_core.enums import ObjectiveFunction
         tickers=data.assets,
         objective=ObjectiveFunction.MAX_SHARPE
     )
-    # MAX_SHARPE requires a returns estimator in the pipeline
     pipeline = StrategyPipeline(
         allocator=allocator,
         returns_estimator=JamesSteinReturnEstimator(),
@@ -82,6 +90,76 @@ from pyalloq_core.enums import ObjectiveFunction
         objective=ObjectiveFunction.MAX_RETURN
     )
     ```
+
+=== "Efficient Return & Efficient Risk"
+    Target a specific expected return (`EFFICIENT_RETURN`) or volatility ceiling (`EFFICIENT_RISK`), or trace the entire **Efficient Frontier**:
+
+    ```python
+    # Minimize volatility subject to portfolio return >= 12%
+    alloc_ret = MarkowitzAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.EFFICIENT_RETURN,
+        target_return=0.12,
+    )
+
+    # Maximize expected return subject to portfolio volatility <= 15%
+    alloc_risk = MarkowitzAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.EFFICIENT_RISK,
+        target_volatility=0.15,
+    )
+
+    # Trace 20 portfolios along the Efficient Frontier
+    frontier_results = alloc_ret.efficient_frontier(
+        data, cov_matrix=cov, expected_returns=mu, n_points=20
+    )
+    ```
+
+=== "Constraints (Bounds, Market-Neutral, Sectors, Turnover)"
+    `MarkowitzAllocator` natively supports box bounds, dollar-neutrality, gross leverage limits, single-period turnover limits, L2 diversification regularization, and sector caps/floors:
+
+    ```python
+    constrained_allocator = MarkowitzAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.MAX_SHARPE,
+        weight_bounds=(0.02, 0.35),                     # Per-asset min/max bounds
+        market_neutral=False,                           # Set True for sum(w) == 0
+        max_leverage=1.0,                               # L1 gross leverage ||w||_1 <= L
+        max_turnover=0.40,                              # ||w - w_prev||_1 <= 0.40
+        l2_gamma=0.01,                                  # L2 weight regularization
+        sector_mapper={"AAPL": "Tech", "MSFT": "Tech", "JPM": "Finance"},
+        sector_upper={"Tech": 0.50},
+        sector_lower={"Finance": 0.15},
+    )
+    ```
+
+---
+
+### Conditional Value-at-Risk & Drawdown (`MeanCVaRAllocator` & `CDaRAllocator`)
+
+When asset returns exhibit fat tails or negative skewness, variance-based optimization underestimates tail risk. PyAlloq provides two single-period linear/conic downside risk allocators in `pyalloq.classical.optimizers.cvar`:
+
+- **`MeanCVaRAllocator`**: Minimizes portfolio Expected Shortfall (\(\text{CVaR}_\beta\)) via the Rockafellar & Uryasev (2000) linear program (supports `MIN_CVAR`, `EFFICIENT_RETURN`, and `MAX_RETURN` objectives plus box bounds, market neutrality, turnover, and L2 regularization).
+- **`CDaRAllocator`**: Minimizes Conditional Drawdown-at-Risk (\(\text{CDaR}_\beta\)) over the historical cumulative return path (Chekhlov, Uryasev & Zabarankin, 2005).
+
+```python
+from pyalloq import CDaRAllocator, MeanCVaRAllocator, ObjectiveFunction
+
+# 95% CVaR minimization with 40% per-asset cap
+cvar_allocator = MeanCVaRAllocator(
+    tickers=data.assets,
+    beta=0.95,
+    objective=ObjectiveFunction.MIN_CVAR,
+    weight_bounds=(0.0, 0.40),
+)
+
+# 90% Conditional Drawdown-at-Risk minimization
+cdar_allocator = CDaRAllocator(
+    tickers=data.assets,
+    beta=0.90,
+    weight_bounds=(0.0, 0.50),
+)
+```
 
 ---
 
@@ -211,13 +289,34 @@ pipeline = StrategyPipeline(
 
 | Scenario | Recommended Allocator |
 |----------|----------------------|
-| Quick baseline | `EqualWeightAllocator` |
+| Quick analytical baselines | `EqualWeightAllocator`, `InverseVolatilityAllocator`, `MarketCapWeightAllocator` |
 | Minimize portfolio risk, no return forecast needed | `RiskParityAllocator` |
 | Minimize portfolio risk, trust your return forecast | `MarkowitzAllocator(MIN_VOLATILITY)` |
-| Maximize Sharpe, have a good return model | `MarkowitzAllocator(MAX_SHARPE)` |
-| Large universe (50+ assets), covariance unstable | `HRPAllocator` or `NCOAllocator` |
+| Maximize Sharpe with box/sector/turnover constraints | `MarkowitzAllocator(MAX_SHARPE, weight_bounds=..., sector_upper=...)` |
+| Target return or target volatility / Efficient Frontier | `MarkowitzAllocator(EFFICIENT_RETURN)` / `MarkowitzAllocator(EFFICIENT_RISK)` |
+| Heavy-tailed downside or drawdown control | `MeanCVaRAllocator` or `CDaRAllocator` |
+| Large universe (50+ assets), covariance unstable | `HRPAllocator`, `NCOAllocator`, or `BayesianHRPAllocator` |
 | Maximize portfolio diversification | `MaxDiversificationAllocator` |
 | Assign specific risk budgets per asset | `RiskBudgetingAllocator` |
+
+---
+
+## Converting Continuous Weights to Integer Shares (`DiscreteShareAllocator`)
+
+In live trading, continuous portfolio weights \(w \in \mathbb{R}^N\) must be converted into whole share or lot orders given current asset prices and total account cash. `DiscreteShareAllocator` supports both `method="greedy"` and Mixed-Integer Linear Programming (`method="lp"`), handling both long-only and long-short portfolios:
+
+```python
+from pyalloq import DiscreteShareAllocator
+
+weights = pipeline.generate_weights(data)
+
+disc = DiscreteShareAllocator(total_portfolio_value=100_000.0, lot_size=1)
+order_plan = disc.allocate(weights, latest_prices=data, method="greedy")
+
+print(order_plan.shares)          # {'AAPL': 142, 'MSFT': 88, 'GOOGL': 115, ...}
+print(order_plan.leftover_cash)   # 43.18
+print(order_plan.rmse_error)      # 0.0004
+```
 
 ---
 

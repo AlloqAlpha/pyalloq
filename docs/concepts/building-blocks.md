@@ -106,12 +106,13 @@ Produces a `pd.Series` of annualized expected returns, one per asset. Plug any e
 
 | Estimator | When to use |
 |-----------|-------------|
+| `MeanHistoricalReturnEstimator` | Arithmetic or geometric (CAGR) sample mean returns |
 | `EWMAReturnEstimator` | Recent returns matter more (default) |
-| `MomentumReturnEstimator` | Cross-sectional momentum signal |
-| `FactorReturnEstimator` | Factor-model attribution (Fama-French style) |
+| `VolatilityScaledMultiHorizonEstimator` / `ResidualMomentumEstimator` | Cross-sectional & idiosyncratic momentum signals |
+| `CAPMReturnEstimator` / `MultiFactorReturnEstimator` | Factor-model attribution (CAPM / Fama-French style) |
 | `JamesSteinReturnEstimator` | Shrinkage — great for large asset universes |
 | `ImpliedReturnEstimator` | Reverse-optimization from known market weights |
-| `BlackLittermanEstimator` | Blend market equilibrium with investor views |
+| `BlackLittermanReturnEstimator` | Blend market equilibrium with investor views inside `StrategyPipeline` |
 
 ---
 
@@ -141,11 +142,13 @@ Solves for optimal portfolio weights given the estimated inputs.
 
 | Allocator | Requires returns? |
 |-----------|------------------|
-| `EqualWeightAllocator` | No |
-| `MarkowitzAllocator` | For Max Sharpe / Max Return |
+| `EqualWeightAllocator`, `InverseVolatilityAllocator`, `MarketCapWeightAllocator` | No |
+| `MarkowitzAllocator` | For Max Sharpe / Max Return / Efficient Return / Efficient Risk |
+| `MeanCVaRAllocator`, `CDaRAllocator` | Optional (for target return or utility) |
 | `RiskParityAllocator` | No |
 | `RiskBudgetingAllocator` | No (uses `data.features["risk_budgets"]`) |
 | `MaxDiversificationAllocator` | No |
+| `MultiPeriodMPCAllocator`, `StochasticScenarioMPCAllocator` | Yes (multi-horizon forecasts or scenarios) |
 
 **Graph-based ML (hierarchical clustering, no matrix inversion):**
 
