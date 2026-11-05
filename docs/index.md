@@ -71,15 +71,16 @@ flowchart LR
 
 ## Feature Highlights
 
-- 🎯 **5 classical allocators**: Equal Weight, Markowitz (Min Vol / Max Sharpe / Max Return), Risk Parity, Risk Budgeting, Max Diversification
-- 🌳 **3 graph-based ML allocators**: HRP, HERC, NCO — no covariance inversion required
-- 📈 **6 return estimators**: EWMA, Momentum, Factor, James-Stein, Implied, Black-Litterman
-- 📊 **5 covariance estimators**: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance
+- 🎯 **9 classical & multi-period allocators**: Equal Weight, Inverse Volatility, Market Cap Weight, Markowitz (Min Vol / Max Sharpe / Max Return / Efficient Return / Efficient Risk / Efficient Frontier with box bounds, market-neutral, leverage, turnover, L2 & sector constraints), Single-Period `MeanCVaRAllocator` & `CDaRAllocator`, Risk Parity, Risk Budgeting, Max Diversification, plus `MultiPeriodMPCAllocator` and `StochasticScenarioMPCAllocator`
+- 🌳 **4 graph-based ML allocators**: HRP, HERC, NCO, and Two-Level Bayesian `BayesianHRPAllocator` — no covariance inversion required
+- 📈 **9 return estimators**: Mean Historical (Arithmetic & CAGR), EWMA, Multi-Horizon & Residual Momentum, CAPM & Multi-Factor, James-Stein, Implied, Multi-Horizon `AlphaDecayReturnEstimator`, and pipeline-native Black-Litterman (`BlackLittermanReturnEstimator`)
+- 📊 **6 covariance estimators**: Empirical, EWMA, Ledoit-Wolf, RMT Denoising, Semi-Covariance, and `BlackLittermanCovarianceEstimator`
+- 🧮 **Discrete Share Allocation (`DiscreteShareAllocator`)**: Converts continuous portfolio weights and latest prices into exact integer share/lot orders and leftover cash via Greedy or Mixed-Integer Linear Programming (`method="lp"`)
 - 🎲 **5 Monte Carlo scenario generators**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-\(t\) Copula, and GMM Markov Regimes
 - 🔭 **Meucci Entropy Pooling**: First- and second-moment views (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin
 - 🔁 **4 backtest splitters & validation engines**: Rolling Window, Expanding Window, Purged K-Fold, plus Combinatorial Purged CV (`CPCVSplitter`) and Probability of Backtest Overfitting (`PBOEvaluator`)
-- 🎨 **4 interactive visualization Tear Sheets (`pyalloq-viz`)**: Multiverse & Simulation, Robustness & Overfitting (PBO/CPCV), Macro Regime & Entropy, and Allocation Mechanics & Risk
-- 💸 **2 transaction cost models**: Flat Bps, Almgren-Chriss market impact
+- 🎨 **5 interactive visualization Tear Sheets (`pyalloq-viz`)**: Multiverse & Simulation, Robustness & Overfitting (PBO/CPCV), Macro Regime & Entropy, Allocation Mechanics & Risk, and Multi-Period Trajectories
+- 💸 **4 transaction cost models**: Flat Bps, Proportional Spread, Almgren-Chriss market impact, and Composite Cost Models
 - 🔬 **Zero-lookahead guarantee** via `MarketData.validate_alignment()` and `slice_time()`
 
 ---

@@ -1,13 +1,13 @@
-import pandas as pd
 from typing import Any
+
+import pandas as pd
+
+from pyalloq_core.data import MarketData
 from pyalloq_core.interfaces import (
     BaseAllocator,
-    BaseReturnEstimator,
     BaseCovarianceEstimator,
+    BaseReturnEstimator,
 )
-from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
-from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
-from pyalloq_core.data import MarketData
 
 
 class StrategyPipeline:
@@ -19,14 +19,23 @@ class StrategyPipeline:
         allocator_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self.allocator = allocator
-        self.returns_estimator = (
-            returns_estimator
-            if returns_estimator is not None
-            else EWMAReturnEstimator()
-        )
-        self.cov_estimator = (
-            cov_estimator if cov_estimator is not None else EmpiricalCovariance()
-        )
+        if returns_estimator is None:
+            from pyalloq.classical.estimators.returns.classical.ewma import (
+                EWMAReturnEstimator,
+            )
+
+            self.returns_estimator: BaseReturnEstimator = EWMAReturnEstimator()
+        else:
+            self.returns_estimator = returns_estimator
+
+        if cov_estimator is None:
+            from pyalloq.classical.estimators.covariance.empirical import (
+                EmpiricalCovariance,
+            )
+
+            self.cov_estimator: BaseCovarianceEstimator = EmpiricalCovariance()
+        else:
+            self.cov_estimator = cov_estimator
         self.allocator_kwargs = allocator_kwargs or {}
 
     def generate_weights(

@@ -4,6 +4,12 @@
 
 ## Return Estimators
 
+### MeanHistoricalReturnEstimator
+
+::: pyalloq.classical.estimators.returns.classical.mean.MeanHistoricalReturnEstimator
+
+---
+
 ### EWMAReturnEstimator
 
 ::: pyalloq.classical.estimators.returns.classical.ewma.EWMAReturnEstimator
@@ -13,6 +19,8 @@
 ### JamesSteinReturnEstimator
 
 ::: pyalloq.classical.estimators.returns.classical.james_stein.JamesSteinReturnEstimator
+
+---
 
 ### VolatilityScaledMultiHorizonEstimator
 
@@ -26,15 +34,9 @@
 
 ---
 
-### TimesFM3UnivariateReturnEstimator
+### AlphaDecayReturnEstimator
 
-::: pyalloq.dl.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
-
----
-
-### TimesFM3MultivariateReturnEstimator
-
-::: pyalloq.dl.estimators.returns.timesfm.TimesFM3MultivariateReturnEstimator
+::: pyalloq.classical.estimators.returns.multi_horizon.AlphaDecayReturnEstimator
 
 ---
 
@@ -53,6 +55,18 @@
 ### ImpliedReturnEstimator
 
 ::: pyalloq.classical.estimators.returns.classical.implied.ImpliedReturnEstimator
+
+---
+
+### TimesFM3UnivariateReturnEstimator
+
+::: pyalloq.dl.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
+
+---
+
+### TimesFM3MultivariateReturnEstimator
+
+::: pyalloq.dl.estimators.returns.timesfm.TimesFM3MultivariateReturnEstimator
 
 ---
 
@@ -93,6 +107,18 @@
 ### BlackLittermanEstimator
 
 ::: pyalloq.classical.estimators.black_litterman.bayesian.BlackLittermanEstimator
+
+---
+
+### BlackLittermanReturnEstimator
+
+::: pyalloq.classical.estimators.black_litterman.bayesian.BlackLittermanReturnEstimator
+
+---
+
+### BlackLittermanCovarianceEstimator
+
+::: pyalloq.classical.estimators.black_litterman.bayesian.BlackLittermanCovarianceEstimator
 
 ---
 

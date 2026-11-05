@@ -6,6 +6,10 @@ class ObjectiveFunction(Enum):
     MIN_VOLATILITY = auto()
     MAX_RETURN = auto()
     RISK_PARITY = auto()
+    EFFICIENT_RETURN = auto()
+    EFFICIENT_RISK = auto()
+    MIN_CVAR = auto()
+    MIN_CDAR = auto()
 
 
 class ConstraintType(Enum):

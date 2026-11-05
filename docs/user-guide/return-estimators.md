@@ -13,6 +13,26 @@ class BaseReturnEstimator(ABC):
 
 ---
 
+## Mean Historical Return (`MeanHistoricalReturnEstimator`)
+
+Computes annualized expected returns from historical price series using either the **arithmetic mean** (`compounding=False`) or **geometric / CAGR mean** (`compounding=True`), with configurable `DataFrequency` (`"DAILY"`, `"WEEKLY"`, `"MONTHLY"`, `"CRYPTO_DAILY"`):
+
+\[
+\hat{\mu}_{\text{arith}} = \frac{f}{T}\sum_{t=1}^T r_t, \qquad \hat{\mu}_{\text{CAGR}} = \left(\prod_{t=1}^T (1 + r_t)\right)^{f/T} - 1
+\]
+
+```python
+from pyalloq import MeanHistoricalReturnEstimator
+
+# Geometric (CAGR) historical return
+pipeline = StrategyPipeline(
+    allocator=allocator,
+    returns_estimator=MeanHistoricalReturnEstimator(compounding=True, frequency="DAILY"),
+)
+```
+
+---
+
 ## EWMA (`EWMAReturnEstimator`)
 
 Exponentially Weighted Moving Average returns. Recent observations receive higher weight. The **default** estimator in `StrategyPipeline`.
@@ -168,8 +188,23 @@ mu_bl, cov_bl = bl.estimate(
 )
 ```
 
-!!! note
-    `BlackLittermanEstimator` is not a `BaseReturnEstimator` — it returns both `(mu, cov)` and is typically called directly or wrapped in a custom pipeline before the allocator step.
+!!! tip "Using Black-Litterman directly inside `StrategyPipeline`"
+    Use `BlackLittermanReturnEstimator` (`BaseReturnEstimator`) and `BlackLittermanCovarianceEstimator` (`BaseCovarianceEstimator`) to plug Black-Litterman directly into `StrategyPipeline` and `WalkForwardEngine`:
+
+    ```python
+    from pyalloq import (
+        BlackLittermanCovarianceEstimator,
+        BlackLittermanReturnEstimator,
+        MarkowitzAllocator,
+        StrategyPipeline,
+    )
+
+    pipeline = StrategyPipeline(
+        allocator=MarkowitzAllocator(tickers=data.assets),
+        returns_estimator=BlackLittermanReturnEstimator(P=P, Q=Q, tau=0.05),
+        cov_estimator=BlackLittermanCovarianceEstimator(P=P, Q=Q, tau=0.05),
+    )
+    ```
 
 ---
 

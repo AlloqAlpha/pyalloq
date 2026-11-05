@@ -2,10 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 from pyalloq_core.data import MarketData
+from pyalloq_core.discrete import DiscreteShareAllocator
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_core.results import BacktestResult, OptimizationResult
 from pyalloq_core.utils import cov_to_corr
 
+import pyalloq
 from pyalloq.classical.optimizers.naive import EqualWeightAllocator
 
 
@@ -209,3 +211,43 @@ class TestBacktestResult:
 
         with pytest.raises(KeyError):
             _ = res["missing"]
+
+
+class TestDiscreteShareAllocatorAndExports:
+    def test_discrete_share_allocator_greedy_and_lp(
+        self, synthetic_market_data: MarketData, sample_assets: list[str]
+    ) -> None:
+        weights = pd.Series([0.4, 0.3, 0.2, 0.1], index=sample_assets)
+        disc = DiscreteShareAllocator(total_portfolio_value=50_000.0, lot_size=1)
+
+        res_greedy = disc.allocate(weights, synthetic_market_data, method="greedy")
+        assert isinstance(res_greedy.shares, dict)
+        assert all(isinstance(v, int) and v >= 0 for v in res_greedy.shares.values())
+        latest_prices = synthetic_market_data.prices.iloc[-1]
+        spent = sum(
+            res_greedy.shares[t] * float(latest_prices[t]) for t in sample_assets
+        )
+        assert np.isclose(spent + res_greedy.leftover_cash, 50_000.0, atol=1e-4)
+        assert res_greedy.rmse_error < 0.05
+
+        res_lp = disc.allocate(weights, latest_prices, method="lp")
+        spent_lp = sum(
+            res_lp.shares[t] * float(latest_prices[t]) for t in sample_assets
+        )
+        assert np.isclose(spent_lp + res_lp.leftover_cash, 50_000.0, atol=1e-4)
+
+        # Long-short discrete allocation
+        ls_weights = pd.Series([0.5, 0.5, -0.25, -0.25], index=sample_assets)
+        res_ls = disc.allocate(ls_weights, latest_prices, method="greedy")
+        assert res_ls.shares[sample_assets[0]] > 0
+        assert res_ls.shares[sample_assets[2]] < 0
+
+    def test_top_level_sdk_exports(self) -> None:
+        assert hasattr(pyalloq, "MarkowitzAllocator")
+        assert hasattr(pyalloq, "MeanCVaRAllocator")
+        assert hasattr(pyalloq, "CDaRAllocator")
+        assert hasattr(pyalloq, "DiscreteShareAllocator")
+        assert hasattr(pyalloq, "MeanHistoricalReturnEstimator")
+        assert hasattr(pyalloq, "BlackLittermanReturnEstimator")
+        assert hasattr(pyalloq, "InverseVolatilityAllocator")
+        assert hasattr(pyalloq, "MarketCapWeightAllocator")

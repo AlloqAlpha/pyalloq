@@ -11,6 +11,9 @@ from pyalloq.classical.estimators.returns.classical.implied import (
 from pyalloq.classical.estimators.returns.classical.james_stein import (
     JamesSteinReturnEstimator,
 )
+from pyalloq.classical.estimators.returns.classical.mean import (
+    MeanHistoricalReturnEstimator,
+)
 from pyalloq.classical.estimators.returns.classical.momentum import (
     ResidualMomentumEstimator,
     VolatilityScaledMultiHorizonEstimator,
@@ -154,3 +157,26 @@ class TestReturnEstimators:
         assert isinstance(mu, pd.Series)
         assert list(mu.index) == sample_assets
         assert not mu.isna().any()
+
+    def test_mean_historical_return_estimator_arithmetic_and_cagr(
+        self, synthetic_market_data: MarketData, sample_assets: list[str]
+    ) -> None:
+        arith_est = MeanHistoricalReturnEstimator(compounding=False, frequency="DAILY")
+        cagr_est = MeanHistoricalReturnEstimator(compounding=True, frequency="DAILY")
+        weekly_est = MeanHistoricalReturnEstimator(
+            compounding=False, frequency="WEEKLY"
+        )
+
+        mu_arith = arith_est.estimate(synthetic_market_data)
+        mu_cagr = cagr_est.estimate(synthetic_market_data)
+        mu_weekly = weekly_est.estimate(synthetic_market_data)
+
+        assert list(mu_arith.index) == sample_assets
+        assert list(mu_cagr.index) == sample_assets
+        # AM-GM inequality: geometric mean <= compounded arithmetic mean
+        compounded_arith = (1.0 + mu_arith.values / 252.0) ** 252.0 - 1.0
+        assert np.all(mu_cagr.values <= compounded_arith + 1e-6)
+        # Weekly scale factor (52) vs Daily (252)
+        np.testing.assert_allclose(
+            mu_weekly.values, mu_arith.values * (52.0 / 252.0), rtol=1e-5
+        )

@@ -105,6 +105,23 @@ weight_history    = results["weights"]     # pd.DataFrame
 
 ---
 
+## Step 6 — Convert Continuous Weights into Integer Share Orders
+
+When ready to execute live trades, use `DiscreteShareAllocator` to convert your latest target weights into exact integer share counts and residual cash:
+
+```python
+from pyalloq import DiscreteShareAllocator
+
+latest_weights = pipeline.generate_weights(data)
+disc = DiscreteShareAllocator(total_portfolio_value=100_000.0)
+allocation = disc.allocate(latest_weights, latest_prices=data, method="greedy")
+
+print(allocation.shares)         # {'AAPL': 112, 'MSFT': 54, ...}
+print(allocation.leftover_cash)  # Remaining uninvested cash
+```
+
+---
+
 ## Complete Example
 
 ```python
