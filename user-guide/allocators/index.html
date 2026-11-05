@@ -972,10 +972,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#equal-weight-equalweightallocator" class="md-nav__link">
+  <a href="#equal-weight-inverse-volatility-market-cap-baselines" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Equal Weight (EqualWeightAllocator)
+        Equal Weight, Inverse Volatility &amp; Market Cap Baselines
       
     </span>
   </a>
@@ -987,6 +987,17 @@
     <span class="md-ellipsis">
       
         Markowitz (MarkowitzAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conditional-value-at-risk-drawdown-meancvarallocator-cdarallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Value-at-Risk &amp; Drawdown (MeanCVaRAllocator &amp; CDaRAllocator)
       
     </span>
   </a>
@@ -1086,6 +1097,17 @@
     <span class="md-ellipsis">
       
         Choosing an Allocator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#converting-continuous-weights-to-integer-shares-discreteshareallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Converting Continuous Weights to Integer Shares (DiscreteShareAllocator)
       
     </span>
   </a>
@@ -1965,10 +1987,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#equal-weight-equalweightallocator" class="md-nav__link">
+  <a href="#equal-weight-inverse-volatility-market-cap-baselines" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Equal Weight (EqualWeightAllocator)
+        Equal Weight, Inverse Volatility &amp; Market Cap Baselines
       
     </span>
   </a>
@@ -1980,6 +2002,17 @@
     <span class="md-ellipsis">
       
         Markowitz (MarkowitzAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conditional-value-at-risk-drawdown-meancvarallocator-cdarallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Value-at-Risk &amp; Drawdown (MeanCVaRAllocator &amp; CDaRAllocator)
       
     </span>
   </a>
@@ -2086,6 +2119,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#converting-continuous-weights-to-integer-shares-discreteshareallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Converting Continuous Weights to Integer Shares (DiscreteShareAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementing-a-custom-allocator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2120,28 +2164,38 @@
 <p>Allocators solve for optimal portfolio weights given market data, a covariance matrix, and optionally expected returns. All allocators implement <code>BaseAllocator</code> and can be dropped into any <code>StrategyPipeline</code>.</p>
 <hr />
 <h2 id="classical-allocators">Classical Allocators<a class="headerlink" href="#classical-allocators" title="Permanent link">&para;</a></h2>
-<h3 id="equal-weight-equalweightallocator">Equal Weight (<code>EqualWeightAllocator</code>)<a class="headerlink" href="#equal-weight-equalweightallocator" title="Permanent link">&para;</a></h3>
-<p>Assigns identical weight <span class="arithmatex">\(1/N\)</span> to every asset. The simplest possible portfolio. Surprisingly hard to beat out-of-sample.</p>
+<h3 id="equal-weight-inverse-volatility-market-cap-baselines">Equal Weight, Inverse Volatility &amp; Market Cap Baselines<a class="headerlink" href="#equal-weight-inverse-volatility-market-cap-baselines" title="Permanent link">&para;</a></h3>
+<p>PyAlloq provides four fast analytical baselines in <code>pyalloq.classical.optimizers.naive</code>:</p>
+<ul>
+<li><strong><code>EqualWeightAllocator</code></strong>: Assigns identical weight <span class="arithmatex">\(1/N\)</span> to every asset.</li>
+<li><strong><code>InverseVolatilityAllocator</code></strong>: Assigns weights inversely proportional to standalone asset volatility <span class="arithmatex">\(w_i \propto 1/\sigma_i\)</span> (ignoring cross-correlations).</li>
+<li><strong><code>MarketCapWeightAllocator</code></strong>: Assigns weights proportional to <code>data.cross_sectional["market_cap"]</code> (or falls back to <span class="arithmatex">\(1/N\)</span>).</li>
+<li><strong><code>RandomAllocator</code></strong>: Samples simplex weights from a symmetric Dirichlet distribution.</li>
+</ul>
 <div class="arithmatex">\[
-w_i = \frac{1}{N}, \quad \forall i
+w_i^{\text{EW}} = \frac{1}{N}, \qquad w_i^{\text{IV}} = \frac{1/\sigma_i}{\sum_{j=1}^N 1/\sigma_j}, \qquad w_i^{\text{MCap}} = \frac{\text{MCap}_i}{\sum_{j=1}^N \text{MCap}_j}
 \]</div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.naive</span><span class="w"> </span><span class="kn">import</span> <span class="n">EqualWeightAllocator</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">EqualWeightAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">EqualWeightAllocator</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">InverseVolatilityAllocator</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">MarketCapWeightAllocator</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">StrategyPipeline</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">pipeline_ew</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">EqualWeightAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">pipeline_iv</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">InverseVolatilityAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">pipeline_mc</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">MarketCapWeightAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
 </span></code></pre></div>
 <div class="admonition tip">
-<p class="admonition-title">Use as a baseline</p>
-<p>Always include <code>EqualWeightAllocator</code> as a benchmark in your backtest comparisons.</p>
+<p class="admonition-title">Use as baselines</p>
+<p>Always include <code>EqualWeightAllocator</code> and <code>InverseVolatilityAllocator</code> as benchmarks in your backtest comparisons.</p>
 </div>
 <hr />
 <h3 id="markowitz-markowitzallocator">Markowitz (<code>MarkowitzAllocator</code>)<a class="headerlink" href="#markowitz-markowitzallocator" title="Permanent link">&para;</a></h3>
-<p>Classical mean-variance optimizer. Supports three objective functions via the <code>ObjectiveFunction</code> enum.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.markowitz</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarkowitzAllocator</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectiveFunction</span>
+<p>Classical mean-variance optimizer supporting five objectives (<code>MIN_VOLATILITY</code>, <code>MAX_SHARPE</code>, <code>MAX_RETURN</code>, <code>EFFICIENT_RETURN</code>, <code>EFFICIENT_RISK</code>), institutional constraints, and efficient frontier tracing.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarkowitzAllocator</span><span class="p">,</span> <span class="n">ObjectiveFunction</span>
 </span></code></pre></div>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Min Volatility</label><label for="__tabbed_1_2">Max Sharpe</label><label for="__tabbed_1_3">Max Return (Utility)</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:5"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><input id="__tabbed_1_5" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Min Volatility</label><label for="__tabbed_1_2">Max Sharpe</label><label for="__tabbed_1_3">Max Return (Utility)</label><label for="__tabbed_1_4">Efficient Return &amp; Efficient Risk</label><label for="__tabbed_1_5">Constraints (Bounds, Market-Neutral, Sectors, Turnover)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Minimizes total portfolio variance with no expected return input needed.</p>
@@ -2155,19 +2209,18 @@ w_i = \frac{1}{N}, \quad \forall i
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<p>Maximizes the Sharpe ratio using the Tobin substitution trick. Requires expected returns.</p>
+<p>Maximizes the Sharpe ratio using the homogenized Cornuéjols-Tütüncü / Tobin transformation. Requires expected returns.</p>
 <div class="arithmatex">\[
-\max_w \frac{w^\top \mu - r_f}{\sqrt{w^\top \Sigma w}} \;\equiv\; \min_y \; y^\top \Sigma y \quad \text{s.t.} \quad (\mu - r_f)^\top y = 1,\; y \geq 0
+\max_w \frac{w^\top \mu - r_f}{\sqrt{w^\top \Sigma w}} \;\equiv\; \min_{y, \kappa \ge 0} \; y^\top \Sigma y \quad \text{s.t.} \quad (\mu - r_f)^\top y = 1,\; \mathbf{1}^\top y = \kappa
 \]</div>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">allocator</span> <span class="o">=</span> <span class="n">MarkowitzAllocator</span><span class="p">(</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">objective</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">MAX_SHARPE</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">)</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># MAX_SHARPE requires a returns estimator in the pipeline</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">JamesSteinReturnEstimator</span><span class="p">(),</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">JamesSteinReturnEstimator</span><span class="p">(),</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -2181,8 +2234,70 @@ w_i = \frac{1}{N}, \quad \forall i
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
+<div class="tabbed-block">
+<p>Target a specific expected return (<code>EFFICIENT_RETURN</code>) or volatility ceiling (<code>EFFICIENT_RISK</code>), or trace the entire <strong>Efficient Frontier</strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Minimize volatility subject to portfolio return &gt;= 12%</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">alloc_ret</span> <span class="o">=</span> <span class="n">MarkowitzAllocator</span><span class="p">(</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">objective</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">EFFICIENT_RETURN</span><span class="p">,</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">target_return</span><span class="o">=</span><span class="mf">0.12</span><span class="p">,</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">)</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># Maximize expected return subject to portfolio volatility &lt;= 15%</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">alloc_risk</span> <span class="o">=</span> <span class="n">MarkowitzAllocator</span><span class="p">(</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">objective</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">EFFICIENT_RISK</span><span class="p">,</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">target_volatility</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="p">)</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="c1"># Trace 20 portfolios along the Efficient Frontier</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="n">frontier_results</span> <span class="o">=</span> <span class="n">alloc_ret</span><span class="o">.</span><span class="n">efficient_frontier</span><span class="p">(</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">cov_matrix</span><span class="o">=</span><span class="n">cov</span><span class="p">,</span> <span class="n">expected_returns</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">20</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><code>MarkowitzAllocator</code> natively supports box bounds, dollar-neutrality, gross leverage limits, single-period turnover limits, L2 diversification regularization, and sector caps/floors:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">constrained_allocator</span> <span class="o">=</span> <span class="n">MarkowitzAllocator</span><span class="p">(</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">objective</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">MAX_SHARPE</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">weight_bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">),</span>                     <span class="c1"># Per-asset min/max bounds</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">market_neutral</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>                           <span class="c1"># Set True for sum(w) == 0</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">max_leverage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>                               <span class="c1"># L1 gross leverage ||w||_1 &lt;= L</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">max_turnover</span><span class="o">=</span><span class="mf">0.40</span><span class="p">,</span>                              <span class="c1"># ||w - w_prev||_1 &lt;= 0.40</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">l2_gamma</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>                                  <span class="c1"># L2 weight regularization</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">sector_mapper</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;AAPL&quot;</span><span class="p">:</span> <span class="s2">&quot;Tech&quot;</span><span class="p">,</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">:</span> <span class="s2">&quot;Tech&quot;</span><span class="p">,</span> <span class="s2">&quot;JPM&quot;</span><span class="p">:</span> <span class="s2">&quot;Finance&quot;</span><span class="p">},</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">sector_upper</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Tech&quot;</span><span class="p">:</span> <span class="mf">0.50</span><span class="p">},</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">sector_lower</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Finance&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">},</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="p">)</span>
+</span></code></pre></div>
 </div>
 </div>
+</div>
+<hr />
+<h3 id="conditional-value-at-risk-drawdown-meancvarallocator-cdarallocator">Conditional Value-at-Risk &amp; Drawdown (<code>MeanCVaRAllocator</code> &amp; <code>CDaRAllocator</code>)<a class="headerlink" href="#conditional-value-at-risk-drawdown-meancvarallocator-cdarallocator" title="Permanent link">&para;</a></h3>
+<p>When asset returns exhibit fat tails or negative skewness, variance-based optimization underestimates tail risk. PyAlloq provides two single-period linear/conic downside risk allocators in <code>pyalloq.classical.optimizers.cvar</code>:</p>
+<ul>
+<li><strong><code>MeanCVaRAllocator</code></strong>: Minimizes portfolio Expected Shortfall (<span class="arithmatex">\(\text{CVaR}_\beta\)</span>) via the Rockafellar &amp; Uryasev (2000) linear program (supports <code>MIN_CVAR</code>, <code>EFFICIENT_RETURN</code>, and <code>MAX_RETURN</code> objectives plus box bounds, market neutrality, turnover, and L2 regularization).</li>
+<li><strong><code>CDaRAllocator</code></strong>: Minimizes Conditional Drawdown-at-Risk (<span class="arithmatex">\(\text{CDaR}_\beta\)</span>) over the historical cumulative return path (Chekhlov, Uryasev &amp; Zabarankin, 2005).</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">CDaRAllocator</span><span class="p">,</span> <span class="n">MeanCVaRAllocator</span><span class="p">,</span> <span class="n">ObjectiveFunction</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1"># 95% CVaR minimization with 40% per-asset cap</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">cvar_allocator</span> <span class="o">=</span> <span class="n">MeanCVaRAllocator</span><span class="p">(</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">beta</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">objective</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">MIN_CVAR</span><span class="p">,</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">weight_bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">),</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="p">)</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c1"># 90% Conditional Drawdown-at-Risk minimization</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">cdar_allocator</span> <span class="o">=</span> <span class="n">CDaRAllocator</span><span class="p">(</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">beta</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">weight_bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.50</span><span class="p">),</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="p">)</span>
+</span></code></pre></div>
 <hr />
 <h3 id="risk-parity-riskparityallocator">Risk Parity (<code>RiskParityAllocator</code>)<a class="headerlink" href="#risk-parity-riskparityallocator" title="Permanent link">&para;</a></h3>
 <p>Equal Risk Contribution (ERC). Every asset contributes the same amount of marginal risk to the portfolio. No expected return input needed — purely covariance-driven.</p>
@@ -2190,11 +2305,11 @@ w_i = \frac{1}{N}, \quad \forall i
 \min_y \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} \ln y_i \quad \text{s.t.} \quad y \geq 0
 \]</div>
 <p>Then normalize: <span class="arithmatex">\(w = y / \mathbf{1}^\top y\)</span></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_parity</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskParityAllocator</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskParityAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_parity</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskParityAllocator</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskParityAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h3 id="risk-budgeting-riskbudgetingallocator">Risk Budgeting (<code>RiskBudgetingAllocator</code>)<a class="headerlink" href="#risk-budgeting-riskbudgetingallocator" title="Permanent link">&para;</a></h3>
@@ -2202,23 +2317,23 @@ w_i = \frac{1}{N}, \quad \forall i
 <div class="arithmatex">\[
 \min_y \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} b_i \ln y_i \quad \text{s.t.} \quad y \geq 0
 \]</div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_budgeting</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskBudgetingAllocator</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Provide risk budgets through MarketData.features</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">risk_budgets</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="p">{</span><span class="s2">&quot;AAPL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">],</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">],</span> <span class="s2">&quot;GOOGL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">]},</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">)</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">data_with_budgets</span> <span class="o">=</span> <span class="n">MarketData</span><span class="p">(</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">prices</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="p">,</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;risk_budgets&quot;</span><span class="p">:</span> <span class="n">risk_budgets</span><span class="p">},</span>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="p">)</span>
-</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
-</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskBudgetingAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.risk_budgeting</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskBudgetingAllocator</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Provide risk budgets through MarketData.features</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">risk_budgets</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="p">{</span><span class="s2">&quot;AAPL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">],</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">],</span> <span class="s2">&quot;GOOGL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">]},</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="p">)</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">data_with_budgets</span> <span class="o">=</span> <span class="n">MarketData</span><span class="p">(</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">prices</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="p">,</span>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">features</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;risk_budgets&quot;</span><span class="p">:</span> <span class="n">risk_budgets</span><span class="p">},</span>
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="p">)</span>
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">RiskBudgetingAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h3 id="max-diversification-maxdiversificationallocator">Max Diversification (<code>MaxDiversificationAllocator</code>)<a class="headerlink" href="#max-diversification-maxdiversificationallocator" title="Permanent link">&para;</a></h3>
@@ -2227,22 +2342,22 @@ w_i = \frac{1}{N}, \quad \forall i
 \max_w \; D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 \]</div>
 <p>Implemented via the equivalent dual: minimize portfolio variance subject to weighted volatilities summing to 1.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.max_diversification</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaxDiversificationAllocator</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">MaxDiversificationAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.optimizers.max_diversification</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaxDiversificationAllocator</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">MaxDiversificationAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h2 id="graph-based-ml-allocators">Graph-Based ML Allocators<a class="headerlink" href="#graph-based-ml-allocators" title="Permanent link">&para;</a></h2>
 <p>These allocators use hierarchical clustering on the correlation matrix to build a dendrogram-based weight allocation. They <strong>do not invert the covariance matrix</strong>, making them more numerically stable for large universes.</p>
 <h3 id="hrp-hrpallocator">HRP (<code>HRPAllocator</code>)<a class="headerlink" href="#hrp-hrpallocator" title="Permanent link">&para;</a></h3>
 <p>Hierarchical Risk Parity (López de Prado, 2016). Uses single-linkage clustering on correlation distance, quasi-diagonalization of the covariance matrix, and recursive bisection to assign inverse-variance weights.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.hrp</span><span class="w"> </span><span class="kn">import</span> <span class="n">HRPAllocator</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">HRPAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.hrp</span><span class="w"> </span><span class="kn">import</span> <span class="n">HRPAllocator</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">HRPAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>Steps:
 1. Compute correlation distance matrix: <span class="arithmatex">\(d_{ij} = \sqrt{\frac{1 - \rho_{ij}}{2}}\)</span>
@@ -2252,20 +2367,20 @@ w_i = \frac{1}{N}, \quad \forall i
 <hr />
 <h3 id="herc-hercallocator">HERC (<code>HERCAllocator</code>)<a class="headerlink" href="#herc-hercallocator" title="Permanent link">&para;</a></h3>
 <p>Hierarchical Equal Risk Contribution. Similar to HRP but allocates risk budget equally across the hierarchical clusters at each level, then inverse-variance within each cluster.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.herc</span><span class="w"> </span><span class="kn">import</span> <span class="n">HERCAllocator</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">HERCAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.herc</span><span class="w"> </span><span class="kn">import</span> <span class="n">HERCAllocator</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">HERCAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h3 id="nco-ncoallocator">NCO (<code>NCOAllocator</code>)<a class="headerlink" href="#nco-ncoallocator" title="Permanent link">&para;</a></h3>
 <p>Nested Cluster Optimization. Divides the universe into clusters via k-means on the correlation matrix, runs a Markowitz optimization within each cluster (intra-cluster), and then a second Markowitz optimization across cluster representatives (inter-cluster).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.nco</span><span class="w"> </span><span class="kn">import</span> <span class="n">NCOAllocator</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">NCOAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.ml.optimizers.nco</span><span class="w"> </span><span class="kn">import</span> <span class="n">NCOAllocator</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">NCOAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h2 id="choosing-an-allocator">Choosing an Allocator<a class="headerlink" href="#choosing-an-allocator" title="Permanent link">&para;</a></h2>
@@ -2278,8 +2393,8 @@ w_i = \frac{1}{N}, \quad \forall i
 </thead>
 <tbody>
 <tr>
-<td>Quick baseline</td>
-<td><code>EqualWeightAllocator</code></td>
+<td>Quick analytical baselines</td>
+<td><code>EqualWeightAllocator</code>, <code>InverseVolatilityAllocator</code>, <code>MarketCapWeightAllocator</code></td>
 </tr>
 <tr>
 <td>Minimize portfolio risk, no return forecast needed</td>
@@ -2290,12 +2405,20 @@ w_i = \frac{1}{N}, \quad \forall i
 <td><code>MarkowitzAllocator(MIN_VOLATILITY)</code></td>
 </tr>
 <tr>
-<td>Maximize Sharpe, have a good return model</td>
-<td><code>MarkowitzAllocator(MAX_SHARPE)</code></td>
+<td>Maximize Sharpe with box/sector/turnover constraints</td>
+<td><code>MarkowitzAllocator(MAX_SHARPE, weight_bounds=..., sector_upper=...)</code></td>
+</tr>
+<tr>
+<td>Target return or target volatility / Efficient Frontier</td>
+<td><code>MarkowitzAllocator(EFFICIENT_RETURN)</code> / <code>MarkowitzAllocator(EFFICIENT_RISK)</code></td>
+</tr>
+<tr>
+<td>Heavy-tailed downside or drawdown control</td>
+<td><code>MeanCVaRAllocator</code> or <code>CDaRAllocator</code></td>
 </tr>
 <tr>
 <td>Large universe (50+ assets), covariance unstable</td>
-<td><code>HRPAllocator</code> or <code>NCOAllocator</code></td>
+<td><code>HRPAllocator</code>, <code>NCOAllocator</code>, or <code>BayesianHRPAllocator</code></td>
 </tr>
 <tr>
 <td>Maximize portfolio diversification</td>
@@ -2308,26 +2431,40 @@ w_i = \frac{1}{N}, \quad \forall i
 </tbody>
 </table>
 <hr />
+<h2 id="converting-continuous-weights-to-integer-shares-discreteshareallocator">Converting Continuous Weights to Integer Shares (<code>DiscreteShareAllocator</code>)<a class="headerlink" href="#converting-continuous-weights-to-integer-shares-discreteshareallocator" title="Permanent link">&para;</a></h2>
+<p>In live trading, continuous portfolio weights <span class="arithmatex">\(w \in \mathbb{R}^N\)</span> must be converted into whole share or lot orders given current asset prices and total account cash. <code>DiscreteShareAllocator</code> supports both <code>method="greedy"</code> and Mixed-Integer Linear Programming (<code>method="lp"</code>), handling both long-only and long-short portfolios:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscreteShareAllocator</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">generate_weights</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">disc</span> <span class="o">=</span> <span class="n">DiscreteShareAllocator</span><span class="p">(</span><span class="n">total_portfolio_value</span><span class="o">=</span><span class="mf">100_000.0</span><span class="p">,</span> <span class="n">lot_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">order_plan</span> <span class="o">=</span> <span class="n">disc</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">latest_prices</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">shares</span><span class="p">)</span>          <span class="c1"># {&#39;AAPL&#39;: 142, &#39;MSFT&#39;: 88, &#39;GOOGL&#39;: 115, ...}</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">leftover_cash</span><span class="p">)</span>   <span class="c1"># 43.18</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">rmse_error</span><span class="p">)</span>      <span class="c1"># 0.0004</span>
+</span></code></pre></div>
+<hr />
 <h2 id="implementing-a-custom-allocator">Implementing a Custom Allocator<a class="headerlink" href="#implementing-a-custom-allocator" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAllocator</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizationResult</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCustomAllocator</span><span class="p">(</span><span class="n">BaseAllocator</span><span class="p">):</span>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span>
-</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        <span class="n">cov_matrix</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>        <span class="n">expected_returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
-</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>        <span class="c1"># Your optimization logic here</span>
-</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;OPTIMAL&quot;</span><span class="p">)</span>
-</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>
-</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="c1"># Drop it into any pipeline — no other changes needed</span>
-</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">MyCustomAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAllocator</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizationResult</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCustomAllocator</span><span class="p">(</span><span class="n">BaseAllocator</span><span class="p">):</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>        <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="n">cov_matrix</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>        <span class="n">expected_returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        <span class="c1"># Your optimization logic here</span>
+</span><span id="__span-15-15"><a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-15-16"><a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;OPTIMAL&quot;</span><span class="p">)</span>
+</span><span id="__span-15-17"><a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>
+</span><span id="__span-15-18"><a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="c1"># Drop it into any pipeline — no other changes needed</span>
+</span><span id="__span-15-19"><a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">MyCustomAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
 </span></code></pre></div>
 
 

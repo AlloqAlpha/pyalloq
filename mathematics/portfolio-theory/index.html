@@ -1340,6 +1340,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conditional-value-at-risk-rockafellar-uryasev-2000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Value-at-Risk (Rockafellar &amp; Uryasev, 2000)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditional-drawdown-at-risk-chekhlov-uryasev-zabarankin-2005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Drawdown-at-Risk (Chekhlov, Uryasev &amp; Zabarankin, 2005)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1986,6 +2008,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conditional-value-at-risk-rockafellar-uryasev-2000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Value-at-Risk (Rockafellar &amp; Uryasev, 2000)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditional-drawdown-at-risk-chekhlov-uryasev-zabarankin-2005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional Drawdown-at-Risk (Chekhlov, Uryasev &amp; Zabarankin, 2005)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2087,6 +2131,22 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}} = \frac{\sum_i w_i \sigma_i}
 \]</div>
 <p>Recover weights: <span class="arithmatex">\(w^* = y^* / \mathbf{1}^\top y^*\)</span></p>
 <hr />
+<h2 id="conditional-value-at-risk-rockafellar-uryasev-2000">Conditional Value-at-Risk (Rockafellar &amp; Uryasev, 2000)<a class="headerlink" href="#conditional-value-at-risk-rockafellar-uryasev-2000" title="Permanent link">&para;</a></h2>
+<p>For a confidence level <span class="arithmatex">\(\beta \in (0, 1)\)</span> (e.g., <span class="arithmatex">\(\beta = 0.95\)</span>) and historical return matrix <span class="arithmatex">\(R \in \mathbb{R}^{T \times N}\)</span>, <code>MeanCVaRAllocator</code> minimizes the portfolio Expected Shortfall using the convex Rockafellar-Uryasev linear programming auxiliary formulation:</p>
+<div class="arithmatex">\[
+\min_{w, \alpha, u \ge 0} \; \alpha + \frac{1}{(1 - \beta) T} \sum_{t=1}^T u_t
+\quad \text{subject to} \quad
+u_t \ge -r_t^\top w - \alpha, \quad \mathbf{1}^\top w = 1, \quad l \le w \le b
+\]</div>
+<p>At optimality, <span class="arithmatex">\(\alpha^*\)</span> equals the daily Value-at-Risk (<span class="arithmatex">\(\text{VaR}_\beta\)</span>) and the objective equals <span class="arithmatex">\(\text{CVaR}_\beta(w^*)\)</span>.</p>
+<hr />
+<h2 id="conditional-drawdown-at-risk-chekhlov-uryasev-zabarankin-2005">Conditional Drawdown-at-Risk (Chekhlov, Uryasev &amp; Zabarankin, 2005)<a class="headerlink" href="#conditional-drawdown-at-risk-chekhlov-uryasev-zabarankin-2005" title="Permanent link">&para;</a></h2>
+<p>Let <span class="arithmatex">\(C_t(w) = \sum_{\tau=1}^t r_\tau^\top w\)</span> denote the cumulative uncompounded portfolio return at time <span class="arithmatex">\(t\)</span>, and let <span class="arithmatex">\(M_t = \max_{1 \le \tau \le t} C_\tau(w)\)</span> track the running high-water mark. <code>CDaRAllocator</code> minimizes the tail average of drawdowns <span class="arithmatex">\(D_t = M_t - C_t(w)\)</span> at level <span class="arithmatex">\(\beta\)</span>:</p>
+<div class="arithmatex">\[
+\min_{w, M, d \ge 0, \alpha, u \ge 0} \; \alpha + \frac{1}{(1 - \beta) T} \sum_{t=1}^T u_t
+\]</div>
+<p>subject to linear path-monotonicity constraints <span class="arithmatex">\(M_t \ge C_t(w)\)</span>, <span class="arithmatex">\(M_t \ge M_{t-1}\)</span>, <span class="arithmatex">\(d_t \ge M_t - C_t(w)\)</span>, and <span class="arithmatex">\(u_t \ge d_t - \alpha\)</span>.</p>
+<hr />
 <h2 id="summary-table">Summary Table<a class="headerlink" href="#summary-table" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2103,6 +2163,16 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}} = \frac{\sum_i w_i \sigma_i}
 <td>No</td>
 </tr>
 <tr>
+<td>Inverse Volatility</td>
+<td><span class="arithmatex">\(w_i = (1/\sigma_i) / \sum_j (1/\sigma_j)\)</span></td>
+<td>No</td>
+</tr>
+<tr>
+<td>Market Cap Weight</td>
+<td><span class="arithmatex">\(w_i = \text{MCap}_i / \sum_j \text{MCap}_j\)</span></td>
+<td>No</td>
+</tr>
+<tr>
 <td>Min Volatility</td>
 <td><span class="arithmatex">\(\min w^\top \Sigma w\)</span></td>
 <td>No</td>
@@ -2116,6 +2186,26 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}} = \frac{\sum_i w_i \sigma_i}
 <td>Max Utility</td>
 <td><span class="arithmatex">\(\max \mu^\top w - \lambda w^\top \Sigma w\)</span></td>
 <td>Yes</td>
+</tr>
+<tr>
+<td>Efficient Return</td>
+<td><span class="arithmatex">\(\min w^\top \Sigma w \text{ s.t. } \mu^\top w \ge r_{\text{target}}\)</span></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Efficient Risk</td>
+<td><span class="arithmatex">\(\max \mu^\top w \text{ s.t. } w^\top \Sigma w \le \sigma_{\text{target}}^2\)</span></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Mean-CVaR</td>
+<td><span class="arithmatex">\(\min \alpha + \frac{1}{(1-\beta)T}\sum u_t \text{ s.t. } u_t \ge -r_t^\top w - \alpha\)</span></td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>CDaR</td>
+<td><span class="arithmatex">\(\min \text{CDaR}_\beta(w)\)</span> over sample path drawdowns</td>
+<td>Optional</td>
 </tr>
 <tr>
 <td>Risk Parity</td>

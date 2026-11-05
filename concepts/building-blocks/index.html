@@ -2169,16 +2169,20 @@
 </thead>
 <tbody>
 <tr>
+<td><code>MeanHistoricalReturnEstimator</code></td>
+<td>Arithmetic or geometric (CAGR) sample mean returns</td>
+</tr>
+<tr>
 <td><code>EWMAReturnEstimator</code></td>
 <td>Recent returns matter more (default)</td>
 </tr>
 <tr>
-<td><code>MomentumReturnEstimator</code></td>
-<td>Cross-sectional momentum signal</td>
+<td><code>VolatilityScaledMultiHorizonEstimator</code> / <code>ResidualMomentumEstimator</code></td>
+<td>Cross-sectional &amp; idiosyncratic momentum signals</td>
 </tr>
 <tr>
-<td><code>FactorReturnEstimator</code></td>
-<td>Factor-model attribution (Fama-French style)</td>
+<td><code>CAPMReturnEstimator</code> / <code>MultiFactorReturnEstimator</code></td>
+<td>Factor-model attribution (CAPM / Fama-French style)</td>
 </tr>
 <tr>
 <td><code>JamesSteinReturnEstimator</code></td>
@@ -2189,8 +2193,8 @@
 <td>Reverse-optimization from known market weights</td>
 </tr>
 <tr>
-<td><code>BlackLittermanEstimator</code></td>
-<td>Blend market equilibrium with investor views</td>
+<td><code>BlackLittermanReturnEstimator</code></td>
+<td>Blend market equilibrium with investor views inside <code>StrategyPipeline</code></td>
 </tr>
 </tbody>
 </table>
@@ -2242,12 +2246,16 @@
 </thead>
 <tbody>
 <tr>
-<td><code>EqualWeightAllocator</code></td>
+<td><code>EqualWeightAllocator</code>, <code>InverseVolatilityAllocator</code>, <code>MarketCapWeightAllocator</code></td>
 <td>No</td>
 </tr>
 <tr>
 <td><code>MarkowitzAllocator</code></td>
-<td>For Max Sharpe / Max Return</td>
+<td>For Max Sharpe / Max Return / Efficient Return / Efficient Risk</td>
+</tr>
+<tr>
+<td><code>MeanCVaRAllocator</code>, <code>CDaRAllocator</code></td>
+<td>Optional (for target return or utility)</td>
 </tr>
 <tr>
 <td><code>RiskParityAllocator</code></td>
@@ -2260,6 +2268,10 @@
 <tr>
 <td><code>MaxDiversificationAllocator</code></td>
 <td>No</td>
+</tr>
+<tr>
+<td><code>MultiPeriodMPCAllocator</code>, <code>StochasticScenarioMPCAllocator</code></td>
+<td>Yes (multi-horizon forecasts or scenarios)</td>
 </tr>
 </tbody>
 </table>
