@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://pyalloq.alloq-alpha.com/references/papers/">
       
       
-        <link rel="prev" href="../../mathematics/multi-period-optimization/">
+        <link rel="prev" href="../../mathematics/attribution-and-dsr/">
       
       
         <link rel="next" href="../../api/core/">
@@ -1138,6 +1138,8 @@
       
         
       
+        
+      
     
     
     
@@ -1312,6 +1314,34 @@
     
   
     Multi-Period Portfolio Optimization (MPO) — Mathematical Foundations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mathematics/attribution-and-dsr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deflated Sharpe Ratio &amp; Performance Attribution
   
 
     
@@ -1773,6 +1803,56 @@
     <span class="md-ellipsis">
       
         Moroke et al. (2026) — Thermodynamic &amp; Bures-Wasserstein Regime Gating
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-strategy-evaluation-deflated-sharpe-ratio-performance-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Strategy Evaluation, Deflated Sharpe Ratio &amp; Performance Attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-Strategy Evaluation, Deflated Sharpe Ratio &amp; Performance Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dsr-2014" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bailey &amp; López de Prado (2014) — The Deflated Sharpe Ratio
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brinson-fachler-1985" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brinson &amp; Fachler (1985) &amp; Carino (1999) — Active Performance Attribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ma-smith-2025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ma &amp; Smith (2025) — Alpha Decay and Transaction Costs in Multi-Period Trading
       
     </span>
   </a>
@@ -2454,6 +2534,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#multi-strategy-evaluation-deflated-sharpe-ratio-performance-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Strategy Evaluation, Deflated Sharpe Ratio &amp; Performance Attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-Strategy Evaluation, Deflated Sharpe Ratio &amp; Performance Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dsr-2014" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bailey &amp; López de Prado (2014) — The Deflated Sharpe Ratio
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brinson-fachler-1985" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brinson &amp; Fachler (1985) &amp; Carino (1999) — Active Performance Attribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ma-smith-2025" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ma &amp; Smith (2025) — Alpha Decay and Transaction Costs in Multi-Period Trading
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2648,6 +2778,36 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln!\left(\frac{x_m}{p_m}\right
 </blockquote>
 <p><strong>Contribution:</strong> Modeled portfolio rebalancing between fast and slow market covariance baths as a stochastic heat engine bounded by Carnot efficiency <span class="arithmatex">\(\eta_{\text{Carnot}} = 1 - T_{\min}/T_{\max}\)</span>, using the Bures-Wasserstein <span class="arithmatex">\(W_2\)</span> distance to gate frictional turnover during structural regime ruptures.</p>
 <p><strong>Implemented in:</strong> <code>WassersteinRegimeGate</code>, <code>ThermodynamicDiagnostics</code></p>
+<hr />
+<h2 id="multi-strategy-evaluation-deflated-sharpe-ratio-performance-attribution">Multi-Strategy Evaluation, Deflated Sharpe Ratio &amp; Performance Attribution<a class="headerlink" href="#multi-strategy-evaluation-deflated-sharpe-ratio-performance-attribution" title="Permanent link">&para;</a></h2>
+<h3 id="dsr-2014">Bailey &amp; López de Prado (2014) — The Deflated Sharpe Ratio<a class="headerlink" href="#dsr-2014" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Bailey, D. H., &amp; López de Prado, M. (2014). The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality. <em>The Journal of Portfolio Management</em>, 40(5), 94–107.
+<a href="https://doi.org/10.3905/jpm.2014.40.5.094">https://doi.org/10.3905/jpm.2014.40.5.094</a></p>
+</blockquote>
+<p><strong>Contribution:</strong> Formulated the Deflated Sharpe Ratio (DSR) to correct for selection bias under multiple testing (<span class="arithmatex">\(N\)</span> trials) and non-Normal return distributions (skewness <span class="arithmatex">\(\hat{\gamma}_3\)</span> and kurtosis <span class="arithmatex">\(\hat{\gamma}_4\)</span>), deriving the analytical expected maximum Sharpe hurdle <span class="arithmatex">\(\widehat{\text{SR}}_0\)</span> via extreme value theory.</p>
+<p><strong>Key formula:</strong>
+[
+\widehat{\text{SR}}_0 = \sqrt{\text{Var}[{\widehat{\text{SR}}_n}]} \left( (1 - \gamma)\,\Phi^{-1}!\left(1 - \frac{1}{N}\right) + \gamma\,\Phi^{-1}!\left(1 - \frac{1}{N e}\right) \right)
+]</p>
+<p><strong>Implemented in:</strong> <code>BacktestTracker</code>, <code>MultiStrategyComparator</code> (<code>BenchmarkSuite</code>), <code>MetricsTearSheet</code>, <code>compute_deflated_sharpe_ratio</code>, <code>ComparisonTearSheet</code></p>
+<hr />
+<h3 id="brinson-fachler-1985">Brinson &amp; Fachler (1985) &amp; Carino (1999) — Active Performance Attribution<a class="headerlink" href="#brinson-fachler-1985" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Brinson, G. P., &amp; Fachler, N. (1985). Measuring Non-U.S. Equity Portfolio Performance. <em>The Journal of Portfolio Management</em>, 11(3), 73–76.
+<a href="https://doi.org/10.3905/jpm.1985.409005">https://doi.org/10.3905/jpm.1985.409005</a></p>
+<p>Carino, D. R. (1999). Combining Attribution Effects Over Time. <em>The Journal of Performance Measurement</em>, 3(4), 5–14.</p>
+</blockquote>
+<p><strong>Contribution:</strong> Decomposed active return <span class="arithmatex">\(R_p - R_b\)</span> into Allocation, Selection, and Interaction effects across sectors or asset clusters, with logarithmic multi-period geometric linking so multi-period attribution sums exactly to total geometric active return.</p>
+<p><strong>Implemented in:</strong> <code>PerformanceAttributor</code>, <code>BrinsonAttributionResult</code>, <code>plot_attribution_waterfall</code>, <code>ComparisonTearSheet</code></p>
+<hr />
+<h3 id="ma-smith-2025">Ma &amp; Smith (2025) — Alpha Decay and Transaction Costs in Multi-Period Trading<a class="headerlink" href="#ma-smith-2025" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Ma, C., &amp; Smith, P. (2025). On the Effect of Alpha Decay and Transaction Costs on the Multi-period Optimal Trading Strategy. <em>arXiv</em>.
+<a href="https://doi.org/10.48550/arxiv.2502.04284">https://doi.org/10.48550/arxiv.2502.04284</a></p>
+</blockquote>
+<p><strong>Contribution:</strong> Analyzed the compounding interaction between multi-horizon alpha decay, intra-period weight drift, and linear/non-linear transaction costs when transitioning from theoretical paper signals to executed multi-period trajectories.</p>
+<p><strong>Implemented in:</strong> <code>PerformanceAttributor.compute_frictional_drag</code>, <code>FrictionalDragResult</code>, <code>WalkForwardEngine</code>, <code>plot_attribution_waterfall</code></p>
 
 
 

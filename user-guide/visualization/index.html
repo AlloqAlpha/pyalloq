@@ -1228,6 +1228,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5-multi-strategy-comparison-attribution-tear-sheet-comparisontearsheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Multi-Strategy Comparison &amp; Attribution Tear Sheet (ComparisonTearSheet)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#themes-static-exports" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1262,6 +1273,8 @@
   
     
     
+      
+        
       
         
       
@@ -1447,6 +1460,34 @@
     
   
     Multi-Period Portfolio Optimization (MPO) — Mathematical Foundations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mathematics/attribution-and-dsr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deflated Sharpe Ratio &amp; Performance Attribution
   
 
     
@@ -1964,6 +2005,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5-multi-strategy-comparison-attribution-tear-sheet-comparisontearsheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Multi-Strategy Comparison &amp; Attribution Tear Sheet (ComparisonTearSheet)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#themes-static-exports" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2025,11 +2077,12 @@
 <h3 id="two-ways-to-visualize">Two Ways to Visualize<a class="headerlink" href="#two-ways-to-visualize" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>Granular Plot Functions (<code>plot_*</code>)</strong>: Every visualization is exposed as a standalone function returning a styled <code>plotly.graph_objects.Figure</code>.</li>
-<li><strong>Composite Tear Sheet Classes (<code>*TearSheet</code>)</strong>: Four specialized tear sheet classes group related charts and compute summary KPIs:</li>
+<li><strong>Composite Tear Sheet Classes (<code>*TearSheet</code>)</strong>: Specialized tear sheet classes group related charts and compute summary KPIs:</li>
 <li><code>SimulationTearSheet</code>: Synthetic path cones, terminal wealth &amp; ruin, CVaR tail shading, and drawdown cones.</li>
 <li><code>RobustnessTearSheet</code>: Probability of Backtest Overfitting (PBO) and Combinatorial Purged Cross-Validation (CPCV) timeline scrambling.</li>
 <li><code>MacroRegimeTearSheet</code>: Meucci Entropy Pooling prior-vs-posterior shifts and GMM Markov regime transition overlays.</li>
 <li><code>AllocationTearSheet</code>: Multi-universe efficient frontier, weight drift &amp; turnover, hierarchical treemaps, component risk contributions, and correlation/monthly return heatmaps.</li>
+<li><code>ComparisonTearSheet</code>: Multi-strategy equity &amp; drawdown overlays, multi-allocator probabilistic cones &amp; terminal wealth KDEs, intra-rebalance sawtooth weight drift &amp; turnover bars, and Brinson-Fachler / Factor / Frictional Drag waterfalls with Deflated Sharpe Ratio (DSR) KPIs.</li>
 </ol>
 <hr />
 <h2 id="1-the-multiverse-simulation-tear-sheet">1. The Multiverse &amp; Simulation Tear Sheet<a class="headerlink" href="#1-the-multiverse-simulation-tear-sheet" title="Permanent link">&para;</a></h2>
@@ -2335,19 +2388,94 @@
 </div>
 </div>
 <hr />
+<h2 id="5-multi-strategy-comparison-attribution-tear-sheet-comparisontearsheet">5. Multi-Strategy Comparison &amp; Attribution Tear Sheet (<code>ComparisonTearSheet</code>)<a class="headerlink" href="#5-multi-strategy-comparison-attribution-tear-sheet-comparisontearsheet" title="Permanent link">&para;</a></h2>
+<p>Visualizes how multiple allocators (<code>BenchmarkSuite</code> / <code>MultiStrategyComparator</code>) navigate identical market regimes and synthetic realities while decomposing active return and execution frictions.</p>
+<table>
+<thead>
+<tr>
+<th>Function / Class</th>
+<th>What It Visualizes</th>
+<th>Key Inputs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plot_equity_drawdown_overlay</code></td>
+<td>Cumulative net-of-cost equity curves overlaid with underwater drawdown charts and systemic regime stress highlights</td>
+<td><code>ComparisonResult</code> or <code>Mapping[str, BacktestResult]</code>, optional <code>benchmark</code></td>
+</tr>
+<tr>
+<td><code>plot_multi_strategy_fan_chart</code></td>
+<td>Multi-strategy median equity curves enveloped by 10th–90th and 25th–75th percentile confidence cones + terminal wealth KDEs</td>
+<td><code>ComparisonResult</code> or <code>Mapping[str, MonteCarloResult | BacktestResult]</code>, optional <code>scenario_data</code></td>
+</tr>
+<tr>
+<td><code>plot_multi_turnover_drift</code></td>
+<td>Daily intra-rebalance sawtooth weight drift ((\sum_i</td>
+<td>w_{i,t}^- - w_{i,\text{target}}</td>
+</tr>
+<tr>
+<td><code>plot_attribution_waterfall</code></td>
+<td><strong>Left Panel</strong>: Brinson-Fachler (<code>Allocation</code>, <code>Selection</code>, <code>Interaction</code>) &amp; Factor Alpha.<br><strong>Right Panel</strong>: Gross-to-Net Frictional Drag Waterfall (<code>Paper -&gt; Drift/Decay -&gt; Spread -&gt; Market Impact -&gt; Net</code>).</td>
+<td><code>ComparisonResult</code>, <code>AttributionResult</code>, or <code>Mapping[str, AttributionResult]</code></td>
+</tr>
+<tr>
+<td><code>ComparisonTearSheet</code></td>
+<td>Unified <code>2×2</code> dashboard and HTML report with Deflated Sharpe Ratio (DSR), Trial Count (<span class="arithmatex">\(N\)</span>), Top Factor Alpha, and Drawdown KPIs</td>
+<td><code>ComparisonResult</code> or <code>Mapping[str, BacktestResult]</code></td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">TearSheet Dashboard</label><label for="__tabbed_5_2">Individual Plot Functions</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_backtest</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkSuite</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComparisonTearSheet</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">comp_result</span> <span class="o">=</span> <span class="n">BenchmarkSuite</span><span class="p">(</span><span class="n">pipelines</span><span class="o">=</span><span class="n">pipelines</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="s2">&quot;EqualWeight&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">market_data</span><span class="p">,</span> <span class="n">scenario_data</span><span class="o">=</span><span class="n">scenarios</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">comp_ts</span> <span class="o">=</span> <span class="n">ComparisonTearSheet</span><span class="p">(</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="n">comp_result</span><span class="p">,</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">market_data</span><span class="o">=</span><span class="n">market_data</span><span class="p">,</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">scenario_data</span><span class="o">=</span><span class="n">scenarios</span><span class="p">,</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">benchmark</span><span class="o">=</span><span class="n">comp_result</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;EqualWeight&quot;</span><span class="p">],</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">)</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="n">comp_ts</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="n">comp_ts</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;multi_strategy_comparison_report.html&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">plot_equity_drawdown_overlay</span><span class="p">,</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">plot_multi_strategy_fan_chart</span><span class="p">,</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">plot_multi_turnover_drift</span><span class="p">,</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">plot_attribution_waterfall</span><span class="p">,</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">)</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">fig_eq</span>   <span class="o">=</span> <span class="n">plot_equity_drawdown_overlay</span><span class="p">(</span><span class="n">comp_result</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="n">comp_result</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;EqualWeight&quot;</span><span class="p">])</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">fig_cone</span> <span class="o">=</span> <span class="n">plot_multi_strategy_fan_chart</span><span class="p">(</span><span class="n">comp_result</span><span class="p">,</span> <span class="n">scenario_data</span><span class="o">=</span><span class="n">scenarios</span><span class="p">)</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">fig_to</span>   <span class="o">=</span> <span class="n">plot_multi_turnover_drift</span><span class="p">(</span><span class="n">comp_result</span><span class="p">,</span> <span class="n">market_data</span><span class="o">=</span><span class="n">market_data</span><span class="p">)</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="n">fig_attr</span> <span class="o">=</span> <span class="n">plot_attribution_waterfall</span><span class="p">(</span><span class="n">comp_result</span><span class="p">,</span> <span class="n">market_data</span><span class="o">=</span><span class="n">market_data</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
 <h2 id="themes-static-exports">Themes &amp; Static Exports<a class="headerlink" href="#themes-static-exports" title="Permanent link">&para;</a></h2>
 <p>Every plot function and tear sheet supports two built-in institutional themes:</p>
 <ul>
 <li><code>"alloq_dark"</code> <em>(default)</em>: Slate/obsidian background (<code>#0B0F19</code>) with high-contrast emerald, cyan, amber, coral, crimson, and violet semantic accents.</li>
 <li><code>"alloq_light"</code>: Clean publication white/slate background (<code>#FFFFFF</code>) tailored for PDFs and print reports.</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_fan_chart</span><span class="p">,</span> <span class="n">apply_plotly_theme</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Pass theme directly to any plot function or TearSheet method</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_fan_chart</span><span class="p">(</span><span class="n">scenarios</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_light&quot;</span><span class="p">)</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Or re-style an existing Plotly or Matplotlib figure</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">apply_plotly_theme</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_dark&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Custom Title&quot;</span><span class="p">,</span> <span class="n">subtitle</span><span class="o">=</span><span class="s2">&quot;Custom Subtitle&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_fan_chart</span><span class="p">,</span> <span class="n">apply_plotly_theme</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># Pass theme directly to any plot function or TearSheet method</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_fan_chart</span><span class="p">(</span><span class="n">scenarios</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_light&quot;</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># Or re-style an existing Plotly or Matplotlib figure</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">apply_plotly_theme</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_dark&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Custom Title&quot;</span><span class="p">,</span> <span class="n">subtitle</span><span class="o">=</span><span class="s2">&quot;Custom Subtitle&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 
