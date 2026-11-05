@@ -39,3 +39,12 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_rl_multiverse_allocation.py
    ```
+
+5. **[`run_multi_strategy_benchmark.py`](./run_multi_strategy_benchmark.py)**
+   - Runs `BenchmarkSuite` (`MultiStrategyComparator`) concurrently across `EqualWeightAllocator`, `RiskParityAllocator`, `HRPAllocator`, `MarkowitzAllocator`, and `MultiPeriodMPCAllocator` under `AlmgrenChrissCostModel`.
+   - Tracks trial count $N$ and cross-trial Sharpe variance via the `BacktestTracker` singleton to compute the Deflated Sharpe Ratio (DSR, Bailey & López de Prado, 2014).
+   - Executes `PerformanceAttributor` for Classical Brinson-Fachler sector/cluster decomposition, Factor-Implied regression, and Frictional Drag Accounting (Ma & Smith, 2025).
+   - Exports `ComparisonTearSheet` to `visualizations_output/benchmark/`.
+   ```bash
+   uv run python scripts/run_multi_strategy_benchmark.py
+   ```

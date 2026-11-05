@@ -22,6 +22,19 @@ class BaseCostModel(ABC):
         """Returns the cost in percentage terms for each asset."""
         ...
 
+    def decompose_costs(
+        self,
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> tuple[CostData, CostData]:
+        """
+        Decomposes transaction costs into (proportional_spread_cost, nonlinear_impact_cost).
+        Defaults to attributing 100% of `calculate_costs` to proportional spread/commission.
+        """
+        spread_cost = self.calculate_costs(weights_delta, features_slice)
+        impact_cost = spread_cost * 0.0  # type: ignore[operator]
+        return spread_cost, impact_cost
+
 
 class FlatBpsCostModel(BaseCostModel):
     """Standard flat fee (Retail / Small AUM)."""
@@ -126,6 +139,29 @@ class AlmgrenChrissCostModel(BaseCostModel):
 
         return total_cost_pct
 
+    def decompose_costs(
+        self,
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> tuple[CostData, CostData]:
+        if features_slice is None or "volume" not in features_slice:
+            raise ValueError(
+                "Almgren-Chriss requires 'volume' in data.features['volume']."
+            )
+
+        delta = cast(Any, weights_delta)
+        daily_volume = cast(Any, features_slice["volume"])
+        trade_dollar_size = delta.abs() * self.aum
+
+        safe_volume = daily_volume + 1e-8
+        safe_trade = trade_dollar_size + 1e-8
+
+        abs_delta = weights_delta.abs()
+        spread_cost_pct = self.spread * abs_delta  # type: ignore[operator]
+        impact_rate = self.gamma * (safe_trade / safe_volume).pow(0.5)  # type: ignore[operator]
+        impact_cost_pct = impact_rate * abs_delta  # type: ignore[operator]
+        return spread_cost_pct, impact_cost_pct
+
 
 class CompositeCostModel(BaseCostModel):
     """Combines multiple BaseCostModel instances additively."""
@@ -144,3 +180,17 @@ class CompositeCostModel(BaseCostModel):
         for model in self.models[1:]:
             total = total + model.calculate_costs(weights_delta, features_slice)
         return total
+
+    def decompose_costs(
+        self,
+        weights_delta: CostData,
+        features_slice: dict[str, CostData] | None = None,
+    ) -> tuple[CostData, CostData]:
+        spread_total, impact_total = self.models[0].decompose_costs(
+            weights_delta, features_slice
+        )
+        for model in self.models[1:]:
+            s_part, i_part = model.decompose_costs(weights_delta, features_slice)
+            spread_total = spread_total + s_part
+            impact_total = impact_total + i_part
+        return spread_total, impact_total

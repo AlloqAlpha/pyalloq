@@ -36,11 +36,12 @@ flowchart LR
 ### Two Ways to Visualize
 
 1. **Granular Plot Functions (`plot_*`)**: Every visualization is exposed as a standalone function returning a styled `plotly.graph_objects.Figure`.
-2. **Composite Tear Sheet Classes (`*TearSheet`)**: Four specialized tear sheet classes group related charts and compute summary KPIs:
+2. **Composite Tear Sheet Classes (`*TearSheet`)**: Specialized tear sheet classes group related charts and compute summary KPIs:
    - `SimulationTearSheet`: Synthetic path cones, terminal wealth & ruin, CVaR tail shading, and drawdown cones.
    - `RobustnessTearSheet`: Probability of Backtest Overfitting (PBO) and Combinatorial Purged Cross-Validation (CPCV) timeline scrambling.
    - `MacroRegimeTearSheet`: Meucci Entropy Pooling prior-vs-posterior shifts and GMM Markov regime transition overlays.
    - `AllocationTearSheet`: Multi-universe efficient frontier, weight drift & turnover, hierarchical treemaps, component risk contributions, and correlation/monthly return heatmaps.
+   - `ComparisonTearSheet`: Multi-strategy equity & drawdown overlays, multi-allocator probabilistic cones & terminal wealth KDEs, intra-rebalance sawtooth weight drift & turnover bars, and Brinson-Fachler / Factor / Frictional Drag waterfalls with Deflated Sharpe Ratio (DSR) KPIs.
 
 ---
 
@@ -255,6 +256,56 @@ Provides deep visibility into optimizer geometry, intra-rebalance weight drift, 
     fig_tree = plot_hierarchical_composition(hrp_res, target_or_benchmark_weights=rb_res, market_data=market_data)
     fig_rc   = plot_risk_contributions(rb_res, cov_matrix=cov)
     fig_corr = plot_correlation_and_periodic_returns(market_data, portfolio_returns=backtest_result)
+    ```
+
+---
+
+## 5. Multi-Strategy Comparison & Attribution Tear Sheet (`ComparisonTearSheet`)
+
+Visualizes how multiple allocators (`BenchmarkSuite` / `MultiStrategyComparator`) navigate identical market regimes and synthetic realities while decomposing active return and execution frictions.
+
+| Function / Class | What It Visualizes | Key Inputs |
+|------------------|--------------------|------------|
+| `plot_equity_drawdown_overlay` | Cumulative net-of-cost equity curves overlaid with underwater drawdown charts and systemic regime stress highlights | `ComparisonResult` or `Mapping[str, BacktestResult]`, optional `benchmark` |
+| `plot_multi_strategy_fan_chart` | Multi-strategy median equity curves enveloped by 10th–90th and 25th–75th percentile confidence cones + terminal wealth KDEs | `ComparisonResult` or `Mapping[str, MonteCarloResult | BacktestResult]`, optional `scenario_data` |
+| `plot_multi_turnover_drift` | Daily intra-rebalance sawtooth weight drift (\(\sum_i |w_{i,t}^- - w_{i,\text{target}}|\)) + two-way rebalance turnover bars & cumulative churn | `ComparisonResult` or `Mapping[str, BacktestResult]`, optional `market_data` |
+| `plot_attribution_waterfall` | **Left Panel**: Brinson-Fachler (`Allocation`, `Selection`, `Interaction`) & Factor Alpha.<br>**Right Panel**: Gross-to-Net Frictional Drag Waterfall (`Paper -> Drift/Decay -> Spread -> Market Impact -> Net`). | `ComparisonResult`, `AttributionResult`, or `Mapping[str, AttributionResult]` |
+| `ComparisonTearSheet` | Unified `2×2` dashboard and HTML report with Deflated Sharpe Ratio (DSR), Trial Count (\(N\)), Top Factor Alpha, and Drawdown KPIs | `ComparisonResult` or `Mapping[str, BacktestResult]` |
+
+=== "TearSheet Dashboard"
+
+    ```python
+    from pyalloq_backtest import BenchmarkSuite
+    from pyalloq_viz import ComparisonTearSheet
+
+    comp_result = BenchmarkSuite(pipelines=pipelines, benchmark="EqualWeight").run(
+        market_data, scenario_data=scenarios
+    )
+
+    comp_ts = ComparisonTearSheet(
+        comp_result,
+        market_data=market_data,
+        scenario_data=scenarios,
+        benchmark=comp_result.results["EqualWeight"],
+    )
+    comp_ts.show()
+    comp_ts.to_html("multi_strategy_comparison_report.html")
+    ```
+
+=== "Individual Plot Functions"
+
+    ```python
+    from pyalloq_viz import (
+        plot_equity_drawdown_overlay,
+        plot_multi_strategy_fan_chart,
+        plot_multi_turnover_drift,
+        plot_attribution_waterfall,
+    )
+
+    fig_eq   = plot_equity_drawdown_overlay(comp_result, benchmark=comp_result.results["EqualWeight"])
+    fig_cone = plot_multi_strategy_fan_chart(comp_result, scenario_data=scenarios)
+    fig_to   = plot_multi_turnover_drift(comp_result, market_data=market_data)
+    fig_attr = plot_attribution_waterfall(comp_result, market_data=market_data)
     ```
 
 ---

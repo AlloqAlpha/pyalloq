@@ -85,3 +85,67 @@
 ### PBOResult
 
 ::: pyalloq_backtest.overfitting.PBOResult
+
+---
+
+## Multi-Strategy Benchmarking & Deflated Sharpe Ratio
+
+### BacktestTracker
+
+::: pyalloq_backtest.benchmark.BacktestTracker
+
+---
+
+### MultiStrategyComparator (`BenchmarkSuite`)
+
+::: pyalloq_backtest.benchmark.MultiStrategyComparator
+
+---
+
+### ComparisonResult
+
+::: pyalloq_backtest.benchmark.ComparisonResult
+
+---
+
+### compute_deflated_sharpe_ratio
+
+::: pyalloq_backtest.metrics.compute_deflated_sharpe_ratio
+
+---
+
+### compute_expected_max_sharpe
+
+::: pyalloq_backtest.metrics.compute_expected_max_sharpe
+
+---
+
+## Performance Attribution & Frictional Drag Accounting
+
+### PerformanceAttributor
+
+::: pyalloq_backtest.attribution.PerformanceAttributor
+
+---
+
+### AttributionResult
+
+::: pyalloq_backtest.attribution.AttributionResult
+
+---
+
+### BrinsonAttributionResult
+
+::: pyalloq_backtest.attribution.BrinsonAttributionResult
+
+---
+
+### FactorAttributionResult
+
+::: pyalloq_backtest.attribution.FactorAttributionResult
+
+---
+
+### FrictionalDragResult
+
+::: pyalloq_backtest.attribution.FrictionalDragResult
