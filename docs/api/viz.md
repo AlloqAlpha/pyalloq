@@ -154,6 +154,20 @@ This page auto-generates documentation from the `pyalloq-viz` package docstrings
 
 ---
 
+## 6. Spectral Contagion & Fragility Regime Plots
+
+### plot_spectral_contagion_network
+
+::: pyalloq_viz.contagion.plot_spectral_contagion_network
+
+---
+
+### plot_fragility_hawkes_regime_portrait
+
+::: pyalloq_viz.contagion.plot_fragility_hawkes_regime_portrait
+
+---
+
 ## Themes & Quantitative Utilities
 
 ### Theme Configuration

@@ -134,3 +134,79 @@ meta_allocator = HierarchicalMetaRLAllocator(
     tickers=tickers,
 )
 ```
+
+---
+
+## 6. Differentiable KKT Classical Layers & Endogenous Liquidity Impact Wrapper
+
+### Differentiable Risk Parity & CVaR KKT Layers (`pyalloq.dl.layers`)
+
+To embed classical convex Risk Parity (`DifferentiableRiskParityLayer`) or Rockafellar-Uryasev CVaR (`DifferentiableCVaRLayer`) inside an end-to-end differentiable PyTorch pipeline alongside `CRISPSparseSTGAT`, use the implicit KKT differentiation layers:
+
+```python
+import torch
+from pyalloq.dl import (
+    CRISPSparseSTGAT,
+    DifferentiableCVaRLayer,
+    DifferentiableRiskParityLayer,
+)
+
+model = CRISPSparseSTGAT(num_assets=4, num_features=1, hidden_dim=16)
+rp_layer = DifferentiableRiskParityLayer(max_iter=25)
+cvar_layer = DifferentiableCVaRLayer(beta=0.95, max_iter=30)
+
+x_batch = torch.randn(8, 20, 4, 1)
+mu, cov, sparse_adj = model.predict_returns_and_cov(x_batch)
+
+weights_rp = rp_layer(cov)          # Exact KKT Jacobian: J_y = Sigma + diag(b / (y*)^2)
+weights_cvar = cvar_layer(mu, cov)  # O(1)-memory Implicit Function Theorem backprop
+```
+
+### Endogenous Liquidity & Graph Contagion Impact Wrapper (`EndogenousLiquidityImpactWrapper`)
+
+Wraps `PortfolioGymEnv`, `ScenarioPortfolioEnv`, or `POMDPPortfolioEnv` to maintain a transient order-book impact state \(q_t \in \mathbb{R}^N\) with cross-asset spillover across the normalized Graph Laplacian:
+
+```python
+from pyalloq.rl import EndogenousLiquidityImpactWrapper, PortfolioGymEnv
+
+env = EndogenousLiquidityImpactWrapper(
+    PortfolioGymEnv(data, lookback_window=20),
+    impact_lambda=0.005,
+    resilience_rho=0.65,
+    diffusion_kappa=0.002,
+)
+obs, info = env.reset(seed=42)
+```
+
+---
+
+## 7. Unified 3-Stage E2E Policy Pipeline (`BasePolicyNetwork` & `UnifiedE2EPolicyNetwork`)
+
+`BasePolicyNetwork` standardizes the neural controller contract `forward(x, w_current=None) -> w_target` across Decision-Focused Learning (`DeepAllocator`), pathwise Deep Hedging (`DeepHedgingTrajectoryTrainer`), and Gymnasium environments (`POMDPPortfolioEnv` via `.predict_from_obs(obs)`).
+
+`UnifiedE2EPolicyNetwork` implements the 3-stage controller:
+
+1. **Stage 1 (Perception):** `CRISPSparseSTGAT` + `LogSigSSMBlock` selective state-space encoding + `compute_von_neumann_entropy` covariance regularity.
+2. **Stage 2 (Decision / Optimization Layer):** Pluggable `head_mode` (`"mdfp"`, `"risk_parity_kkt"`, `"cvar_kkt"`, or `"residual_actor"`).
+3. **Stage 3 (Turnover-Aware No-Trade Zone):** Smoothly blends KKT allocations with pre-trade weights `w_current`.
+
+```python
+from pyalloq.dl import UnifiedE2EPolicyNetwork
+from pyalloq.rl import DeepHedgingTrajectoryTrainer, POMDPPortfolioEnv, SignatureMMDRegimeGate
+
+policy = UnifiedE2EPolicyNetwork(
+    num_assets=len(data.assets),
+    num_features=1,
+    hidden_dim=32,
+    head_mode="mdfp",
+    no_trade_buffer=0.15,
+)
+
+# Train pathwise with DeepHedgingTrajectoryTrainer or evaluate directly on POMDPPortfolioEnv
+trainer = DeepHedgingTrajectoryTrainer(policy=policy, horizon=5, lookback_window=20)
+trainer.fit_on_market_data(data, epochs=10)
+
+# Gate rebalancing turnover on rough-path Signature-MMD regime shifts
+sig_gate = SignatureMMDRegimeGate(subpath_window=8, fast_window=20, slow_window=60)
+diag = sig_gate.evaluate(data.prices.pct_change().dropna())
+```

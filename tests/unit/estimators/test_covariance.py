@@ -5,9 +5,15 @@ from pyalloq_core.data import MarketData
 
 from pyalloq.classical.estimators.covariance.empirical import EmpiricalCovariance
 from pyalloq.classical.estimators.covariance.ewma import EWMACovariance
+from pyalloq.classical.estimators.covariance.implied_covariance import (
+    ImpliedCovarianceEstimator,
+)
 from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfShrinkage
 from pyalloq.classical.estimators.covariance.random_matrix_theory import (
     RandomMatrixTheoryEstimator,
+)
+from pyalloq.classical.estimators.covariance.reaction_diffusion import (
+    ReactionDiffusionCovarianceEstimator,
 )
 from pyalloq.classical.estimators.covariance.semi_covariance import SemiCovariance
 
@@ -21,6 +27,8 @@ class TestCovarianceEstimators:
             (LedoitWolfShrinkage, {"annualization_factor": 252.0}),
             (RandomMatrixTheoryEstimator, {"denoise": True, "detone": False}),
             (SemiCovariance, {"benchmark_return": 0.0, "annualization_factor": 252.0}),
+            (ImpliedCovarianceEstimator, {"annualization_factor": 252.0}),
+            (ReactionDiffusionCovarianceEstimator, {"annualization_factor": 252.0}),
         ],
     )
     def test_covariance_mathematical_invariants(

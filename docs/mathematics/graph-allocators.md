@@ -52,6 +52,33 @@ and \(\tilde{\sigma}^2_C\) is the variance of the **inverse-variance portfolio**
 \tilde{w}_i = \frac{1/\sigma^2_i}{\sum_{j \in C} 1/\sigma^2_j}, \quad \tilde{\sigma}^2_C = \tilde{w}^\top_C \Sigma_C \tilde{w}_C
 \]
 
+### Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
+
+Instead of single-linkage agglomerative clustering, **Spectral Graph Laplacian HRP** recursively partitions any induced subgraph \(S \subseteq V\) using the **Fiedler vector** \(v_2(\mathcal{L}_S)\) (the eigenvector corresponding to the second smallest eigenvalue \(\lambda_2(\mathcal{L}_S)\) of \(\mathcal{L}_S = I - D_S^{-1/2} W_S D_S^{-1/2}\)):
+
+1. **Cheeger Conductance Sweep Cut:** Sort nodes \(i \in S\) by their Fiedler coordinate \(v_{2,i}(\mathcal{L}_S)\) and select the split index \(s^*\) minimizing the regularized Cheeger normalized cut conductance \(\phi(S_L, S_R)\).
+2. **Fragility-Tilted Recursive Bisection:** Modify each sub-cluster's effective variance by its internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S_c})\):
+
+\[
+\tilde{V}_{S_c} = \tilde{\sigma}^2_{S_c} \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha = 1 - \frac{\tilde{V}_{S_L}}{\tilde{V}_{S_L} + \tilde{V}_{S_R}}
+\]
+
+---
+
+## Differentiable Risk Parity KKT Layer (`DifferentiableRiskParityLayer`)
+
+By Spinu's (2013) convex log-barrier formulation of Risk Budgeting / Risk Parity:
+
+\[
+y^*(\hat{\Sigma}, b) = \arg\min_{y > 0} \frac{1}{2} y^\top \hat{\Sigma} y - \sum_{i=1}^N b_i \ln y_i, \qquad w^* = \frac{y^*}{\mathbf{1}^\top y^*}
+\]
+
+the KKT stationarity condition \(F(y^*, \hat{\Sigma}, b) = \hat{\Sigma} y^* - b / y^* = \mathbf{0}\) has an **exact closed-form positive-definite Jacobian** \(J_y = \hat{\Sigma} + \operatorname{diag}(b / (y^*)^2)\), enabling exact implicit differentiation without unrolling Newton iterations:
+
+\[
+\frac{\partial \mathcal{L}_{\text{task}}}{\partial \hat{\Sigma}} = -\frac{1}{2}\left(u (y^*)^\top + y^* u^\top\right), \qquad \text{where } \left(\hat{\Sigma} + \operatorname{diag}\!\left(\frac{b}{(y^*)^2}\right)\right) u = \frac{\partial \mathcal{L}_{\text{task}}}{\partial y^*}
+\]
+
 ---
 
 ## Hierarchical Equal Risk Contribution (HERC)
@@ -113,6 +140,22 @@ w_i = w^{intra}_{i \in C_k} \times w^{inter}_{C_k}
 | Cluster method | Hierarchical linkage | Hierarchical linkage | K-Means |
 | Complexity | Low | Medium | Higher |
 | Large universe (100+) | ✅ | ✅ | ✅ |
+
+---
+
+## 4. Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
+
+Instead of single-linkage agglomerative clustering on pairwise correlation distances (which is vulnerable to "chaining" noise), `SpectralLaplacianHRPAllocator` constructs a non-negative precision/partial-correlation adjacency matrix \(W_S\) on each induced subgraph \(S \subseteq \{1, \dots, N\}\) and computes the normalized Graph Laplacian:
+
+\[
+\mathcal{L}_S = I_{|S|} - D_S^{-1/2} W_S D_S^{-1/2}
+\]
+
+The second smallest eigenvector \(v_2(\mathcal{L}_S)\) (**Fiedler vector**) provides a 1D spectral embedding along which a Cheeger sweep cut partitions \(S \to (S_L, S_R)\) to minimize normalized cut conductance. During recursive bisection, cluster variances are penalized by internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S})\):
+
+\[
+\tilde{V}(S_c) = V_{\text{IVP}}(S_c) \cdot \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha_L = 1 - \frac{\tilde{V}(S_L)}{\tilde{V}(S_L) + \tilde{V}(S_R)}
+\]
 
 ---
 

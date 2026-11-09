@@ -16,6 +16,24 @@
 
 ---
 
+### PITOptionsMFIVTransformer
+
+::: pyalloq_features.transformers.alternative.PITOptionsMFIVTransformer
+
+---
+
+### LogSignatureTransformer
+
+::: pyalloq_features.transformers.rough_signatures.LogSignatureTransformer
+
+---
+
+### LiftedHestonRoughVolTransformer
+
+::: pyalloq_features.transformers.rough_signatures.LiftedHestonRoughVolTransformer
+
+---
+
 ## Scalers
 
 ::: pyalloq_features.scalers

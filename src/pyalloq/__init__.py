@@ -30,6 +30,7 @@ from pyalloq.classical import (
     EWMAReturnEstimator,
     EmpiricalCovariance,
     EqualWeightAllocator,
+    ImpliedCovarianceEstimator,
     ImpliedReturnEstimator,
     InverseVolatilityAllocator,
     JamesSteinReturnEstimator,
@@ -43,11 +44,13 @@ from pyalloq.classical import (
     MultiPeriodMPCAllocator,
     RandomAllocator,
     RandomMatrixTheoryEstimator,
+    ReactionDiffusionCovarianceEstimator,
     ResidualMomentumEstimator,
     RiskBudgetingAllocator,
     RiskParityAllocator,
     SemiCovariance,
     StochasticScenarioMPCAllocator,
+    VarianceRiskPremiumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
 from pyalloq.ml import (
@@ -55,6 +58,7 @@ from pyalloq.ml import (
     HERCAllocator,
     HRPAllocator,
     NCOAllocator,
+    SpectralLaplacianHRPAllocator,
 )
 
 __version__ = "0.1.0.dev1"
@@ -83,6 +87,7 @@ __all__ = [
     "EqualWeightAllocator",
     "HERCAllocator",
     "HRPAllocator",
+    "ImpliedCovarianceEstimator",
     "ImpliedReturnEstimator",
     "InverseVolatilityAllocator",
     "JamesSteinReturnEstimator",
@@ -103,13 +108,16 @@ __all__ = [
     "ParallelMonteCarloEngine",
     "RandomAllocator",
     "RandomMatrixTheoryEstimator",
+    "ReactionDiffusionCovarianceEstimator",
     "ResidualMomentumEstimator",
     "RiskBudgetingAllocator",
     "RiskParityAllocator",
     "ScenarioMarketData",
     "SemiCovariance",
+    "SpectralLaplacianHRPAllocator",
     "StochasticScenarioMPCAllocator",
     "StrategyPipeline",
+    "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
     "__version__",
 ]

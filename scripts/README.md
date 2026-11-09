@@ -48,3 +48,19 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_multi_strategy_benchmark.py
    ```
+
+6. **[`run_pit_rough_vol_and_reaction_diffusion.py`](./run_pit_rough_vol_and_reaction_diffusion.py)**
+   - Runs the Point-in-Time Option-Implied MFIV (`PITOptionsMFIVTransformer`), Markovian Lifted Heston Rough Volatility (`LiftedHestonRoughVolTransformer`), and Lyndon-basis Log-Signature (`LogSignatureTransformer`) feature pipeline.
+   - Evaluates Spectral Graph Laplacian fragility ($\lambda_2, \tau_{\text{mix}}, v_2$) and Wiener-Hopf Multivariate Hawkes excitation criticality ($\rho(G)$) via `ReactionDiffusionCovarianceEstimator`.
+   - Benchmarks Classical HRP vs. Buss-Vilkov Option-Implied HRP (`ImpliedCovarianceEstimator`) vs. Graph Contagion Spectral HRP (`SpectralLaplacianHRPAllocator`) in `WalkForwardEngine`, and simulates 3D contagion paths via `ReactionDiffusionGenerator`.
+   ```bash
+   uv run python scripts/run_pit_rough_vol_and_reaction_diffusion.py
+   ```
+
+7. **[`run_stgat_kkt_and_endogenous_rl.py`](./run_stgat_kkt_and_endogenous_rl.py)**
+   - Trains an end-to-end `CRISPSparseSTGAT` + `DifferentiableRiskParityLayer` (`DifferentiableKKTAllocatorModule`) neural-classical allocator via `WalkForwardTrainer` and `SharpeLoss`.
+   - Benchmarks `DeepAllocator` (E2E KKT Risk Parity) against `DeepCovarianceEstimator(CRISPSparseSTGAT)` + `SpectralLaplacianHRPAllocator` in `WalkForwardEngine`.
+   - Demonstrates `EndogenousLiquidityImpactWrapper` wrapping `PortfolioGymEnv` for transient order-book resilience and cross-asset Graph Laplacian spillover cost accounting.
+   ```bash
+   uv run python scripts/run_stgat_kkt_and_endogenous_rl.py
+   ```

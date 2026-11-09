@@ -3,8 +3,10 @@ import torch
 from pyalloq_core.data import MarketData, ScenarioMarketData
 from torch import nn
 
+from pyalloq.dl.policy import BasePolicyNetwork
 
-class TrajectoryPolicyNet(nn.Module):
+
+class TrajectoryPolicyNet(BasePolicyNetwork):
     """
     Deep Hedging Recurrent Policy Network pi_theta(s_t, w_{t^-}) -> w_t in Delta^N
     (Buehler et al. 2019; Research Section 8.1).
@@ -35,22 +37,34 @@ class TrajectoryPolicyNet(nn.Module):
     def forward(
         self,
         return_window: torch.Tensor,
-        w_current: torch.Tensor,
+        w_current: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Parameters
         ----------
         return_window : torch.Tensor
-            Recent asset return window of shape (B, L, N) or (B, L * N).
-        w_current : torch.Tensor
-            Pre-trade drifted weights of shape (B, N).
+            Recent asset return window of shape (B, L, N, F), (B, L, N), or (B, L * N).
+        w_current : torch.Tensor, optional
+            Pre-trade drifted weights of shape (B, N). Defaults to uniform 1 / N.
 
         Returns
         -------
         torch.Tensor
             Target portfolio weights w_t on the simplex of shape (B, N).
         """
-        B = w_current.shape[0]
+        if return_window.dim() == 4:
+            return_window = return_window[:, :, :, 0]
+        B = return_window.shape[0]
+        if w_current is None:
+            w_current = torch.full(
+                (B, self.n_assets),
+                1.0 / self.n_assets,
+                device=return_window.device,
+                dtype=return_window.dtype,
+            )
+        elif w_current.dim() == 1:
+            w_current = w_current.unsqueeze(0).expand(B, self.n_assets)
+
         flat_ret = return_window.reshape(B, -1)
         x = torch.cat([w_current, flat_ret], dim=-1)
         logits = self.net(x)
@@ -71,8 +85,9 @@ class DeepHedgingTrajectoryTrainer:
 
     def __init__(
         self,
-        policy: TrajectoryPolicyNet,
+        policy: BasePolicyNetwork | nn.Module,
         horizon: int = 10,
+        lookback_window: int | None = None,
         transaction_cost_bps: float = 10.0,
         risk_aversion: float = 2.0,
         lr: float = 1e-3,
@@ -81,6 +96,11 @@ class DeepHedgingTrajectoryTrainer:
         self.device = device
         self.policy = policy.to(self.device)
         self.horizon = horizon
+        self.lookback_window = int(
+            lookback_window
+            if lookback_window is not None
+            else getattr(self.policy, "lookback_window", 20)
+        )
         self.tc_rate = transaction_cost_bps / 10000.0
         self.risk_aversion = risk_aversion
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
@@ -95,7 +115,7 @@ class DeepHedgingTrajectoryTrainer:
         and compute the pathwise entropic + Sharpe trajectory loss.
         """
         B, T_total, N = scenarios.shape
-        L = self.policy.lookback_window
+        L = self.lookback_window
         H = T_total - L
         if H <= 0:
             raise ValueError(
@@ -149,7 +169,7 @@ class DeepHedgingTrajectoryTrainer:
         Slice rolling trajectories of length (L + H) from `MarketData` and train `self.policy`.
         """
         returns_np = data.prices.pct_change().fillna(0.0).to_numpy(dtype=np.float32)
-        L = self.policy.lookback_window
+        L = self.lookback_window
         seq_len = L + self.horizon
         n_obs = len(returns_np)
         if n_obs <= seq_len:

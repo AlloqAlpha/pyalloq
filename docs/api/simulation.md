@@ -26,6 +26,10 @@ This page auto-generates documentation from the `pyalloq-simulation` package doc
 
 ::: pyalloq_simulation.generators.regimes.GMMRegimeGenerator
 
+### ReactionDiffusionGenerator
+
+::: pyalloq_simulation.generators.reaction_diffusion.ReactionDiffusionGenerator
+
 ---
 
 ## Pre-Processing & Imputation

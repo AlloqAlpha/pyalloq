@@ -2,6 +2,7 @@ from pyalloq_simulation.generators.fhs import FHSGenerator
 from pyalloq_simulation.generators.factors import PCAFactorGenerator
 from pyalloq_simulation.generators.gaussian import GaussianGenerator
 from pyalloq_simulation.generators.copulas import GARCHEVTCopulaGenerator
+from pyalloq_simulation.generators.reaction_diffusion import ReactionDiffusionGenerator
 from pyalloq_simulation.generators.regimes import GMMRegimeGenerator
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "GaussianGenerator",
     "GARCHEVTCopulaGenerator",
     "GMMRegimeGenerator",
+    "ReactionDiffusionGenerator",
 ]

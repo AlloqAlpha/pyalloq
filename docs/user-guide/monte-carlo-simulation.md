@@ -56,6 +56,7 @@ All generators implement `BaseScenarioGenerator` and output a `ScenarioMarketDat
 | `FHSGenerator` | Univariate GARCH(1,1) filtering + synchronous empirical residual bootstrap | Preserving historical volatility clustering and empirical fat tails |
 | `GARCHEVTCopulaGenerator` | AR(1)-GARCH(1,1) marginals + Generalized Pareto (EVT) tails + Student-\(t\) Copula | Modeling extreme tail risk and simultaneous crash dependence (\(\lambda_L > 0\)) |
 | `GMMRegimeGenerator` | \(K\)-state Gaussian Mixture Model + Markov transition matrix | Stress-testing structural breaks and Bull/Bear regime shifts |
+| `ReactionDiffusionGenerator` | Coupled FitzHugh-Nagumo Graph Reaction-Diffusion SDE + Leverage Effect on Precision Graph Laplacian | Simulating cross-asset volatility spillover, network contagion, and localized shock propagation |
 
 ### Generating Scenarios
 
@@ -67,9 +68,10 @@ from pyalloq_simulation import (
     FHSGenerator,
     GARCHEVTCopulaGenerator,
     GMMRegimeGenerator,
+    ReactionDiffusionGenerator,
 )
 
-# Example: GARCH-EVT-Student-t Copula Generator
+# Example 1: GARCH-EVT-Student-t Copula Generator
 generator = GARCHEVTCopulaGenerator(
     nu=5.0,
     lower_quantile=0.10,
@@ -81,6 +83,15 @@ generator.fit(data, log_returns=False)
 
 scenario_data = generator.generate(n_paths=2000, horizon=252)
 print(scenario_data.prices.shape)  # (2000, 252, N)
+
+# Example 2: Graph Reaction-Diffusion Contagion Generator with Point Shock
+rd_gen = ReactionDiffusionGenerator(diffusion_coeff=0.35, leverage_rho=-0.45)
+rd_gen.fit(data)
+contagion_scenarios = rd_gen.generate(
+    n_paths=500,
+    horizon=60,
+    initial_shock={data.assets[0]: 0.80},  # Inject localized volatility shock
+)
 ```
 
 ### Memory Management & Tensor Batching

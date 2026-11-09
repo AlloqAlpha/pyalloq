@@ -5,6 +5,7 @@ from pyalloq_simulation.generators import (
     GaussianGenerator,
     GARCHEVTCopulaGenerator,
     GMMRegimeGenerator,
+    ReactionDiffusionGenerator,
 )
 from pyalloq_simulation.utils import FactorBackcastImputer
 from pyalloq_simulation.views import (
@@ -26,6 +27,7 @@ __all__ = [
     "GaussianGenerator",
     "GARCHEVTCopulaGenerator",
     "GMMRegimeGenerator",
+    "ReactionDiffusionGenerator",
     "FactorBackcastImputer",
     "EntropyPooler",
     "EntropyResult",

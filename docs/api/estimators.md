@@ -58,6 +58,12 @@
 
 ---
 
+### VarianceRiskPremiumEstimator
+
+::: pyalloq.classical.estimators.returns.classical.vrp.VarianceRiskPremiumEstimator
+
+---
+
 ### TimesFM3UnivariateReturnEstimator
 
 ::: pyalloq.dl.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
@@ -99,6 +105,60 @@
 ### SemiCovariance
 
 ::: pyalloq.classical.estimators.covariance.semi_covariance.SemiCovariance
+
+---
+
+### ImpliedCovarianceEstimator
+
+::: pyalloq.classical.estimators.covariance.implied_covariance.ImpliedCovarianceEstimator
+
+---
+
+### ReactionDiffusionCovarianceEstimator
+
+::: pyalloq.classical.estimators.covariance.reaction_diffusion.ReactionDiffusionCovarianceEstimator
+
+---
+
+### SpectralGraphFragility
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.SpectralGraphFragility
+
+---
+
+### WienerHopfHawkesSolver
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.WienerHopfHawkesSolver
+
+---
+
+### CRISPSparseSTGAT
+
+::: pyalloq.dl.estimators.covariance.models.gnn.CRISPSparseSTGAT
+
+---
+
+### NeuralJumpRDE
+
+::: pyalloq.dl.layers.neural_jump_rde.NeuralJumpRDE
+
+---
+
+### FragilityShrinkageCholeskyLayer
+
+::: pyalloq.dl.layers.fragility_kkt.FragilityShrinkageCholeskyLayer
+
+---
+
+### LogSigSSMBlock
+
+::: pyalloq.dl.policy.LogSigSSMBlock
+
+---
+
+### compute_von_neumann_entropy
+
+::: pyalloq.dl.policy.compute_von_neumann_entropy
 
 ---
 

@@ -255,6 +255,21 @@ Steps:
 3. Sort assets by quasi-diagonalization
 4. Assign weights via recursive bisection using cluster inverse-variance portfolios
 
+#### Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
+
+Instead of single-linkage agglomerative clustering (which can suffer from "chaining" artifacts), `SpectralLaplacianHRPAllocator` (or `HRPAllocator(clustering_mode="spectral_laplacian")`) performs recursive **Fiedler vector** (\(v_2\)) spectral sweep cuts on the normalized Graph Laplacian \(\mathcal{L}_S = I - D_S^{-1/2} W_S D_S^{-1/2}\) of each induced subgraph, with an optional fragility penalty tilting capital away from sub-graphs with high internal algebraic connectivity \(\lambda_2(\mathcal{L}_S)\):
+
+```python
+from pyalloq.ml.optimizers import SpectralLaplacianHRPAllocator
+
+pipeline = StrategyPipeline(
+    allocator=SpectralLaplacianHRPAllocator(
+        tickers=data.assets,
+        fragility_penalty=0.25,
+    )
+)
+```
+
 ---
 
 ### HERC (`HERCAllocator`)

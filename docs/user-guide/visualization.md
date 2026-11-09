@@ -310,6 +310,35 @@ Visualizes how multiple allocators (`BenchmarkSuite` / `MultiStrategyComparator`
 
 ---
 
+## 6. Spectral Contagion Network & Hawkes Fragility Regime Portraits
+
+Visualizes the market Graph Laplacian topology (\(\mathcal{L}_t = I - D_t^{-1/2}W_t D_t^{-1/2}\)), Fiedler vector (\(v_2\)) spectral bisection partitions, Wiener-Hopf Hawkes branching out-degrees, and rolling structural fragility diagnostics (\(\lambda_2(t)\), \(\rho(G_t)\), and effective Hurst \(H_{\text{eff}}(t)\)):
+
+```python
+import pandas as pd
+from pyalloq import ReactionDiffusionCovarianceEstimator
+from pyalloq_viz import (
+    plot_fragility_hawkes_regime_portrait,
+    plot_spectral_contagion_network,
+)
+
+rd_est = ReactionDiffusionCovarianceEstimator(slow_window=60)
+cov_df = rd_est.estimate(market_data)
+
+adj_df = pd.DataFrame(
+    rd_est.last_adjacency_,
+    index=market_data.assets,
+    columns=market_data.assets,
+)
+fig_net = plot_spectral_contagion_network(
+    adjacency=adj_df,
+    branching_matrix=rd_est.hawkes_branching_matrix_,
+)
+fig_net.show()
+```
+
+---
+
 ## Themes & Static Exports
 
 Every plot function and tear sheet supports two built-in institutional themes:
