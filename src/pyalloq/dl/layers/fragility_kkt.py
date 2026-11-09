@@ -1,9 +1,100 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Any
 
+import numpy as np
 import torch
 from torch import nn
+
+
+class BasePolicyNetwork(nn.Module, ABC):
+    """
+    Unified Abstract Base Class for End-to-End Portfolio Policy Networks (Pillar 4).
+
+    Standardizes the controller contract:
+        forward(x, w_current=None) -> w_target in Delta^N
+    bridging supervised Decision-Focused Learning (DFL), pathwise Deep Hedging
+    (`DeepHedgingTrajectoryTrainer`), `DeepAllocator` backtests, and continuous-control
+    RL environments (`POMDPPortfolioEnv`, `PortfolioGymEnv`, `ScenarioPortfolioEnv`).
+    """
+
+    @abstractmethod
+    def forward(
+        self,
+        x: torch.Tensor,
+        w_current: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x : torch.Tensor
+            Market state tensor of shape `(B, L, N, F)` or `(B, L, N)`.
+        w_current : torch.Tensor, optional
+            Pre-trade drifted portfolio weights `w_{t^-}` of shape `(B, N)` or `(N,)`.
+            If `None`, defaults to uniform weights `1 / N`.
+
+        Returns
+        -------
+        torch.Tensor
+            Target portfolio weights `w_target` on the probability simplex `Delta^N`
+            of shape `(B, N)`.
+        """
+        ...
+
+    @staticmethod
+    def _normalize_simplex(w: torch.Tensor) -> torch.Tensor:
+        w_pos = torch.clamp(w, min=0.0)
+        denom = w_pos.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+        return w_pos / denom
+
+    @torch.no_grad()
+    def predict_from_obs(
+        self,
+        observation: np.ndarray | dict[str, np.ndarray],
+        deterministic: bool = True,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """
+        Evaluates the policy directly on a Gymnasium observation from `POMDPPortfolioEnv`,
+        `PortfolioGymEnv`, or `ScenarioPortfolioEnv`.
+        """
+        self.eval()
+        device = next(self.parameters()).device
+        dtype = next(self.parameters()).dtype
+
+        if isinstance(observation, dict):
+            raw_mkt = observation.get(
+                "market_state",
+                observation.get("market", observation.get("returns")),
+            )
+            mkt = np.asarray(raw_mkt)
+            w_np = observation.get("current_weights", observation.get("weights"))
+        else:
+            mkt = np.asarray(observation)
+            w_np = None
+
+        if mkt.ndim == 2:
+            x_t = (
+                torch.tensor(mkt, device=device, dtype=dtype).unsqueeze(0).unsqueeze(-1)
+            )
+        elif mkt.ndim == 3:
+            x_t = torch.tensor(mkt, device=device, dtype=dtype).unsqueeze(0)
+        elif mkt.ndim == 4:
+            x_t = torch.tensor(mkt, device=device, dtype=dtype)
+        else:
+            raise ValueError(f"Unsupported market observation shape: {mkt.shape}")
+
+        w_t: torch.Tensor | None = None
+        if w_np is not None:
+            w_arr = np.asarray(w_np)
+            if w_arr.ndim == 1:
+                w_t = torch.tensor(w_arr, device=device, dtype=dtype).unsqueeze(0)
+            else:
+                w_t = torch.tensor(w_arr, device=device, dtype=dtype)
+
+        w_out = self.forward(x_t, w_current=w_t)
+        action = w_out.squeeze(0).cpu().numpy()
+        return action, {"deterministic": deterministic}
 
 
 class FragilityShrinkageCholeskyLayer(nn.Module):
@@ -553,7 +644,7 @@ class DifferentiableCVaRLayer(nn.Module):
         return w.squeeze(0) if squeezed else w
 
 
-class DifferentiableKKTAllocatorModule(nn.Module):
+class DifferentiableKKTAllocatorModule(BasePolicyNetwork):
     """
     End-to-End Differentiable Portfolio Allocation Module chaining a Spatio-Temporal
     Graph Network (`CRISPSparseSTGAT`) directly into a Differentiable Classical KKT
@@ -574,10 +665,12 @@ class DifferentiableKKTAllocatorModule(nn.Module):
         kkt_layer: nn.Module | None = None,
         mode: str = "risk_parity",
         risk_budgets: torch.Tensor | None = None,
+        no_trade_buffer: float = 0.0,
     ) -> None:
         super().__init__()
         self.backbone = backbone
         self.mode = mode.lower()
+        self.no_trade_buffer = float(np.clip(no_trade_buffer, 0.0, 0.95))
         if kkt_layer is not None:
             self.kkt_layer = kkt_layer
         elif self.mode == "cvar":
@@ -589,7 +682,13 @@ class DifferentiableKKTAllocatorModule(nn.Module):
         else:
             self.risk_budgets = None
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        w_current: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if x.dim() == 3:
+            x = x.unsqueeze(-1)
         pred_fn = getattr(self.backbone, "predict_returns_and_cov", None)
         if callable(pred_fn):
             mu, cov, _ = pred_fn(x)
@@ -600,10 +699,23 @@ class DifferentiableKKTAllocatorModule(nn.Module):
         if isinstance(self.kkt_layer, DifferentiableCVaRLayer):
             # Use lookback return window x[:, :, :, 0] as empirical scenario distribution
             ret_scenarios = x[:, :, :, 0]
-            return self.kkt_layer(
+            w_opt = self.kkt_layer(
                 expected_returns=mu,
                 cov_matrix=cov,
                 scenarios=ret_scenarios,
                 risk_budgets=self.risk_budgets,
             )
-        return self.kkt_layer(cov, risk_budgets=self.risk_budgets)
+        else:
+            w_opt = self.kkt_layer(cov, risk_budgets=self.risk_budgets)
+
+        if w_current is not None and self.no_trade_buffer > 0.0:
+            w_c = (
+                w_current.unsqueeze(0).expand_as(w_opt)
+                if w_current.dim() == 1
+                else w_current
+            ).to(device=w_opt.device, dtype=w_opt.dtype)
+            w_c = torch.clamp(w_c, min=0.0)
+            w_c = w_c / w_c.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+            w_opt = (1.0 - self.no_trade_buffer) * w_opt + self.no_trade_buffer * w_c
+            w_opt = w_opt / w_opt.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+        return w_opt

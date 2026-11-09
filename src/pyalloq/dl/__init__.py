@@ -9,15 +9,25 @@ from pyalloq.dl.layers import (
     NeuralJumpRDE,
     TorchLogSignatureExtractor,
 )
+from pyalloq.dl.policy import (
+    BasePolicyNetwork,
+    LogSigSSMBlock,
+    UnifiedE2EPolicyNetwork,
+    compute_von_neumann_entropy,
+)
 
 __all__ = [
+    "BasePolicyNetwork",
     "CRISPSparseSTGAT",
     "DeepCovarianceEstimator",
     "DifferentiableCVaRLayer",
     "DifferentiableKKTAllocatorModule",
     "DifferentiableRiskParityLayer",
     "FragilityShrinkageCholeskyLayer",
+    "LogSigSSMBlock",
     "MDFPOptimizationLayer",
     "NeuralJumpRDE",
     "TorchLogSignatureExtractor",
+    "UnifiedE2EPolicyNetwork",
+    "compute_von_neumann_entropy",
 ]

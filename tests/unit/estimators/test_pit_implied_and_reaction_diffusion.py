@@ -831,3 +831,110 @@ class TestAuditEdgeCasesAndGradcheck:
         )
         fig_portrait = plot_fragility_hawkes_regime_portrait(diag_ts)
         assert len(fig_portrait.data) == 3
+
+    def test_unified_base_policy_network_and_3stage_controller(
+        self, synthetic_market_data: MarketData
+    ) -> None:
+        import torch
+        from pyalloq.dl import (
+            BasePolicyNetwork,
+            CRISPSparseSTGAT,
+            DifferentiableKKTAllocatorModule,
+            LogSigSSMBlock,
+            UnifiedE2EPolicyNetwork,
+            compute_von_neumann_entropy,
+        )
+        from pyalloq.dl.estimators.e2e.deep_allocator import DeepAllocator
+        from pyalloq.rl import (
+            DeepHedgingTrajectoryTrainer,
+            POMDPPortfolioEnv,
+            TrajectoryPolicyNet,
+        )
+
+        n_assets = len(synthetic_market_data.assets)
+        x = torch.randn(3, 12, n_assets, 1, requires_grad=True)
+        w_curr = torch.tensor([[0.55, 0.15, 0.15, 0.15]] * 3, dtype=torch.float32)
+
+        # 1. Verify Von Neumann Entropy bounds (1.0 for identity, ~0.0 for rank-1)
+        eye_cov = torch.eye(n_assets).unsqueeze(0)
+        rank1_cov = torch.ones((1, n_assets, n_assets)) + 1e-5 * eye_cov
+        vne_eye = float(compute_von_neumann_entropy(eye_cov).item())
+        vne_rank1 = float(compute_von_neumann_entropy(rank1_cov).item())
+        assert np.isclose(vne_eye, 1.0, atol=1e-4)
+        assert vne_rank1 < 0.05
+
+        # 2. Verify LogSigSSMBlock selective state-space encoding
+        ssm = LogSigSSMBlock(in_channels=1, hidden_dim=16, state_dim=8, num_windows=3)
+        ssm_out = ssm(torch.randn(5, 12, 1))
+        assert ssm_out.shape == (5, 16)
+
+        # 3. Verify BasePolicyNetwork inheritance and all 4 controller head modes
+        traj_net = TrajectoryPolicyNet(n_assets=n_assets, lookback_window=12)
+        kkt_net = DifferentiableKKTAllocatorModule(
+            backbone=CRISPSparseSTGAT(
+                num_assets=n_assets, num_features=1, hidden_dim=8
+            ),
+            no_trade_buffer=0.2,
+        )
+        assert isinstance(traj_net, BasePolicyNetwork)
+        assert isinstance(kkt_net, BasePolicyNetwork)
+
+        for mode in ("mdfp", "risk_parity_kkt", "cvar_kkt", "residual_actor"):
+            policy = UnifiedE2EPolicyNetwork(
+                num_assets=n_assets,
+                num_features=1,
+                hidden_dim=12,
+                num_heads=2,
+                head_mode=mode,  # type: ignore[arg-type]
+                no_trade_buffer=0.2,
+            )
+            assert isinstance(policy, BasePolicyNetwork)
+            w_out = policy(x, w_current=w_curr)
+            assert w_out.shape == (3, n_assets)
+            assert torch.allclose(w_out.sum(dim=-1), torch.ones(3), atol=1e-5)
+            assert torch.all(w_out >= 0.0)
+            loss = (w_out**2).sum()
+            loss.backward()
+            assert x.grad is not None
+
+        # 4. Bridge to DeepAllocator (with current_weights), DeepHedgingTrajectoryTrainer & POMDPPortfolioEnv
+        e2e_policy = UnifiedE2EPolicyNetwork(
+            num_assets=n_assets,
+            num_features=1,
+            hidden_dim=12,
+            head_mode="residual_actor",
+        )
+        deep_alloc = DeepAllocator(
+            model=e2e_policy,
+            lookback_window=12,
+            tickers=synthetic_market_data.assets,
+        )
+        cur_w_series = pd.Series(
+            [0.6, 0.2, 0.1, 0.1], index=synthetic_market_data.assets
+        )
+        alloc_res = deep_alloc.allocate(
+            synthetic_market_data, current_weights=cur_w_series
+        )
+        assert np.isclose(float(alloc_res.weights.sum()), 1.0, atol=1e-5)
+
+        trainer = DeepHedgingTrajectoryTrainer(
+            policy=e2e_policy,
+            horizon=4,
+            lookback_window=12,
+            lr=1e-3,
+        )
+        losses = trainer.fit_on_market_data(
+            synthetic_market_data, epochs=2, batch_size=32
+        )
+        assert len(losses) == 2 and np.all(np.isfinite(losses))
+
+        env = POMDPPortfolioEnv(
+            scenario_data=synthetic_market_data,
+            lookback_window=12,
+            include_cash=False,
+        )
+        obs, _ = env.reset(seed=42)
+        action, info = e2e_policy.predict_from_obs(obs)
+        assert action.shape == (n_assets,)
+        assert np.isclose(float(np.sum(action)), 1.0, atol=1e-5)
+        assert info["deterministic"] is True

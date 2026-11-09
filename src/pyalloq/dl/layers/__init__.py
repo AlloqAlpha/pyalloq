@@ -1,4 +1,5 @@
 from pyalloq.dl.layers.fragility_kkt import (
+    BasePolicyNetwork,
     DifferentiableCVaRLayer,
     DifferentiableKKTAllocatorModule,
     DifferentiableRiskParityLayer,
@@ -11,6 +12,7 @@ from pyalloq.dl.layers.neural_jump_rde import (
 )
 
 __all__ = [
+    "BasePolicyNetwork",
     "DifferentiableCVaRLayer",
     "DifferentiableKKTAllocatorModule",
     "DifferentiableRiskParityLayer",

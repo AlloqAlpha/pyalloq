@@ -73,8 +73,31 @@ class DeepAllocator(BaseAllocator):
 
         x_batch = x_tensor.unsqueeze(0).to(self.device)
 
+        current_weights = kwargs.get("current_weights")
+        w_curr_tensor: torch.Tensor | None = None
+        if current_weights is not None:
+            if isinstance(current_weights, pd.Series):
+                w_np = (
+                    current_weights.reindex(tickers)
+                    .fillna(0.0)
+                    .to_numpy(dtype="float32")
+                )
+            else:
+                w_np = pd.Series(current_weights, index=tickers).to_numpy(
+                    dtype="float32"
+                )
+            w_curr_tensor = torch.tensor(
+                w_np, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+
         with torch.no_grad():
-            weights_tensor = self.model(x_batch)
+            try:
+                if w_curr_tensor is not None:
+                    weights_tensor = self.model(x_batch, w_current=w_curr_tensor)
+                else:
+                    weights_tensor = self.model(x_batch)
+            except TypeError:
+                weights_tensor = self.model(x_batch)
 
         weights_np = weights_tensor.squeeze(0).cpu().numpy()
         weights = pd.Series(weights_np, index=data.prices.columns, name="weights")

@@ -1,3 +1,4 @@
+from pyalloq.dl.policy import BasePolicyNetwork, UnifiedE2EPolicyNetwork
 from pyalloq.rl.agents import (
     BaseRLAgent,
     HierarchicalMetaRLAllocator,
@@ -31,6 +32,7 @@ from pyalloq.rl.wrappers import (
 )
 
 __all__ = [
+    "BasePolicyNetwork",
     "BaseRLAgent",
     "BaseRewardFunction",
     "CARAUtilReward",
@@ -51,6 +53,7 @@ __all__ = [
     "StepwiseSortinoReward",
     "ThermodynamicDiagnostics",
     "TrajectoryPolicyNet",
+    "UnifiedE2EPolicyNetwork",
     "WassersteinRegimeGate",
     "make_dict_space",
 ]
