@@ -1098,6 +1098,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-differentiable-kkt-classical-layers-endogenous-liquidity-impact-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Differentiable KKT Classical Layers &amp; Endogenous Liquidity Impact Wrapper
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Differentiable KKT Classical Layers &amp; Endogenous Liquidity Impact Wrapper">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#differentiable-risk-parity-cvar-kkt-layers-pyalloqdllayers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiable Risk Parity &amp; CVaR KKT Layers (pyalloq.dl.layers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#endogenous-liquidity-graph-contagion-impact-wrapper-endogenousliquidityimpactwrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endogenous Liquidity &amp; Graph Contagion Impact Wrapper (EndogenousLiquidityImpactWrapper)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-unified-3-stage-e2e-policy-pipeline-basepolicynetwork-unifiede2epolicynetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Unified 3-Stage E2E Policy Pipeline (BasePolicyNetwork &amp; UnifiedE2EPolicyNetwork)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2004,6 +2054,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-differentiable-kkt-classical-layers-endogenous-liquidity-impact-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Differentiable KKT Classical Layers &amp; Endogenous Liquidity Impact Wrapper
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Differentiable KKT Classical Layers &amp; Endogenous Liquidity Impact Wrapper">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#differentiable-risk-parity-cvar-kkt-layers-pyalloqdllayers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiable Risk Parity &amp; CVaR KKT Layers (pyalloq.dl.layers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#endogenous-liquidity-graph-contagion-impact-wrapper-endogenousliquidityimpactwrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endogenous Liquidity &amp; Graph Contagion Impact Wrapper (EndogenousLiquidityImpactWrapper)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-unified-3-stage-e2e-policy-pipeline-basepolicynetwork-unifiede2epolicynetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Unified 3-Stage E2E Policy Pipeline (BasePolicyNetwork &amp; UnifiedE2EPolicyNetwork)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2159,6 +2259,67 @@
 </span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">lookback_window</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
 </span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="n">tickers</span><span class="o">=</span><span class="n">tickers</span><span class="p">,</span>
 </span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="6-differentiable-kkt-classical-layers-endogenous-liquidity-impact-wrapper">6. Differentiable KKT Classical Layers &amp; Endogenous Liquidity Impact Wrapper<a class="headerlink" href="#6-differentiable-kkt-classical-layers-endogenous-liquidity-impact-wrapper" title="Permanent link">&para;</a></h2>
+<h3 id="differentiable-risk-parity-cvar-kkt-layers-pyalloqdllayers">Differentiable Risk Parity &amp; CVaR KKT Layers (<code>pyalloq.dl.layers</code>)<a class="headerlink" href="#differentiable-risk-parity-cvar-kkt-layers-pyalloqdllayers" title="Permanent link">&para;</a></h3>
+<p>To embed classical convex Risk Parity (<code>DifferentiableRiskParityLayer</code>) or Rockafellar-Uryasev CVaR (<code>DifferentiableCVaRLayer</code>) inside an end-to-end differentiable PyTorch pipeline alongside <code>CRISPSparseSTGAT</code>, use the implicit KKT differentiation layers:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">CRISPSparseSTGAT</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">DifferentiableCVaRLayer</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">DifferentiableRiskParityLayer</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">)</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">CRISPSparseSTGAT</span><span class="p">(</span><span class="n">num_assets</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">num_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">rp_layer</span> <span class="o">=</span> <span class="n">DifferentiableRiskParityLayer</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">cvar_layer</span> <span class="o">=</span> <span class="n">DifferentiableCVaRLayer</span><span class="p">(</span><span class="n">beta</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">x_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">mu</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">sparse_adj</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_returns_and_cov</span><span class="p">(</span><span class="n">x_batch</span><span class="p">)</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">weights_rp</span> <span class="o">=</span> <span class="n">rp_layer</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>          <span class="c1"># Exact KKT Jacobian: J_y = Sigma + diag(b / (y*)^2)</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">weights_cvar</span> <span class="o">=</span> <span class="n">cvar_layer</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">cov</span><span class="p">)</span>  <span class="c1"># O(1)-memory Implicit Function Theorem backprop</span>
+</span></code></pre></div>
+<h3 id="endogenous-liquidity-graph-contagion-impact-wrapper-endogenousliquidityimpactwrapper">Endogenous Liquidity &amp; Graph Contagion Impact Wrapper (<code>EndogenousLiquidityImpactWrapper</code>)<a class="headerlink" href="#endogenous-liquidity-graph-contagion-impact-wrapper-endogenousliquidityimpactwrapper" title="Permanent link">&para;</a></h3>
+<p>Wraps <code>PortfolioGymEnv</code>, <code>ScenarioPortfolioEnv</code>, or <code>POMDPPortfolioEnv</code> to maintain a transient order-book impact state <span class="arithmatex">\(q_t \in \mathbb{R}^N\)</span> with cross-asset spillover across the normalized Graph Laplacian:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.rl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EndogenousLiquidityImpactWrapper</span><span class="p">,</span> <span class="n">PortfolioGymEnv</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">env</span> <span class="o">=</span> <span class="n">EndogenousLiquidityImpactWrapper</span><span class="p">(</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">PortfolioGymEnv</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">lookback_window</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">impact_lambda</span><span class="o">=</span><span class="mf">0.005</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">resilience_rho</span><span class="o">=</span><span class="mf">0.65</span><span class="p">,</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">diffusion_kappa</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="7-unified-3-stage-e2e-policy-pipeline-basepolicynetwork-unifiede2epolicynetwork">7. Unified 3-Stage E2E Policy Pipeline (<code>BasePolicyNetwork</code> &amp; <code>UnifiedE2EPolicyNetwork</code>)<a class="headerlink" href="#7-unified-3-stage-e2e-policy-pipeline-basepolicynetwork-unifiede2epolicynetwork" title="Permanent link">&para;</a></h2>
+<p><code>BasePolicyNetwork</code> standardizes the neural controller contract <code>forward(x, w_current=None) -&gt; w_target</code> across Decision-Focused Learning (<code>DeepAllocator</code>), pathwise Deep Hedging (<code>DeepHedgingTrajectoryTrainer</code>), and Gymnasium environments (<code>POMDPPortfolioEnv</code> via <code>.predict_from_obs(obs)</code>).</p>
+<p><code>UnifiedE2EPolicyNetwork</code> implements the 3-stage controller:</p>
+<ol>
+<li><strong>Stage 1 (Perception):</strong> <code>CRISPSparseSTGAT</code> + <code>LogSigSSMBlock</code> selective state-space encoding + <code>compute_von_neumann_entropy</code> covariance regularity.</li>
+<li><strong>Stage 2 (Decision / Optimization Layer):</strong> Pluggable <code>head_mode</code> (<code>"mdfp"</code>, <code>"risk_parity_kkt"</code>, <code>"cvar_kkt"</code>, or <code>"residual_actor"</code>).</li>
+<li><strong>Stage 3 (Turnover-Aware No-Trade Zone):</strong> Smoothly blends KKT allocations with pre-trade weights <code>w_current</code>.</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedE2EPolicyNetwork</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.rl</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeepHedgingTrajectoryTrainer</span><span class="p">,</span> <span class="n">POMDPPortfolioEnv</span><span class="p">,</span> <span class="n">SignatureMMDRegimeGate</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">policy</span> <span class="o">=</span> <span class="n">UnifiedE2EPolicyNetwork</span><span class="p">(</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">num_assets</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">num_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">head_mode</span><span class="o">=</span><span class="s2">&quot;mdfp&quot;</span><span class="p">,</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">no_trade_buffer</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1"># Train pathwise with DeepHedgingTrajectoryTrainer or evaluate directly on POMDPPortfolioEnv</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">trainer</span> <span class="o">=</span> <span class="n">DeepHedgingTrajectoryTrainer</span><span class="p">(</span><span class="n">policy</span><span class="o">=</span><span class="n">policy</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">lookback_window</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">trainer</span><span class="o">.</span><span class="n">fit_on_market_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1"># Gate rebalancing turnover on rough-path Signature-MMD regime shifts</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="n">sig_gate</span> <span class="o">=</span> <span class="n">SignatureMMDRegimeGate</span><span class="p">(</span><span class="n">subpath_window</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">fast_window</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">slow_window</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="n">diag</span> <span class="o">=</span> <span class="n">sig_gate</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
 </span></code></pre></div>
 
 

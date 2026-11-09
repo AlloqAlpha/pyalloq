@@ -1398,6 +1398,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#stochastic-graph-reaction-diffusion-contagion-reactiondiffusiongenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stochastic Graph Reaction-Diffusion Contagion (ReactionDiffusionGenerator)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2044,6 +2055,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#stochastic-graph-reaction-diffusion-contagion-reactiondiffusiongenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stochastic Graph Reaction-Diffusion Contagion (ReactionDiffusionGenerator)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2225,6 +2247,19 @@ G_{\xi, \beta}(y) = 1 - \left(1 + \frac{\xi y}{\beta}\right)^{-1/\xi}
 p(r_t) = \sum_{k=1}^K \pi_k \, \mathcal{N}(r_t \mid \mu_k, \Sigma_k)
 \]</div>
 <p>Historical states are decoded via maximum a posteriori assignment <span class="arithmatex">\(\hat{s}_t = \arg\max_k \gamma_{t, k}\)</span>, yielding the empirical Markov transition matrix <span class="arithmatex">\(P \in \mathbb{R}^{K \times K}\)</span> with entries <span class="arithmatex">\(P_{ab} = \mathbb{P}(s_{t} = b \mid s_{t-1} = a)\)</span>. Forward paths evolve <span class="arithmatex">\(s_{m, t} \sim P_{s_{m, t-1}, \cdot}\)</span> and draw <span class="arithmatex">\(r_{m, t} \sim \mathcal{N}(\mu_{s_{m, t}}, \Sigma_{s_{m, t}})\)</span>.</p>
+<hr />
+<h3 id="stochastic-graph-reaction-diffusion-contagion-reactiondiffusiongenerator">Stochastic Graph Reaction-Diffusion Contagion (<code>ReactionDiffusionGenerator</code>)<a class="headerlink" href="#stochastic-graph-reaction-diffusion-contagion-reactiondiffusiongenerator" title="Permanent link">&para;</a></h3>
+<p>To simulate multi-period network contagion and endogenous volatility spillover across <span class="arithmatex">\(M\)</span> paths and <span class="arithmatex">\(T\)</span> steps into a 3D <code>ScenarioMarketData</code> tensor <span class="arithmatex">\((M, T, N)\)</span>, <code>ReactionDiffusionGenerator</code> couples the FitzHugh-Nagumo Graph Reaction-Diffusion PDE on the precision Graph Laplacian <span class="arithmatex">\(\mathcal{L}\)</span> with correlated return innovations and the asymmetric <strong>leverage effect</strong> <span class="arithmatex">\(\operatorname{Corr}(dB_{m,t}^{(r)}, dB_{m,t}^{(v)}) = \rho_{\text{lev}} \le 0\)</span>:</p>
+<div class="arithmatex">\[
+dv_{m,t} = \left[ -D_v \mathcal{L} v_{m,t} - \kappa_v v_{m,t} + \gamma_{\text{react}} v_{m,t}(v_{m,t} - \theta_{\text{crit}})(1 - v_{m,t}) - \beta_u u_{m,t} \right] dt + \eta_v \, dB_{m,t}^{(v)}
+\]</div>
+<div class="arithmatex">\[
+du_{m,t} = \left[ -D_u \mathcal{L} u_{m,t} + \epsilon_u (v_{m,t} - 0.8 u_{m,t}) \right] dt
+\]</div>
+<div class="arithmatex">\[
+r_{m,t} = \mu + \left(\bar{\sigma} \odot \exp(v_{m,t})\right) \odot dB_{m,t}^{(r)}, \qquad dB_{m,t}^{(r)} \sim \mathcal{N}(0, \Gamma_0)
+\]</div>
+<p>When a negative return shock hits asset <span class="arithmatex">\(i\)</span>, the negative leverage correlation <span class="arithmatex">\(\rho_{\text{lev}} &lt; 0\)</span> excites <span class="arithmatex">\(v_{m,t,i}\)</span>, which then diffuses via <span class="arithmatex">\(-D_v \mathcal{L} v_{m,t}\)</span> across connected neighbors in the precision network.</p>
 <hr />
 <h2 id="3-meuccis-entropy-pooling-entropypooler-viewbuilder">3. Meucci's Entropy Pooling (<code>EntropyPooler</code> &amp; <code>ViewBuilder</code>)<a class="headerlink" href="#3-meuccis-entropy-pooling-entropypooler-viewbuilder" title="Permanent link">&para;</a></h2>
 <p>Given <span class="arithmatex">\(M\)</span> simulated scenarios with prior probability vector <span class="arithmatex">\(p \in \Delta^M\)</span> (typically uniform <span class="arithmatex">\(p_m = 1/M\)</span>), <strong>Entropy Pooling</strong> (Meucci, 2008) finds the posterior probability distribution <span class="arithmatex">\(x \in \Delta^M\)</span> that satisfies linear equality and inequality views while minimizing Relative Entropy (Kullback-Leibler divergence):</p>

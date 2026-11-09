@@ -1370,8 +1370,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spectral Graph Laplacian HRP (SpectralLaplacianHRPAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differentiable-risk-parity-kkt-layer-differentiableriskparitylayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiable Risk Parity KKT Layer (DifferentiableRiskParityLayer)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1452,6 +1474,17 @@
     <span class="md-ellipsis">
       
         Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Spectral Graph Laplacian HRP (SpectralLaplacianHRPAllocator)
       
     </span>
   </a>
@@ -2049,8 +2082,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spectral Graph Laplacian HRP (SpectralLaplacianHRPAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differentiable-risk-parity-kkt-layer-differentiableriskparitylayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiable Risk Parity KKT Layer (DifferentiableRiskParityLayer)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2138,6 +2193,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4-spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Spectral Graph Laplacian HRP (SpectralLaplacianHRPAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2199,6 +2265,25 @@ w_{left} \leftarrow w_{left} \times \alpha, \quad w_{right} \leftarrow w_{right}
 <p>and <span class="arithmatex">\(\tilde{\sigma}^2_C\)</span> is the variance of the <strong>inverse-variance portfolio</strong> of cluster <span class="arithmatex">\(C\)</span>:</p>
 <div class="arithmatex">\[
 \tilde{w}_i = \frac{1/\sigma^2_i}{\sum_{j \in C} 1/\sigma^2_j}, \quad \tilde{\sigma}^2_C = \tilde{w}^\top_C \Sigma_C \tilde{w}_C
+\]</div>
+<h3 id="spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator">Spectral Graph Laplacian HRP (<code>SpectralLaplacianHRPAllocator</code>)<a class="headerlink" href="#spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" title="Permanent link">&para;</a></h3>
+<p>Instead of single-linkage agglomerative clustering, <strong>Spectral Graph Laplacian HRP</strong> recursively partitions any induced subgraph <span class="arithmatex">\(S \subseteq V\)</span> using the <strong>Fiedler vector</strong> <span class="arithmatex">\(v_2(\mathcal{L}_S)\)</span> (the eigenvector corresponding to the second smallest eigenvalue <span class="arithmatex">\(\lambda_2(\mathcal{L}_S)\)</span> of <span class="arithmatex">\(\mathcal{L}_S = I - D_S^{-1/2} W_S D_S^{-1/2}\)</span>):</p>
+<ol>
+<li><strong>Cheeger Conductance Sweep Cut:</strong> Sort nodes <span class="arithmatex">\(i \in S\)</span> by their Fiedler coordinate <span class="arithmatex">\(v_{2,i}(\mathcal{L}_S)\)</span> and select the split index <span class="arithmatex">\(s^*\)</span> minimizing the regularized Cheeger normalized cut conductance <span class="arithmatex">\(\phi(S_L, S_R)\)</span>.</li>
+<li><strong>Fragility-Tilted Recursive Bisection:</strong> Modify each sub-cluster's effective variance by its internal algebraic connectivity <span class="arithmatex">\(\lambda_2(\mathcal{L}_{S_c})\)</span>:</li>
+</ol>
+<div class="arithmatex">\[
+\tilde{V}_{S_c} = \tilde{\sigma}^2_{S_c} \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha = 1 - \frac{\tilde{V}_{S_L}}{\tilde{V}_{S_L} + \tilde{V}_{S_R}}
+\]</div>
+<hr />
+<h2 id="differentiable-risk-parity-kkt-layer-differentiableriskparitylayer">Differentiable Risk Parity KKT Layer (<code>DifferentiableRiskParityLayer</code>)<a class="headerlink" href="#differentiable-risk-parity-kkt-layer-differentiableriskparitylayer" title="Permanent link">&para;</a></h2>
+<p>By Spinu's (2013) convex log-barrier formulation of Risk Budgeting / Risk Parity:</p>
+<div class="arithmatex">\[
+y^*(\hat{\Sigma}, b) = \arg\min_{y &gt; 0} \frac{1}{2} y^\top \hat{\Sigma} y - \sum_{i=1}^N b_i \ln y_i, \qquad w^* = \frac{y^*}{\mathbf{1}^\top y^*}
+\]</div>
+<p>the KKT stationarity condition <span class="arithmatex">\(F(y^*, \hat{\Sigma}, b) = \hat{\Sigma} y^* - b / y^* = \mathbf{0}\)</span> has an <strong>exact closed-form positive-definite Jacobian</strong> <span class="arithmatex">\(J_y = \hat{\Sigma} + \operatorname{diag}(b / (y^*)^2)\)</span>, enabling exact implicit differentiation without unrolling Newton iterations:</p>
+<div class="arithmatex">\[
+\frac{\partial \mathcal{L}_{\text{task}}}{\partial \hat{\Sigma}} = -\frac{1}{2}\left(u (y^*)^\top + y^* u^\top\right), \qquad \text{where } \left(\hat{\Sigma} + \operatorname{diag}\!\left(\frac{b}{(y^*)^2}\right)\right) u = \frac{\partial \mathcal{L}_{\text{task}}}{\partial y^*}
 \]</div>
 <hr />
 <h2 id="hierarchical-equal-risk-contribution-herc">Hierarchical Equal Risk Contribution (HERC)<a class="headerlink" href="#hierarchical-equal-risk-contribution-herc" title="Permanent link">&para;</a></h2>
@@ -2273,6 +2358,16 @@ w_i = w^{intra}_{i \in C_k} \times w^{inter}_{C_k}
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="4-spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator">4. Spectral Graph Laplacian HRP (<code>SpectralLaplacianHRPAllocator</code>)<a class="headerlink" href="#4-spectral-graph-laplacian-hrp-spectrallaplacianhrpallocator" title="Permanent link">&para;</a></h2>
+<p>Instead of single-linkage agglomerative clustering on pairwise correlation distances (which is vulnerable to "chaining" noise), <code>SpectralLaplacianHRPAllocator</code> constructs a non-negative precision/partial-correlation adjacency matrix <span class="arithmatex">\(W_S\)</span> on each induced subgraph <span class="arithmatex">\(S \subseteq \{1, \dots, N\}\)</span> and computes the normalized Graph Laplacian:</p>
+<div class="arithmatex">\[
+\mathcal{L}_S = I_{|S|} - D_S^{-1/2} W_S D_S^{-1/2}
+\]</div>
+<p>The second smallest eigenvector <span class="arithmatex">\(v_2(\mathcal{L}_S)\)</span> (<strong>Fiedler vector</strong>) provides a 1D spectral embedding along which a Cheeger sweep cut partitions <span class="arithmatex">\(S \to (S_L, S_R)\)</span> to minimize normalized cut conductance. During recursive bisection, cluster variances are penalized by internal algebraic connectivity <span class="arithmatex">\(\lambda_2(\mathcal{L}_{S})\)</span>:</p>
+<div class="arithmatex">\[
+\tilde{V}(S_c) = V_{\text{IVP}}(S_c) \cdot \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha_L = 1 - \frac{\tilde{V}(S_L)}{\tilde{V}(S_L) + \tilde{V}(S_R)}
+\]</div>
 <hr />
 <h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>

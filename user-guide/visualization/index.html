@@ -1239,6 +1239,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#6-spectral-contagion-network-hawkes-fragility-regime-portraits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Spectral Contagion Network &amp; Hawkes Fragility Regime Portraits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#themes-static-exports" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2016,6 +2027,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#6-spectral-contagion-network-hawkes-fragility-regime-portraits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Spectral Contagion Network &amp; Hawkes Fragility Regime Portraits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#themes-static-exports" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2463,19 +2485,43 @@
 </div>
 </div>
 <hr />
+<h2 id="6-spectral-contagion-network-hawkes-fragility-regime-portraits">6. Spectral Contagion Network &amp; Hawkes Fragility Regime Portraits<a class="headerlink" href="#6-spectral-contagion-network-hawkes-fragility-regime-portraits" title="Permanent link">&para;</a></h2>
+<p>Visualizes the market Graph Laplacian topology (<span class="arithmatex">\(\mathcal{L}_t = I - D_t^{-1/2}W_t D_t^{-1/2}\)</span>), Fiedler vector (<span class="arithmatex">\(v_2\)</span>) spectral bisection partitions, Wiener-Hopf Hawkes branching out-degrees, and rolling structural fragility diagnostics (<span class="arithmatex">\(\lambda_2(t)\)</span>, <span class="arithmatex">\(\rho(G_t)\)</span>, and effective Hurst <span class="arithmatex">\(H_{\text{eff}}(t)\)</span>):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReactionDiffusionCovarianceEstimator</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">plot_fragility_hawkes_regime_portrait</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">plot_spectral_contagion_network</span><span class="p">,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">)</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">rd_est</span> <span class="o">=</span> <span class="n">ReactionDiffusionCovarianceEstimator</span><span class="p">(</span><span class="n">slow_window</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">cov_df</span> <span class="o">=</span> <span class="n">rd_est</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">adj_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="n">rd_est</span><span class="o">.</span><span class="n">last_adjacency_</span><span class="p">,</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    <span class="n">index</span><span class="o">=</span><span class="n">market_data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    <span class="n">columns</span><span class="o">=</span><span class="n">market_data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="p">)</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="n">fig_net</span> <span class="o">=</span> <span class="n">plot_spectral_contagion_network</span><span class="p">(</span>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    <span class="n">adjacency</span><span class="o">=</span><span class="n">adj_df</span><span class="p">,</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    <span class="n">branching_matrix</span><span class="o">=</span><span class="n">rd_est</span><span class="o">.</span><span class="n">hawkes_branching_matrix_</span><span class="p">,</span>
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="p">)</span>
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="n">fig_net</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></code></pre></div>
+<hr />
 <h2 id="themes-static-exports">Themes &amp; Static Exports<a class="headerlink" href="#themes-static-exports" title="Permanent link">&para;</a></h2>
 <p>Every plot function and tear sheet supports two built-in institutional themes:</p>
 <ul>
 <li><code>"alloq_dark"</code> <em>(default)</em>: Slate/obsidian background (<code>#0B0F19</code>) with high-contrast emerald, cyan, amber, coral, crimson, and violet semantic accents.</li>
 <li><code>"alloq_light"</code>: Clean publication white/slate background (<code>#FFFFFF</code>) tailored for PDFs and print reports.</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_fan_chart</span><span class="p">,</span> <span class="n">apply_plotly_theme</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># Pass theme directly to any plot function or TearSheet method</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_fan_chart</span><span class="p">(</span><span class="n">scenarios</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_light&quot;</span><span class="p">)</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># Or re-style an existing Plotly or Matplotlib figure</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">apply_plotly_theme</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_dark&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Custom Title&quot;</span><span class="p">,</span> <span class="n">subtitle</span><span class="o">=</span><span class="s2">&quot;Custom Subtitle&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_viz</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_fan_chart</span><span class="p">,</span> <span class="n">apply_plotly_theme</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># Pass theme directly to any plot function or TearSheet method</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_fan_chart</span><span class="p">(</span><span class="n">scenarios</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_light&quot;</span><span class="p">)</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># Or re-style an existing Plotly or Matplotlib figure</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="n">apply_plotly_theme</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;alloq_dark&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Custom Title&quot;</span><span class="p">,</span> <span class="n">subtitle</span><span class="o">=</span><span class="s2">&quot;Custom Subtitle&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 
