@@ -131,6 +131,80 @@ pipeline = StrategyPipeline(
 
 ---
 
+## Option-Implied Covariance (`ImpliedCovarianceEstimator`)
+
+Combines forward-looking **Point-in-Time (PIT) Option-Implied Volatilities** (from `data.features["implied_vol"]`, such as 30-day Model-Free Implied Volatility computed by `PITOptionsMFIVTransformer`) with a Ledoit-Wolf shrunk correlation matrix and the **Buss & Vilkov (2012)** implied correlation adjustment:
+
+\[
+\Gamma_t^{\text{imp}} = (1 - \gamma_t) \Gamma_t^{\text{hist}} + \gamma_t \mathbf{1}\mathbf{1}^\top, \qquad \hat{\Sigma}_t^{\text{imp}} = D_{\text{IV}, t} \, \Gamma_t^{\text{imp}} \, D_{\text{IV}, t}
+\]
+
+When an index implied volatility `index_implied_vol` is supplied, \(\gamma_t\) is solved in closed form so the implied market portfolio variance matches \(\sigma_{M,\text{IV}}^2\).
+
+```python
+from pyalloq_features.transformers import PITOptionsMFIVTransformer
+from pyalloq.classical.estimators.covariance import ImpliedCovarianceEstimator
+
+data = PITOptionsMFIVTransformer(option_chain_df=chains_df).transform(data)
+
+pipeline = StrategyPipeline(
+    allocator=allocator,
+    cov_estimator=ImpliedCovarianceEstimator(
+        index_implied_vol=0.22,
+        correlation_window=60,
+    ),
+)
+```
+
+**When to use:** Earnings seasons, macro event windows, or regime transitions where forward-looking option surfaces price in volatility and correlation risk before historical returns react.
+
+---
+
+## Graph Reaction-Diffusion (`ReactionDiffusionCovarianceEstimator`)
+
+Models cross-asset volatility spillover and non-linear self-excitation on a dynamic **Financial Precision Graph** \(\mathcal{L}_t = I - D_t^{-1/2} W_t D_t^{-1/2}\) via a coupled FitzHugh-Nagumo Reaction-Diffusion ODE system integrated via 4th-order Runge-Kutta (RK4):
+
+\[
+\frac{dv}{dt} = -D_v \mathcal{L}_t v - \kappa_v v + \gamma_{\text{react}} v (v - \theta_{\text{crit}})(1 - v) - \beta_u u
+\]
+
+```python
+from pyalloq.classical.estimators.covariance import ReactionDiffusionCovarianceEstimator
+
+pipeline = StrategyPipeline(
+    allocator=allocator,
+    cov_estimator=ReactionDiffusionCovarianceEstimator(
+        diffusion_coeff=0.35,
+        horizon_steps=5,
+    ),
+)
+```
+
+**When to use:** Sector contagion and supply-chain spillover regimes where a localized volatility shock on one asset propagates to connected neighbors ahead of trailing sample windows. Also computes `last_diagnostics_` containing the Graph Laplacian's **Fiedler value** \(\lambda_2(\mathcal{L}_t)\), **network mixing time** \(\tau_{\text{mix}}\), **Fiedler vector** \(v_2\), and **Wiener-Hopf Multivariate Hawkes** branching matrix \(G = \|\Phi\|_1\) and spectral radius \(\rho(G)\).
+
+---
+
+## Deep Spatio-Temporal Graph Covariance (`CRISPSparseSTGAT` + `DeepCovarianceEstimator`)
+
+Combines a continuous-time **Neural Rough Differential Equation with Hawkes Jump Discontinuities** (`NeuralJumpRDE`) at the node level with a **CRISP Sparse Multi-Head Graph Attention** layer and a **Network-Fragility Shrinkage Cholesky Layer** (`FragilityShrinkageCholeskyLayer`) to forecast strictly Positive Semi-Definite (PSD) covariance matrices:
+
+```python
+from pyalloq.dl import CRISPSparseSTGAT, DeepCovarianceEstimator
+
+stgat = CRISPSparseSTGAT(
+    num_assets=len(data.assets),
+    num_features=1,
+    hidden_dim=32,
+    num_heads=4,
+    keep_ratio=0.35,
+)
+
+cov_estimator = DeepCovarianceEstimator(model=stgat, lookback_window=30)
+cov_df = cov_estimator.estimate(data)
+```
+
+---
+
 ## Choosing a Covariance Estimator
 
 | Scenario | Recommended Estimator |
@@ -140,6 +214,8 @@ pipeline = StrategyPipeline(
 | High-dimensional, short history | `LedoitWolfShrinkage` |
 | Large universe, correlation noise removal | `RandomMatrixTheoryEstimator` |
 | Downside risk focus | `SemiCovariance` |
+| Forward-looking option-implied risk & correlation | `ImpliedCovarianceEstimator` |
+| Cross-asset network volatility spillover & contagion | `ReactionDiffusionCovarianceEstimator` |
 
 ---
 

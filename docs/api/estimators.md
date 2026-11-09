@@ -102,6 +102,48 @@
 
 ---
 
+### ImpliedCovarianceEstimator
+
+::: pyalloq.classical.estimators.covariance.implied_covariance.ImpliedCovarianceEstimator
+
+---
+
+### ReactionDiffusionCovarianceEstimator
+
+::: pyalloq.classical.estimators.covariance.reaction_diffusion.ReactionDiffusionCovarianceEstimator
+
+---
+
+### SpectralGraphFragility
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.SpectralGraphFragility
+
+---
+
+### WienerHopfHawkesSolver
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.WienerHopfHawkesSolver
+
+---
+
+### CRISPSparseSTGAT
+
+::: pyalloq.dl.estimators.covariance.models.gnn.CRISPSparseSTGAT
+
+---
+
+### NeuralJumpRDE
+
+::: pyalloq.dl.layers.neural_jump_rde.NeuralJumpRDE
+
+---
+
+### FragilityShrinkageCholeskyLayer
+
+::: pyalloq.dl.layers.fragility_kkt.FragilityShrinkageCholeskyLayer
+
+---
+
 ## Black-Litterman
 
 ### BlackLittermanEstimator

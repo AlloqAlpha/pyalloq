@@ -5,6 +5,7 @@ from pyalloq.ml.optimizers import (
     HERCAllocator,
     HRPAllocator,
     NCOAllocator,
+    SpectralLaplacianHRPAllocator,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "HERCAllocator",
     "HRPAllocator",
     "NCOAllocator",
+    "SpectralLaplacianHRPAllocator",
 ]

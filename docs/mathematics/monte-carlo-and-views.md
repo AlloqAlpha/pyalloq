@@ -89,6 +89,26 @@ Historical states are decoded via maximum a posteriori assignment \(\hat{s}_t = 
 
 ---
 
+### Stochastic Graph Reaction-Diffusion Contagion (`ReactionDiffusionGenerator`)
+
+To simulate multi-period network contagion and endogenous volatility spillover across \(M\) paths and \(T\) steps into a 3D `ScenarioMarketData` tensor \((M, T, N)\), `ReactionDiffusionGenerator` couples the FitzHugh-Nagumo Graph Reaction-Diffusion PDE on the precision Graph Laplacian \(\mathcal{L}\) with correlated return innovations and the asymmetric **leverage effect** \(\operatorname{Corr}(dB_{m,t}^{(r)}, dB_{m,t}^{(v)}) = \rho_{\text{lev}} \le 0\):
+
+\[
+dv_{m,t} = \left[ -D_v \mathcal{L} v_{m,t} - \kappa_v v_{m,t} + \gamma_{\text{react}} v_{m,t}(v_{m,t} - \theta_{\text{crit}})(1 - v_{m,t}) - \beta_u u_{m,t} \right] dt + \eta_v \, dB_{m,t}^{(v)}
+\]
+
+\[
+du_{m,t} = \left[ -D_u \mathcal{L} u_{m,t} + \epsilon_u (v_{m,t} - 0.8 u_{m,t}) \right] dt
+\]
+
+\[
+r_{m,t} = \mu + \left(\bar{\sigma} \odot \exp(v_{m,t})\right) \odot dB_{m,t}^{(r)}, \qquad dB_{m,t}^{(r)} \sim \mathcal{N}(0, \Gamma_0)
+\]
+
+When a negative return shock hits asset \(i\), the negative leverage correlation \(\rho_{\text{lev}} < 0\) excites \(v_{m,t,i}\), which then diffuses via \(-D_v \mathcal{L} v_{m,t}\) across connected neighbors in the precision network.
+
+---
+
 ## 3. Meucci's Entropy Pooling (`EntropyPooler` & `ViewBuilder`)
 
 Given \(M\) simulated scenarios with prior probability vector \(p \in \Delta^M\) (typically uniform \(p_m = 1/M\)), **Entropy Pooling** (Meucci, 2008) finds the posterior probability distribution \(x \in \Delta^M\) that satisfies linear equality and inequality views while minimizing Relative Entropy (Kullback-Leibler divergence):

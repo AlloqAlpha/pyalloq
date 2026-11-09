@@ -24,10 +24,30 @@ class MarketDataset(Dataset):
 
         if data.features is not None:
             for feat_name, df_feature in data.features.items():
-                aligned_feat = df_feature.reindex(
-                    index=df_returns.index, columns=self.assets
-                ).fillna(0.0)
-                features_list.append(aligned_feat.to_numpy())
+                if (
+                    df_feature.shape[1] == 1
+                    and len(self.assets) > 1
+                    and df_feature.columns[0] not in self.assets
+                ):
+                    col_series = (
+                        df_feature.iloc[:, 0]
+                        .reindex(df_returns.index)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    aligned_np = np.repeat(
+                        col_series.to_numpy()[:, None], len(self.assets), axis=1
+                    )
+                else:
+                    aligned_feat = (
+                        df_feature.reindex(index=df_returns.index, columns=self.assets)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    aligned_np = aligned_feat.to_numpy()
+                features_list.append(aligned_np)
 
         stacked_features = np.stack(features_list, axis=-1)
         self.X_data = torch.tensor(stacked_features, dtype=self._dtype)

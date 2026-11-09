@@ -134,3 +134,46 @@ meta_allocator = HierarchicalMetaRLAllocator(
     tickers=tickers,
 )
 ```
+
+---
+
+## 6. Differentiable KKT Classical Layers & Endogenous Liquidity Impact Wrapper
+
+### Differentiable Risk Parity & CVaR KKT Layers (`pyalloq.dl.layers`)
+
+To embed classical convex Risk Parity (`DifferentiableRiskParityLayer`) or Rockafellar-Uryasev CVaR (`DifferentiableCVaRLayer`) inside an end-to-end differentiable PyTorch pipeline alongside `CRISPSparseSTGAT`, use the implicit KKT differentiation layers:
+
+```python
+import torch
+from pyalloq.dl import (
+    CRISPSparseSTGAT,
+    DifferentiableCVaRLayer,
+    DifferentiableRiskParityLayer,
+)
+
+model = CRISPSparseSTGAT(num_assets=4, num_features=1, hidden_dim=16)
+rp_layer = DifferentiableRiskParityLayer(max_iter=25)
+cvar_layer = DifferentiableCVaRLayer(beta=0.95, max_iter=30)
+
+x_batch = torch.randn(8, 20, 4, 1)
+mu, cov, sparse_adj = model.predict_returns_and_cov(x_batch)
+
+weights_rp = rp_layer(cov)          # Exact KKT Jacobian: J_y = Sigma + diag(b / (y*)^2)
+weights_cvar = cvar_layer(mu, cov)  # O(1)-memory Implicit Function Theorem backprop
+```
+
+### Endogenous Liquidity & Graph Contagion Impact Wrapper (`EndogenousLiquidityImpactWrapper`)
+
+Wraps `PortfolioGymEnv`, `ScenarioPortfolioEnv`, or `POMDPPortfolioEnv` to maintain a transient order-book impact state \(q_t \in \mathbb{R}^N\) with cross-asset spillover across the normalized Graph Laplacian:
+
+```python
+from pyalloq.rl import EndogenousLiquidityImpactWrapper, PortfolioGymEnv
+
+env = EndogenousLiquidityImpactWrapper(
+    PortfolioGymEnv(data, lookback_window=20),
+    impact_lambda=0.005,
+    resilience_rho=0.65,
+    diffusion_kappa=0.002,
+)
+obs, info = env.reset(seed=42)
+```

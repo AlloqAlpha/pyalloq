@@ -6,8 +6,10 @@ from pyalloq.classical.estimators.black_litterman import (
 from pyalloq.classical.estimators.covariance import (
     EWMACovariance,
     EmpiricalCovariance,
+    ImpliedCovarianceEstimator,
     LedoitWolfShrinkage,
     RandomMatrixTheoryEstimator,
+    ReactionDiffusionCovarianceEstimator,
     SemiCovariance,
 )
 from pyalloq.classical.estimators.returns import (
@@ -31,12 +33,14 @@ __all__ = [
     "EWMACovariance",
     "EWMAReturnEstimator",
     "EmpiricalCovariance",
+    "ImpliedCovarianceEstimator",
     "ImpliedReturnEstimator",
     "JamesSteinReturnEstimator",
     "LedoitWolfShrinkage",
     "MeanHistoricalReturnEstimator",
     "MultiFactorReturnEstimator",
     "RandomMatrixTheoryEstimator",
+    "ReactionDiffusionCovarianceEstimator",
     "ResidualMomentumEstimator",
     "SemiCovariance",
     "VolatilityScaledMultiHorizonEstimator",

@@ -21,6 +21,7 @@ from pyalloq_simulation import (
     GaussianGenerator,
     GMMRegimeGenerator,
     PCAFactorGenerator,
+    ReactionDiffusionGenerator,
     ScenarioEvaluator,
     ViewBuilder,
     VolatilityView,
@@ -41,6 +42,7 @@ class _DummyMomentumFeature(BaseFeatureTransformer):
         (GaussianGenerator, {}),
         (GARCHEVTCopulaGenerator, {"nu": 5.0}),
         (GMMRegimeGenerator, {"n_regimes": 2}),
+        (ReactionDiffusionGenerator, {"diffusion_coeff": 0.35}),
     ],
 )
 def test_generators_dtype_batching_and_features(

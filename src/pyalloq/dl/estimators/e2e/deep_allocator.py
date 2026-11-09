@@ -35,16 +35,38 @@ class DeepAllocator(BaseAllocator):
     ) -> OptimizationResult:
         if not self.tickers and data.assets:
             self.tickers = list(data.assets)
+        tickers = list(data.prices.columns)
+        n_assets = len(tickers)
         returns_df = data.prices.pct_change().fillna(0.0).iloc[-self.lookback_window :]
         base_tensor = torch.tensor(returns_df.values, dtype=torch.float32).unsqueeze(-1)
         tensor_list = [base_tensor]
 
         if data.features is not None:
             for feat_name, df_feat in data.features.items():
-                feat_window = df_feat.iloc[-self.lookback_window :]
-                feat_tensor = torch.tensor(
-                    feat_window.values, dtype=torch.float32
-                ).unsqueeze(-1)
+                if (
+                    df_feat.shape[1] == 1
+                    and n_assets > 1
+                    and df_feat.columns[0] not in tickers
+                ):
+                    col_ser = (
+                        df_feat.iloc[:, 0]
+                        .reindex(returns_df.index)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    feat_np = col_ser.to_numpy(dtype="float32")[:, None].repeat(
+                        n_assets, axis=1
+                    )
+                else:
+                    feat_window = (
+                        df_feat.reindex(index=returns_df.index, columns=tickers)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    feat_np = feat_window.to_numpy(dtype="float32")
+                feat_tensor = torch.tensor(feat_np, dtype=torch.float32).unsqueeze(-1)
                 tensor_list.append(feat_tensor)
 
         x_tensor = torch.cat(tensor_list, dim=-1)

@@ -101,3 +101,29 @@
 ### BayesianHRPAllocator
 
 ::: pyalloq.ml.optimizers.bhrp.BayesianHRPAllocator
+
+---
+
+### SpectralLaplacianHRPAllocator
+
+::: pyalloq.ml.optimizers.hrp.SpectralLaplacianHRPAllocator
+
+---
+
+## Differentiable Deep Learning KKT Layers
+
+### DifferentiableRiskParityLayer
+
+::: pyalloq.dl.layers.fragility_kkt.DifferentiableRiskParityLayer
+
+---
+
+### DifferentiableCVaRLayer
+
+::: pyalloq.dl.layers.fragility_kkt.DifferentiableCVaRLayer
+
+---
+
+### MDFPOptimizationLayer
+
+::: pyalloq.dl.layers.mdfp.MDFPOptimizationLayer
