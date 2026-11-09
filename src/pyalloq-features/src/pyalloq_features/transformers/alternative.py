@@ -34,6 +34,9 @@ class PITOptionsMFIVTransformer(BaseFeatureTransformer):
         annualization_factor: float = 252.0,
         market_close_offset_hours: float = 16.0,
         out_col: str = "implied_vol",
+        skew_col: str = "implied_skew",
+        kurt_col: str = "implied_kurtosis",
+        compute_higher_moments: bool = True,
         min_vol: float = 0.02,
         max_vol: float = 3.00,
     ) -> None:
@@ -45,8 +48,128 @@ class PITOptionsMFIVTransformer(BaseFeatureTransformer):
         self.annualization_factor = float(annualization_factor)
         self.market_close_offset_hours = float(market_close_offset_hours)
         self.out_col = out_col
+        self.skew_col = skew_col
+        self.kurt_col = kurt_col
+        self.compute_higher_moments = bool(compute_higher_moments)
         self.min_vol = float(min_vol)
         self.max_vol = float(max_vol)
+
+    @staticmethod
+    def compute_single_slice_bkm_moments(
+        slice_df: pd.DataFrame,
+        spot_price: float,
+        risk_free_rate: float = 0.0,
+        target_horizon_days: float = 30.0,
+    ) -> tuple[float, float, float] | None:
+        """
+        Computes annualized Model-Free Implied Volatility (MFIV), Bakshi-Kapadia-Madan (2003)
+        Model-Free Implied Skewness (MFIS), and Model-Free Implied Excess Kurtosis (MFIK)
+        for a single Point-in-Time (date, ticker) option chain slice.
+        """
+        if slice_df.empty or spot_price <= 0:
+            return None
+
+        df = slice_df.copy()
+        if "mid" not in df.columns:
+            if "bid" in df.columns and "ask" in df.columns:
+                df["mid"] = 0.5 * (df["bid"].astype(float) + df["ask"].astype(float))
+            elif "price" in df.columns:
+                df["mid"] = df["price"].astype(float)
+            else:
+                return None
+
+        df = df[df["mid"] > 0.0]
+        if len(df) < 3:
+            return None
+
+        moments_by_tau: list[tuple[float, float, float, float]] = []
+        for _, exp_group in df.groupby("tau_years"):
+            tau = float(exp_group["tau_years"].iloc[0])
+            if tau <= 1.0 / 365.0:
+                continue
+
+            forward = spot_price * float(np.exp(risk_free_rate * tau))
+            if "option_type" in exp_group.columns:
+                opt_type = exp_group["option_type"].astype(str).str.lower().str[0]
+                otm_puts = exp_group[
+                    (opt_type == "p") & (exp_group["strike"] <= forward)
+                ]
+                otm_calls = exp_group[
+                    (opt_type == "c") & (exp_group["strike"] >= forward)
+                ]
+                otm = pd.concat([otm_puts, otm_calls], ignore_index=True)
+                if len(otm) < 3:
+                    otm = exp_group
+            else:
+                otm = exp_group
+
+            otm_series = otm.groupby("strike")["mid"].mean().sort_index()
+            strikes = otm_series.index.to_numpy(dtype=np.float64)
+            mids = otm_series.to_numpy(dtype=np.float64)
+            n_k = len(strikes)
+            if n_k < 3:
+                continue
+
+            delta_k = np.empty(n_k, dtype=np.float64)
+            delta_k[0] = strikes[1] - strikes[0]
+            delta_k[-1] = strikes[-1] - strikes[-2]
+            if n_k > 2:
+                delta_k[1:-1] = 0.5 * (strikes[2:] - strikes[:-2])
+
+            below_f = strikes[strikes <= forward]
+            k0 = float(below_f[-1]) if len(below_f) > 0 else float(strikes[0])
+
+            # VIX / Britten-Jones & Neuberger annualized variance
+            integral_term = (2.0 * np.exp(risk_free_rate * tau) / tau) * float(
+                np.sum((delta_k / (strikes**2)) * mids)
+            )
+            forward_adj = (1.0 / tau) * ((forward / k0 - 1.0) ** 2)
+            var_tau = max(1e-6, integral_term - forward_adj)
+
+            # Bakshi, Kapadia & Madan (2003) quadratic (V), cubic (W), and quartic (X) contracts
+            log_m = np.log(np.clip(strikes / spot_price, 1e-6, None))
+            quad_w = (delta_k / (strikes**2)) * mids
+            v_bkm = float(np.sum(2.0 * (1.0 - log_m) * quad_w))
+            w_bkm = float(np.sum((6.0 * log_m - 3.0 * (log_m**2)) * quad_w))
+            x_bkm = float(np.sum((12.0 * (log_m**2) - 4.0 * (log_m**3)) * quad_w))
+
+            ert = float(np.exp(risk_free_rate * tau))
+            mu_bkm = (
+                ert
+                - 1.0
+                - 0.5 * ert * v_bkm
+                - (1.0 / 6.0) * ert * w_bkm
+                - (1.0 / 24.0) * ert * x_bkm
+            )
+            central_var = max(1e-8, ert * v_bkm - mu_bkm**2)
+            skew_num = ert * w_bkm - 3.0 * mu_bkm * ert * v_bkm + 2.0 * (mu_bkm**3)
+            kurt_num = (
+                ert * x_bkm
+                - 4.0 * mu_bkm * ert * w_bkm
+                + 6.0 * ert * (mu_bkm**2) * v_bkm
+                - 3.0 * (mu_bkm**4)
+            )
+            mfis = float(np.clip(skew_num / (central_var**1.5), -5.0, 5.0))
+            mfik = float(np.clip((kurt_num / (central_var**2)) - 3.0, -2.0, 20.0))
+            moments_by_tau.append((tau, var_tau, mfis, mfik))
+
+        if not moments_by_tau:
+            return None
+
+        moments_by_tau.sort(key=lambda x: x[0])
+        if len(moments_by_tau) == 1:
+            _, v1, s1, k1 = moments_by_tau[0]
+            return float(np.sqrt(v1)), s1, k1
+
+        taus = np.array([m[0] for m in moments_by_tau], dtype=np.float64)
+        vars_arr = np.array([m[1] for m in moments_by_tau], dtype=np.float64)
+        skews_arr = np.array([m[2] for m in moments_by_tau], dtype=np.float64)
+        kurts_arr = np.array([m[3] for m in moments_by_tau], dtype=np.float64)
+        target_tau = float(target_horizon_days) / 365.25
+        mean_var = float(np.interp(target_tau, taus, vars_arr))
+        mean_skew = float(np.interp(target_tau, taus, skews_arr))
+        mean_kurt = float(np.interp(target_tau, taus, kurts_arr))
+        return float(np.sqrt(max(mean_var, 1e-6))), mean_skew, mean_kurt
 
     @staticmethod
     def compute_single_slice_mfiv(
@@ -171,6 +294,22 @@ class PITOptionsMFIVTransformer(BaseFeatureTransformer):
         fallback_df = self._compute_fallback_volatility(data)
         iv_df = fallback_df.copy()
 
+        returns = data.prices.pct_change().fillna(0.0)
+        fallback_skew = (
+            returns.rolling(window=max(5, self.fallback_window), min_periods=5)
+            .skew()
+            .fillna(0.0)
+            .clip(lower=-5.0, upper=5.0)
+        )
+        fallback_kurt = (
+            returns.rolling(window=max(5, self.fallback_window), min_periods=5)
+            .kurt()
+            .fillna(0.0)
+            .clip(lower=-2.0, upper=20.0)
+        )
+        skew_np = fallback_skew.to_numpy(dtype=np.float64, copy=True)
+        kurt_np = fallback_kurt.to_numpy(dtype=np.float64, copy=True)
+
         if self.option_chain_df is not None and not self.option_chain_df.empty:
             chains = self.option_chain_df.copy()
             required_cols = {"date", "ticker", "expiration", "strike"}
@@ -227,20 +366,33 @@ class PITOptionsMFIVTransformer(BaseFeatureTransformer):
                 else:
                     rf = float(data.risk_free_rate)
 
-                mfiv_val = self.compute_single_slice_mfiv(
+                bkm_res = self.compute_single_slice_bkm_moments(
                     grp,
                     spot_price=spot,
                     risk_free_rate=rf,
                     target_horizon_days=self.target_horizon_days,
                 )
-                if mfiv_val is not None and np.isfinite(mfiv_val):
-                    iv_np[r_idx, c_idx] = float(
-                        np.clip(mfiv_val, self.min_vol, self.max_vol)
-                    )
+                if bkm_res is not None:
+                    mfiv_val, mfis_val, mfik_val = bkm_res
+                    if np.isfinite(mfiv_val):
+                        iv_np[r_idx, c_idx] = float(
+                            np.clip(mfiv_val, self.min_vol, self.max_vol)
+                        )
+                    if np.isfinite(mfis_val):
+                        skew_np[r_idx, c_idx] = float(mfis_val)
+                    if np.isfinite(mfik_val):
+                        kurt_np[r_idx, c_idx] = float(mfik_val)
 
             iv_df = pd.DataFrame(
                 iv_np, index=data.prices.index, columns=data.prices.columns
             )
 
         data.features[self.out_col] = iv_df.astype(np.float64)
+        if self.compute_higher_moments:
+            data.features[self.skew_col] = pd.DataFrame(
+                skew_np, index=data.prices.index, columns=data.prices.columns
+            ).astype(np.float64)
+            data.features[self.kurt_col] = pd.DataFrame(
+                kurt_np, index=data.prices.index, columns=data.prices.columns
+            ).astype(np.float64)
         return data

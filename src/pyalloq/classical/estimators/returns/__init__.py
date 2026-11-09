@@ -6,6 +6,7 @@ from pyalloq.classical.estimators.returns.classical import (
     MeanHistoricalReturnEstimator,
     MultiFactorReturnEstimator,
     ResidualMomentumEstimator,
+    VarianceRiskPremiumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
 from pyalloq.classical.estimators.returns.multi_horizon import (
@@ -21,5 +22,6 @@ __all__ = [
     "MeanHistoricalReturnEstimator",
     "MultiFactorReturnEstimator",
     "ResidualMomentumEstimator",
+    "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
 ]

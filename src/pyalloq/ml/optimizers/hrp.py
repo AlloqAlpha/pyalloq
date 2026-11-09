@@ -55,7 +55,7 @@ class HRPAllocator(BaseAllocator):
         max_diag = float(np.max(np.abs(np.diag(cov))))
         cov_unit = cov / max_diag if max_diag > 1e-12 else cov
         corr = cov_to_corr(cov_unit)
-        corr = 0.5 * (corr + corr.T)
+        corr = np.round(0.5 * (corr + corr.T), 12)
         np.fill_diagonal(corr, 1.0)
 
         if use_precision:
@@ -160,7 +160,7 @@ class HRPAllocator(BaseAllocator):
             conductance = cut_weight / denom if denom > 1e-10 else cut_weight
             balance_pen = 0.15 * abs(s - 0.5 * k) / float(k)
             score = conductance + balance_pen
-            if score < best_score:
+            if score < best_score - 1e-12:
                 best_score = score
                 best_split = s
 

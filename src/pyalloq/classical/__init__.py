@@ -19,6 +19,7 @@ from pyalloq.classical.estimators import (
     ReactionDiffusionCovarianceEstimator,
     ResidualMomentumEstimator,
     SemiCovariance,
+    VarianceRiskPremiumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
 from pyalloq.classical.optimizers import (
@@ -67,5 +68,6 @@ __all__ = [
     "RiskParityAllocator",
     "SemiCovariance",
     "StochasticScenarioMPCAllocator",
+    "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
 ]

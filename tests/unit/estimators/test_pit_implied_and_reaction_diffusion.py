@@ -691,3 +691,143 @@ class TestAuditEdgeCasesAndGradcheck:
         cpcv_res = cpcv.scramble_timelines(bt)
         assert cpcv_res.equity_curves.shape[1] > 0
         assert np.all(np.isfinite(cpcv_res.sharpe_ratios.to_numpy()))
+
+    def test_bkm_higher_moments_cornish_fisher_and_vrp_estimator(
+        self, synthetic_market_data: MarketData
+    ) -> None:
+        from pyalloq import VarianceRiskPremiumEstimator
+
+        dates = synthetic_market_data.prices.index
+        target_date = dates[-1]
+        ticker = synthetic_market_data.assets[0]
+        spot = float(synthetic_market_data.prices.loc[target_date, ticker])
+        exp_date = target_date + pd.Timedelta(days=30)
+        strikes = np.linspace(0.80 * spot, 1.20 * spot, 15)
+
+        # Left-skewed OTM option smile (puts more expensive than calls)
+        rows = []
+        for k in strikes:
+            opt_type = "P" if k <= spot else "C"
+            moneyness = (k - spot) / spot
+            skew_bump = 1.65 if k < spot else 0.75
+            mid_price = max(
+                0.15,
+                spot * 0.032 * skew_bump * float(np.exp(-5.0 * (moneyness**2))),
+            )
+            rows.append(
+                {
+                    "date": target_date,
+                    "ticker": ticker,
+                    "expiration": exp_date,
+                    "strike": float(k),
+                    "option_type": opt_type,
+                    "bid": 0.95 * mid_price,
+                    "ask": 1.05 * mid_price,
+                    "quote_timestamp": target_date + pd.Timedelta(hours=15, minutes=45),
+                }
+            )
+        chain_df = pd.DataFrame(rows)
+
+        transformer = PITOptionsMFIVTransformer(option_chain_df=chain_df)
+        md = MarketData(prices=synthetic_market_data.prices.copy())
+        md = transformer.transform(md)
+
+        assert "implied_vol" in md.features
+        assert "implied_skew" in md.features
+        assert "implied_kurtosis" in md.features
+        asset_skew = float(md.features["implied_skew"].loc[target_date, ticker])
+        asset_kurt = float(md.features["implied_kurtosis"].loc[target_date, ticker])
+        assert np.isfinite(asset_skew)
+        assert np.isfinite(asset_kurt)
+        # Put-heavy smile produces negative risk-neutral skewness
+        assert asset_skew < 0.0
+
+        # Cornish-Fisher tail adjustment inflates diagonal variance for negatively skewed / fat-tailed assets
+        cov_base = ImpliedCovarianceEstimator(use_cornish_fisher_tail=False).estimate(
+            md
+        )
+        cov_cf = ImpliedCovarianceEstimator(
+            use_cornish_fisher_tail=True, tail_confidence=0.95
+        ).estimate(md)
+        assert float(cov_cf.loc[ticker, ticker]) >= float(cov_base.loc[ticker, ticker])
+
+        # Variance Risk Premium (VRP) return estimator produces finite expected returns
+        vrp_est = VarianceRiskPremiumEstimator(realized_window=20, vrp_aversion=1.5)
+        mu_vrp = vrp_est.estimate(md)
+        assert len(mu_vrp) == len(md.assets)
+        assert np.all(np.isfinite(mu_vrp.to_numpy(dtype=np.float64)))
+
+    def test_signature_mmd_regime_gate_and_scenario_evaluator(
+        self, synthetic_market_data: MarketData
+    ) -> None:
+        from pyalloq.rl import SignatureMMDRegimeGate
+        from pyalloq_simulation.core.evaluator import ScenarioEvaluator
+
+        returns = synthetic_market_data.prices.pct_change().dropna()
+        gate = SignatureMMDRegimeGate(
+            subpath_window=6, fast_window=18, slow_window=50, mmd_threshold=0.04
+        )
+        diag_calm = gate.evaluate(returns)
+        assert diag_calm.signature_mmd >= 0.0
+        assert diag_calm.levy_area_divergence >= 0.0
+        assert 0.0 <= diag_calm.damping_factor <= 1.0
+
+        # Inject a sharp lead-lag / volatility regime shock in the last 18 bars
+        shock_returns = returns.copy()
+        shock_returns.iloc[-18:, 0] *= -3.5
+        shock_returns.iloc[-18:, 1] = np.roll(
+            shock_returns.iloc[-18:, 0].to_numpy() * 1.8, 1
+        )
+        diag_shock = gate.evaluate(shock_returns)
+        assert diag_shock.signature_mmd >= 0.0
+        assert diag_shock.levy_area_divergence > 0.0
+
+        w_target = pd.Series(0.25, index=synthetic_market_data.assets)
+        w_curr = pd.Series([0.7, 0.1, 0.1, 0.1], index=synthetic_market_data.assets)
+        w_gated, _ = gate.gate_weights(w_target, w_curr, shock_returns)
+        assert np.isclose(float(w_gated.sum()), 1.0, atol=1e-6)
+
+        # ScenarioEvaluator.compute_signature_mmd
+        gen = ReactionDiffusionGenerator(random_state=7)
+        gen.fit(synthetic_market_data)
+        scen_data = gen.generate(n_paths=25, horizon=15)
+        hist_arr = returns.to_numpy(dtype=np.float64)
+        mmd_val = ScenarioEvaluator.compute_signature_mmd(hist_arr, scen_data, window=8)
+        assert np.isfinite(mmd_val)
+        assert mmd_val >= 0.0
+
+    def test_spectral_contagion_and_fragility_visualizations(
+        self, synthetic_market_data: MarketData
+    ) -> None:
+        from pyalloq_viz import (
+            plot_fragility_hawkes_regime_portrait,
+            plot_spectral_contagion_network,
+        )
+
+        rd_est = ReactionDiffusionCovarianceEstimator(slow_window=40)
+        _ = rd_est.estimate(synthetic_market_data)
+        assert rd_est.last_adjacency_ is not None
+
+        adj_df = pd.DataFrame(
+            rd_est.last_adjacency_,
+            index=synthetic_market_data.assets,
+            columns=synthetic_market_data.assets,
+        )
+        branch_mat = rd_est.hawkes_branching_matrix_
+
+        fig_net = plot_spectral_contagion_network(
+            adjacency=adj_df,
+            branching_matrix=branch_mat,
+        )
+        assert len(fig_net.data) >= 2
+
+        diag_ts = pd.DataFrame(
+            {
+                "lambda_2": np.linspace(0.65, 0.18, 30),
+                "hawkes_spectral_radius": np.linspace(0.22, 0.86, 30),
+                "effective_hurst": np.linspace(0.45, 0.14, 30),
+            },
+            index=synthetic_market_data.prices.index[-30:],
+        )
+        fig_portrait = plot_fragility_hawkes_regime_portrait(diag_ts)
+        assert len(fig_portrait.data) == 3

@@ -50,6 +50,7 @@ from pyalloq.classical import (
     RiskParityAllocator,
     SemiCovariance,
     StochasticScenarioMPCAllocator,
+    VarianceRiskPremiumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
 from pyalloq.ml import (
@@ -116,6 +117,7 @@ __all__ = [
     "SpectralLaplacianHRPAllocator",
     "StochasticScenarioMPCAllocator",
     "StrategyPipeline",
+    "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
     "__version__",
 ]

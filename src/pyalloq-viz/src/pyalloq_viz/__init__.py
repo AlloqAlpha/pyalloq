@@ -11,6 +11,10 @@ from pyalloq_viz.comparison import (
     plot_multi_strategy_fan_chart,
     plot_multi_turnover_drift,
 )
+from pyalloq_viz.contagion import (
+    plot_fragility_hawkes_regime_portrait,
+    plot_spectral_contagion_network,
+)
 from pyalloq_viz.multi_period import (
     plot_alpha_decay_surface,
     plot_mpc_trajectory,
@@ -83,6 +87,7 @@ __all__ = [
     "plot_equity_drawdown_overlay",
     # Simulation & Multiverse
     "plot_fan_chart",
+    "plot_fragility_hawkes_regime_portrait",
     "plot_hierarchical_composition",
     "plot_mpc_trajectory",
     "plot_mpo_pillar_comparison",
@@ -94,6 +99,7 @@ __all__ = [
     "plot_pbo_distribution",
     "plot_regime_transitions",
     "plot_risk_contributions",
+    "plot_spectral_contagion_network",
     "plot_terminal_wealth_ruin",
     "plot_thermodynamic_regime_gate",
     "plot_weight_drift_turnover",

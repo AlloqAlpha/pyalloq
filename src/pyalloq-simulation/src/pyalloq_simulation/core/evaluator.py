@@ -105,3 +105,53 @@ class ScenarioEvaluator:
             view_adjusted_mdd=view_adjusted_mdd,
             probability_of_ruin=probability_of_ruin,
         )
+
+    @staticmethod
+    def compute_signature_mmd(
+        historical_returns: np.ndarray,
+        scenario_data: ScenarioMarketData,
+        window: int = 10,
+    ) -> float:
+        """
+        Computes the Rough-Path Signature Maximum Mean Discrepancy (Signature-MMD)
+        between historical return sub-paths and synthetic 3D scenario trajectories.
+
+        Measures fidelity of both terminal increments and pathwise Levy areas
+        (cross-asset lead-lag structure and volatility clustering). Lower values
+        indicate higher pathwise statistical fidelity.
+        """
+        hist_arr = np.asarray(historical_returns, dtype=np.float64)
+        scen_rets = np.asarray(scenario_data.returns, dtype=np.float64)  # (M, T, N)
+        m_paths, t_scen, n_assets = scen_rets.shape
+        w = min(max(2, int(window)), hist_arr.shape[0], t_scen)
+
+        vol_scale = np.maximum(np.std(hist_arr, axis=0, keepdims=True), 1e-6)
+        hist_norm = np.clip(hist_arr / vol_scale, -10.0, 10.0)
+        scen_norm = np.clip(scen_rets / vol_scale[None, :, :], -10.0, 10.0)
+
+        d = n_assets + 1
+        pair_i, pair_j = np.triu_indices(d, k=1)
+        dt_val = 1.0 / float(w)
+
+        def _path_logsig(seg: np.ndarray) -> np.ndarray:
+            w_seg = seg.shape[0]
+            dx = np.hstack([np.full((w_seg, 1), dt_val, dtype=np.float64), seg])
+            x_cum = np.cumsum(dx, axis=0)
+            x_prev = np.vstack([np.zeros((1, d), dtype=np.float64), x_cum[:-1]])
+            s1 = x_cum[-1]
+            levy_mat = 0.5 * (
+                np.einsum("ti,tj->ij", x_prev, dx) - np.einsum("tj,ti->ij", x_prev, dx)
+            )
+            return np.concatenate([s1, levy_mat[pair_i, pair_j]])
+
+        n_hist_sub = max(1, hist_norm.shape[0] - w + 1)
+        hist_sigs = np.vstack(
+            [_path_logsig(hist_norm[i : i + w]) for i in range(n_hist_sub)]
+        )
+        scen_sigs = np.vstack(
+            [_path_logsig(scen_norm[m, :w, :]) for m in range(m_paths)]
+        )
+
+        mean_diff = hist_sigs.mean(axis=0) - scen_sigs.mean(axis=0)
+        dim_scale = 1.0 / np.sqrt(max(1, mean_diff.shape[0]))
+        return float(np.linalg.norm(mean_diff) * dim_scale)

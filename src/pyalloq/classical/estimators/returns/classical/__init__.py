@@ -16,6 +16,9 @@ from pyalloq.classical.estimators.returns.classical.momentum import (
     ResidualMomentumEstimator,
     VolatilityScaledMultiHorizonEstimator,
 )
+from pyalloq.classical.estimators.returns.classical.vrp import (
+    VarianceRiskPremiumEstimator,
+)
 
 __all__ = [
     "CAPMReturnEstimator",
@@ -25,5 +28,6 @@ __all__ = [
     "MeanHistoricalReturnEstimator",
     "MultiFactorReturnEstimator",
     "ResidualMomentumEstimator",
+    "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
 ]

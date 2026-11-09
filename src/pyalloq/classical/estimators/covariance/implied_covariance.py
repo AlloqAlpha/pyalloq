@@ -42,6 +42,8 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
         market_weights: pd.Series | dict[str, float] | None = None,
         correlation_risk_premium: float = 0.05,
         iv_is_annualized: bool = True,
+        use_cornish_fisher_tail: bool = False,
+        tail_confidence: float = 0.95,
     ) -> None:
         self.implied_vol_feature = implied_vol_feature
         self.correlation_window = int(correlation_window)
@@ -50,7 +52,36 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
         self.market_weights = market_weights
         self.correlation_risk_premium = float(correlation_risk_premium)
         self.iv_is_annualized = bool(iv_is_annualized)
+        self.use_cornish_fisher_tail = bool(use_cornish_fisher_tail)
+        self.tail_confidence = float(np.clip(tail_confidence, 0.55, 0.999))
         self.last_implied_correlation_shift_: float = 0.0
+        self.last_cornish_fisher_multiplier_: np.ndarray | None = None
+
+    @staticmethod
+    def compute_cornish_fisher_multiplier(
+        skew: np.ndarray,
+        excess_kurtosis: np.ndarray,
+        confidence: float = 0.95,
+    ) -> np.ndarray:
+        """
+        Computes the Cornish-Fisher tail volatility multiplier for each asset given
+        return skewness `S_i` (where negative return skew `S_i < 0` increases downside tail risk)
+        and excess kurtosis `K_i`:
+            m_CF,i = 1 - ((z^2 - 1) / (6 z)) * S_i + ((z^3 - 3 z) / (24 z)) * K_i
+                     - ((2 z^3 - 5 z) / (36 z)) * S_i^2
+        """
+        from scipy.stats import norm
+
+        z = float(norm.ppf(np.clip(confidence, 0.55, 0.999)))
+        s = np.clip(np.asarray(skew, dtype=np.float64), -3.0, 3.0)
+        k = np.clip(np.asarray(excess_kurtosis, dtype=np.float64), -1.5, 10.0)
+        mult = (
+            1.0
+            - ((z**2 - 1.0) / (6.0 * z)) * s
+            + ((z**2 - 3.0) / 24.0) * k
+            - ((2.0 * (z**2) - 5.0) / 36.0) * (s**2)
+        )
+        return np.clip(mult, 0.65, 2.50)
 
     def _extract_point_in_time_iv(
         self, data: MarketData, returns: pd.DataFrame
@@ -149,6 +180,44 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
         returns = data.prices.pct_change().dropna(how="all").fillna(0.0)
 
         iv_vec, rv_vec = self._extract_point_in_time_iv(data, returns)
+        if self.use_cornish_fisher_tail:
+            if "implied_skew" in data.features:
+                skew_vec = (
+                    data.features["implied_skew"]
+                    .iloc[-1]
+                    .reindex(tickers)
+                    .fillna(0.0)
+                    .to_numpy(dtype=np.float64)
+                )
+            else:
+                skew_vec = (
+                    returns.iloc[-self.correlation_window :]
+                    .skew()
+                    .reindex(tickers)
+                    .fillna(0.0)
+                    .to_numpy(dtype=np.float64)
+                )
+            if "implied_kurtosis" in data.features:
+                kurt_vec = (
+                    data.features["implied_kurtosis"]
+                    .iloc[-1]
+                    .reindex(tickers)
+                    .fillna(0.0)
+                    .to_numpy(dtype=np.float64)
+                )
+            else:
+                kurt_vec = (
+                    returns.iloc[-self.correlation_window :]
+                    .kurt()
+                    .reindex(tickers)
+                    .fillna(0.0)
+                    .to_numpy(dtype=np.float64)
+                )
+            cf_mult = self.compute_cornish_fisher_multiplier(
+                skew_vec, kurt_vec, confidence=self.tail_confidence
+            )
+            self.last_cornish_fisher_multiplier_ = cf_mult
+            iv_vec = np.clip(iv_vec * cf_mult, 1e-4, 5.0)
         corr_hist = self._compute_shrunk_correlation(returns)
         w_m = self._resolve_market_weights(data)
 
