@@ -210,3 +210,17 @@ C_{ij}(\tau) = \Lambda_j \Phi_{ij}(\tau) + \sum_{k=1}^N \int_0^\infty \Phi_{ik}(
 
 2. **Abi Jaber (2019) \(K\)-Factor Markovian Lifted Heston Kernel:**
    Approximates the singular fractional power-law kernel \(K(t) = t^{H - 1/2} / \Gamma(H + 1/2)\) via a finite superposition of \(K\) Markovian Ornstein-Uhlenbeck volatility factors \(U_{t,k}\) with geometric mean-reversion speeds \(x_k = r^{k - K/2}\) and analytic weights \(c_k(H_{\text{eff}})\), where \(H_{\text{eff}} \in (0.05, 0.50]\) blends the realized variogram Hurst \(H_{\text{RV}}\) and implied surface Hurst \(H_{\text{IV}}\).
+
+3. **Bakshi-Kapadia-Madan (2003) Risk-Neutral Moments & Cornish-Fisher Tail Expansion:**
+   From out-of-the-money (OTM) option prices \(Q(K_i)\), the quadratic (\(V\)), cubic (\(W\)), and quartic (\(X\)) model-free contracts determine risk-neutral skewness (\(\text{MFIS}_t\)) and excess kurtosis (\(\text{MFIK}_t\)). When `use_cornish_fisher_tail=True`, `ImpliedCovarianceEstimator` scales each asset's implied volatility by the Cornish-Fisher quantile ratio at confidence \(z_\alpha\):
+
+\[
+m_{\text{CF}}(S, K_{\text{ex}}) = \frac{z_{\text{CF}}}{z_\alpha}, \qquad z_{\text{CF}} = z_\alpha + \frac{z_\alpha^2 - 1}{6} S + \frac{z_\alpha^3 - 3 z_\alpha}{24} K_{\text{ex}} - \frac{2 z_\alpha^3 - 5 z_\alpha}{36} S^2
+\]
+
+4. **Von Neumann Covariance Entropy (`compute_von_neumann_entropy`):**
+   Given normalized eigenvalues \(p_i = \lambda_i(\Sigma) / \operatorname{Tr}(\Sigma)\), the normalized Von Neumann Entropy measures spectral diversification vs. rank-1 contagion collapse:
+
+\[
+\mathcal{S}_{\text{vN}}(\Sigma) = -\frac{1}{\ln N} \sum_{i=1}^N p_i \ln p_i \in [0, 1]
+\]

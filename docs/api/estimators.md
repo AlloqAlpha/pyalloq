@@ -58,6 +58,12 @@
 
 ---
 
+### VarianceRiskPremiumEstimator
+
+::: pyalloq.classical.estimators.returns.classical.vrp.VarianceRiskPremiumEstimator
+
+---
+
 ### TimesFM3UnivariateReturnEstimator
 
 ::: pyalloq.dl.estimators.returns.timesfm.TimesFM3UnivariateReturnEstimator
@@ -141,6 +147,18 @@
 ### FragilityShrinkageCholeskyLayer
 
 ::: pyalloq.dl.layers.fragility_kkt.FragilityShrinkageCholeskyLayer
+
+---
+
+### LogSigSSMBlock
+
+::: pyalloq.dl.policy.LogSigSSMBlock
+
+---
+
+### compute_von_neumann_entropy
+
+::: pyalloq.dl.policy.compute_von_neumann_entropy
 
 ---
 

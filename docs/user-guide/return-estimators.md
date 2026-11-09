@@ -163,6 +163,31 @@ pipeline = StrategyPipeline(
 
 ---
 
+## Variance & Skewness Risk Premium (`VarianceRiskPremiumEstimator`)
+
+Estimates expected excess asset returns from the **Point-in-Time Variance Risk Premium (VRP)** (Bollerslev, Tauchen & Zhou 2009) and the **Bakshi-Kapadia-Madan (2003) Crash-Skewness Risk Premium**:
+
+\[
+\text{VRP}_{i,t} = \sigma_{i,t,\text{IV}}^2 - \sigma_{i,t,\text{RV}}^2, \qquad \hat{\mu}_{i,t} = r_f + \gamma_{\text{vrp}} \text{VRP}_{i,t} + \eta_{\text{skew}} (-\text{MFIS}_{i,t}) \sigma_{i,t,\text{IV}}
+\]
+
+When `data.features["implied_vol"]`, `data.features["lifted_heston_vol"]`, and `data.features["implied_skew"]` are populated by `PITOptionsMFIVTransformer` and `LiftedHestonRoughVolTransformer`, `VarianceRiskPremiumEstimator` uses them directly; otherwise it falls back to causal realized equivalents.
+
+```python
+from pyalloq import VarianceRiskPremiumEstimator, StrategyPipeline
+
+pipeline = StrategyPipeline(
+    allocator=allocator,
+    returns_estimator=VarianceRiskPremiumEstimator(
+        vrp_aversion=1.5,
+        skew_aversion=0.08,
+        realized_window=30,
+    ),
+)
+```
+
+---
+
 ## Black-Litterman (`BlackLittermanEstimator`)
 
 Blends the market equilibrium returns \(\Pi\) with investor views \(Q\) expressed through a picking matrix \(P\). Returns both a posterior expected return vector and a posterior covariance matrix.

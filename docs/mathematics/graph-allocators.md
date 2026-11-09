@@ -143,6 +143,22 @@ w_i = w^{intra}_{i \in C_k} \times w^{inter}_{C_k}
 
 ---
 
+## 4. Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
+
+Instead of single-linkage agglomerative clustering on pairwise correlation distances (which is vulnerable to "chaining" noise), `SpectralLaplacianHRPAllocator` constructs a non-negative precision/partial-correlation adjacency matrix \(W_S\) on each induced subgraph \(S \subseteq \{1, \dots, N\}\) and computes the normalized Graph Laplacian:
+
+\[
+\mathcal{L}_S = I_{|S|} - D_S^{-1/2} W_S D_S^{-1/2}
+\]
+
+The second smallest eigenvector \(v_2(\mathcal{L}_S)\) (**Fiedler vector**) provides a 1D spectral embedding along which a Cheeger sweep cut partitions \(S \to (S_L, S_R)\) to minimize normalized cut conductance. During recursive bisection, cluster variances are penalized by internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S})\):
+
+\[
+\tilde{V}(S_c) = V_{\text{IVP}}(S_c) \cdot \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha_L = 1 - \frac{\tilde{V}(S_L)}{\tilde{V}(S_L) + \tilde{V}(S_R)}
+\]
+
+---
+
 ## References
 
 - [López de Prado (2016) — Building Diversified Portfolios that Outperform Out-of-Sample](../references/papers.md)

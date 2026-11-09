@@ -177,3 +177,36 @@ env = EndogenousLiquidityImpactWrapper(
 )
 obs, info = env.reset(seed=42)
 ```
+
+---
+
+## 7. Unified 3-Stage E2E Policy Pipeline (`BasePolicyNetwork` & `UnifiedE2EPolicyNetwork`)
+
+`BasePolicyNetwork` standardizes the neural controller contract `forward(x, w_current=None) -> w_target` across Decision-Focused Learning (`DeepAllocator`), pathwise Deep Hedging (`DeepHedgingTrajectoryTrainer`), and Gymnasium environments (`POMDPPortfolioEnv` via `.predict_from_obs(obs)`).
+
+`UnifiedE2EPolicyNetwork` implements the 3-stage controller:
+
+1. **Stage 1 (Perception):** `CRISPSparseSTGAT` + `LogSigSSMBlock` selective state-space encoding + `compute_von_neumann_entropy` covariance regularity.
+2. **Stage 2 (Decision / Optimization Layer):** Pluggable `head_mode` (`"mdfp"`, `"risk_parity_kkt"`, `"cvar_kkt"`, or `"residual_actor"`).
+3. **Stage 3 (Turnover-Aware No-Trade Zone):** Smoothly blends KKT allocations with pre-trade weights `w_current`.
+
+```python
+from pyalloq.dl import UnifiedE2EPolicyNetwork
+from pyalloq.rl import DeepHedgingTrajectoryTrainer, POMDPPortfolioEnv, SignatureMMDRegimeGate
+
+policy = UnifiedE2EPolicyNetwork(
+    num_assets=len(data.assets),
+    num_features=1,
+    hidden_dim=32,
+    head_mode="mdfp",
+    no_trade_buffer=0.15,
+)
+
+# Train pathwise with DeepHedgingTrajectoryTrainer or evaluate directly on POMDPPortfolioEnv
+trainer = DeepHedgingTrajectoryTrainer(policy=policy, horizon=5, lookback_window=20)
+trainer.fit_on_market_data(data, epochs=10)
+
+# Gate rebalancing turnover on rough-path Signature-MMD regime shifts
+sig_gate = SignatureMMDRegimeGate(subpath_window=8, fast_window=20, slow_window=60)
+diag = sig_gate.evaluate(data.prices.pct_change().dropna())
+```

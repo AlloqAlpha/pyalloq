@@ -49,7 +49,7 @@ class CrossAssetAttention(nn.Module):
 
 
 class CholeskyCovarianceLayer(nn.Module):
-    """
+    r"""
     Generates a dynamically sized, mathematically guaranteed Positive Definite
     covariance matrix using the Cholesky factorization: \Sigma = L L^T + \epsilon I.
     """

@@ -127,3 +127,27 @@
 ### MDFPOptimizationLayer
 
 ::: pyalloq.dl.layers.mdfp.MDFPOptimizationLayer
+
+---
+
+### DifferentiableKKTAllocatorModule
+
+::: pyalloq.dl.layers.fragility_kkt.DifferentiableKKTAllocatorModule
+
+---
+
+### BasePolicyNetwork
+
+::: pyalloq.dl.layers.fragility_kkt.BasePolicyNetwork
+
+---
+
+### UnifiedE2EPolicyNetwork
+
+::: pyalloq.dl.policy.UnifiedE2EPolicyNetwork
+
+---
+
+### SignatureMMDRegimeGate
+
+::: pyalloq.rl.thermodynamics.SignatureMMDRegimeGate

@@ -45,11 +45,11 @@ Cross-sectional features are particularly useful with `FactorReturnEstimator` an
 
 ---
 
-## Point-in-Time Option-Implied Volatility (`PITOptionsMFIVTransformer`)
+## Point-in-Time Option-Implied Volatility, Skewness & Kurtosis (`PITOptionsMFIVTransformer`)
 
-Compute 30-day **Model-Free Implied Volatility (MFIV)** (Britten-Jones & Neuberger 2000 / CBOE VIX methodology) from raw historical option chain snapshots while enforcing strict **Point-in-Time (PIT)** timestamp guards (`quote_timestamp <= decision_timestamp`) to prevent look-ahead bias.
+Compute 30-day **Model-Free Implied Volatility (MFIV)** (Britten-Jones & Neuberger 2000 / CBOE VIX methodology) as well as **Bakshi-Kapadia-Madan (2003) Model-Free Implied Skewness (`"implied_skew"`) and Excess Kurtosis (`"implied_kurtosis"`)** from raw historical option chain snapshots while enforcing strict **Point-in-Time (PIT)** timestamp guards (`quote_timestamp <= decision_timestamp`) to prevent look-ahead bias.
 
-When option chains are absent for a given asset or date, `PITOptionsMFIVTransformer` automatically falls back to Parkinson High-Low range volatility (if `"high"` and `"low"` exist in `data.features`) or EWMA realized volatility so `data.features["implied_vol"]` is always complete and aligned with `data.prices.index`.
+When option chains are absent for a given asset or date, `PITOptionsMFIVTransformer` automatically falls back to Parkinson High-Low range volatility (if `"high"` and `"low"` exist in `data.features`) or EWMA realized volatility and rolling higher moments so `data.features["implied_vol"]`, `data.features["implied_skew"]`, and `data.features["implied_kurtosis"]` are always complete and aligned with `data.prices.index`.
 
 ```python
 from pyalloq_features.transformers import PITOptionsMFIVTransformer
@@ -60,7 +60,7 @@ pit_iv = PITOptionsMFIVTransformer(
     market_close_offset_hours=16.0,
 )
 data = pit_iv.transform(data)
-# Populates data.features["implied_vol"]
+# Populates data.features["implied_vol"], "implied_skew", and "implied_kurtosis"
 ```
 
 ### Rough Path Log-Signatures & Lifted Heston Rough Volatility
