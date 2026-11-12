@@ -76,6 +76,18 @@
 
 ---
 
+### TimestralUnivariateReturnEstimator
+
+::: pyalloq.dl.estimators.returns.timestral.TimestralUnivariateReturnEstimator
+
+---
+
+### TimestralMultivariateReturnEstimator
+
+::: pyalloq.dl.estimators.returns.timestral.TimestralMultivariateReturnEstimator
+
+---
+
 ## Covariance Estimators
 
 ### EmpiricalCovariance
@@ -191,3 +203,15 @@
 ### TimesFM3MultivariateViewGenerator
 
 ::: pyalloq.dl.estimators.black_litterman.timesfm.TimesFM3MultivariateViewGenerator
+
+---
+
+### TimestralUnivariateViewGenerator
+
+::: pyalloq.dl.estimators.black_litterman.timestral.TimestralUnivariateViewGenerator
+
+---
+
+### TimestralMultivariateViewGenerator
+
+::: pyalloq.dl.estimators.black_litterman.timestral.TimestralMultivariateViewGenerator

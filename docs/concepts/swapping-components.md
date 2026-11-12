@@ -112,6 +112,18 @@ For allocators that use expected returns (Max Sharpe, Max Return, Black-Litterma
     )
     ```
 
+=== "Timestral (Foundation Model)"
+    ```python
+    from pyalloq.dl import TimestralMultivariateReturnEstimator
+
+    pipeline = StrategyPipeline(
+        allocator=MarkowitzAllocator(tickers=data.assets, objective=ObjectiveFunction.MAX_SHARPE),
+        returns_estimator=TimestralMultivariateReturnEstimator(
+            model="mistralai/Timestral-28M", horizon=21
+        ),
+    )
+    ```
+
 === "Implied Returns"
     ```python
     from pyalloq.classical.estimators.returns.classical.implied import ImpliedReturnEstimator

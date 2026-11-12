@@ -89,6 +89,19 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 
 ---
 
+### Das et al. (2024) & Mistral AI (2026) — Time-Series Foundation Models (TimesFM & Timestral) {#tsfm-2026}
+
+> Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting. *International Conference on Machine Learning (ICML)*.
+>
+> Mistral AI (2026). Timestral: Multivariate Probabilistic Time-Series Foundation Models with Decoupled Horizon Forecasting.
+> [https://github.com/mistralai/timestral](https://github.com/mistralai/timestral)
+
+**Contribution:** Pretrained patch-based causal transformer architectures that enable zero-shot univariate and multivariate probabilistic forecasting across up to 32,768 historical steps with past-only and known-future covariates. Multi-quantile trajectory predictions ($p_{10}, p_{50}, p_{90}$ and 21 non-crossing quantiles) provide both zero-shot point return estimates ($\hat{\mu}$) and calibrated diagonal view uncertainty matrices ($\Omega$) for Bayesian Black-Litterman allocation.
+
+**Implemented in:** `TimesFM3UnivariateReturnEstimator`, `TimesFM3MultivariateReturnEstimator`, `TimesFM3UnivariateViewGenerator`, `TimesFM3MultivariateViewGenerator`, `TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`
+
+---
+
 ## Covariance Estimation
 
 ### Ledoit & Wolf (2004) — Shrinkage Estimation {#ledoit-wolf-2004}
