@@ -109,6 +109,7 @@ module = [
     "yfinance.*",
     "talib.*",
     "timesfm3.*",
+    "timestral.*",
     "plotly.*",
     "seaborn.*",
     "gymnasium.*",
@@ -156,7 +157,7 @@ pythonpath = [
 addopts = "-v --strict-markers -ra"
 markers = [
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-  "dl: deep learning tests requiring torch/timesfm",
+  "dl: deep learning tests requiring torch/timesfm/timestral",
   "rl: reinforcement learning tests requiring gymnasium/sb3",
   "integration: end-to-end integration workflows",
   "network: tests that require network access",

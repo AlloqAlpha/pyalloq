@@ -63,9 +63,15 @@ This installs `pyalloq`, `pyalloq-core`, `pyalloq-backtest`, `pyalloq-data-conne
 
 | Extra | Key packages | Use case |
 |-------|-------------|----------|
-| `[dl]` | `torch>=2.0` | Deep learning return/covariance estimators |
+| `[dl]` | `torch>=2.0`, `timesfm==3.0.1` | Deep learning & foundation model estimators |
 | `[rl]` | `stable-baselines3`, `gymnasium` | Reinforcement learning allocators |
 | `[all-ml]` | All of the above | Full ML stack |
+
+To use Mistral AI's **Timestral** foundation models (`TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`), install the standalone inference library from GitHub alongside `pyalloq[dl]`:
+
+```bash
+pip install git+https://github.com/mistralai/timestral.git
+```
 
 ---
 

@@ -331,6 +331,91 @@ mu_bl, cov_bl = bl.estimate(
 
 ---
 
+## Deep Learning / Foundation Models: Mistral Timestral
+
+Mistral AI's [Timestral](https://github.com/mistralai/timestral) (`mistralai/Timestral-5M`, `Timestral-28M`, `Timestral-123M`, `Timestral-209M`) is a family of open-source time-series foundation models built on Decoupled Horizon Forecasting (DHF) that supports up to 32,768 historical time steps and outputs **21 non-crossing quantiles** (`0.01` to `0.99`) per forecast step on CPU or GPU.
+
+!!! note "Installation requirement"
+    Install the deep learning extra along with the standalone `timestral` package:
+    ```bash
+    uv add "pyalloq[dl]"
+    pip install git+https://github.com/mistralai/timestral.git
+    ```
+
+### Zero-Shot Return Estimation with Timestral
+
+PyAlloq provides both univariate and multivariate return estimators powered by `TimestralForecaster`:
+
+- **`TimestralUnivariateReturnEstimator`**: Forecasts each asset series independently as a 3D batch `(N_assets, 1, T)`.
+- **`TimestralMultivariateReturnEstimator`**: Forecasts all assets jointly `(1, N_assets, T)` while incorporating both past-only covariates (`MarketData.features` $\to$ `past_covariates`) and known-future covariates (`MarketData.future_features` $\to$ `known_covariates`).
+
+Both classes accept either a pre-loaded `TimestralForecaster` instance or a Hugging Face model ID string (defaulting to lazy-loading `"mistralai/Timestral-28M"` on first call).
+
+```python
+from pyalloq.dl import (
+    TimestralMultivariateReturnEstimator,
+    TimestralUnivariateReturnEstimator,
+)
+from timestral import TimestralForecaster
+
+# Option A: Pass a pre-loaded TimestralForecaster
+forecaster = TimestralForecaster.from_pretrained("mistralai/Timestral-209M", device="cpu")
+univariate_est = TimestralUnivariateReturnEstimator(model=forecaster, horizon=21)
+
+# Option B: Lazy-load directly by Hugging Face checkpoint ID
+multivariate_est = TimestralMultivariateReturnEstimator(
+    model="mistralai/Timestral-28M",
+    horizon=21,
+    annualize=True,
+    device="cpu",
+)
+
+pipeline = StrategyPipeline(
+    allocator=allocator,
+    returns_estimator=multivariate_est,
+)
+```
+
+### Timestral Black-Litterman View Generation (21 Quantiles)
+
+Because Timestral outputs 21 calibrated quantiles (`0.01` through `0.99`), `TimestralUnivariateViewGenerator` and `TimestralMultivariateViewGenerator` allow customizing the `confidence_interval=(q_low, q_high)` (default `(0.10, 0.90)`):
+
+1. **View Vector ($Q$)**: Computed from the median trajectory `forecast.median`:
+   \[
+   Q_i = \left(\frac{p_{50, i}}{P_{T, i}} - 1\right) \times \frac{252}{H}
+   \]
+2. **Uncertainty Matrix ($\Omega$)**: For any chosen quantile pair $(q_{\text{low}}, q_{\text{high}})$, the Gaussian z-score spread $\Delta z = \Phi^{-1}(q_{\text{high}}) - \Phi^{-1}(q_{\text{low}})$ (which equals $2.56$ for $(0.10, 0.90)$) converts the inter-quantile price spread into an annualized return variance:
+   \[
+   \sigma_i = \frac{Q_{q_{\text{high}}, i} - Q_{q_{\text{low}}, i}}{\Delta z \cdot P_{T, i}} \times \sqrt{\frac{252}{H}}, \qquad \Omega = \operatorname{diag}\left(\sigma_1^2, \ldots, \sigma_N^2\right)
+   \]
+
+```python
+from pyalloq.dl import (
+    TimestralMultivariateViewGenerator,
+    TimestralUnivariateViewGenerator,
+)
+from pyalloq.classical.estimators.black_litterman.bayesian import BlackLittermanEstimator
+
+# Generate views and uncertainty using Timestral's 5th-to-95th percentile spread
+view_generator = TimestralMultivariateViewGenerator(
+    model="mistralai/Timestral-28M",
+    horizon=21,
+    confidence_interval=(0.05, 0.95),
+)
+P, Q, Omega = view_generator.generate(market_data)
+
+bl = BlackLittermanEstimator(tau=0.05, risk_aversion=2.5)
+mu_bl, cov_bl = bl.estimate(
+    market_caps=market_data.cross_sectional,
+    cov_matrix=cov_matrix,
+    P=P,
+    Q=Q,
+    Omega=Omega,
+)
+```
+
+---
+
 ## Implementing a Custom Return Estimator
 
 ```python
