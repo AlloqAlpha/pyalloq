@@ -2017,8 +2017,8 @@
 <tbody>
 <tr>
 <td><code>[dl]</code></td>
-<td><code>torch&gt;=2.0</code></td>
-<td>Deep learning return/covariance estimators</td>
+<td><code>torch&gt;=2.0</code>, <code>timesfm==3.0.1</code></td>
+<td>Deep learning &amp; foundation model estimators</td>
 </tr>
 <tr>
 <td><code>[rl]</code></td>
@@ -2032,16 +2032,19 @@
 </tr>
 </tbody>
 </table>
+<p>To use Mistral AI's <strong>Timestral</strong> foundation models (<code>TimestralUnivariateReturnEstimator</code>, <code>TimestralMultivariateReturnEstimator</code>, <code>TimestralUnivariateViewGenerator</code>, <code>TimestralMultivariateViewGenerator</code>), install the standalone inference library from GitHub alongside <code>pyalloq[dl]</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/mistralai/timestral.git
+</span></code></pre></div>
 <hr />
 <h2 id="verify-installation">Verify Installation<a class="headerlink" href="#verify-installation" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_core</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_backtest</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_data_connector</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_simulation</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_viz</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PyAlloq installed successfully!&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_core</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_backtest</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_data_connector</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_simulation</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pyalloq_viz</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PyAlloq installed successfully!&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 

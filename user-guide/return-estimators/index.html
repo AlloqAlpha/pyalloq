@@ -1042,6 +1042,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deep-learning-foundation-models-mistral-timestral" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deep Learning / Foundation Models: Mistral Timestral
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deep Learning / Foundation Models: Mistral Timestral">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zero-shot-return-estimation-with-timestral" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Shot Return Estimation with Timestral
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timestral-black-litterman-view-generation-21-quantiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timestral Black-Litterman View Generation (21 Quantiles)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementing-a-custom-return-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2126,6 +2165,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deep-learning-foundation-models-mistral-timestral" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deep Learning / Foundation Models: Mistral Timestral
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deep Learning / Foundation Models: Mistral Timestral">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zero-shot-return-estimation-with-timestral" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Shot Return Estimation with Timestral
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timestral-black-litterman-view-generation-21-quantiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timestral Black-Litterman View Generation (21 Quantiles)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementing-a-custom-return-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2406,21 +2484,96 @@ R_{i, t} = \alpha_i + \beta_i R_{m, t} + \epsilon_{i, t}
 </span></code></pre></div>
 <p><strong>When to use:</strong> You want Black-Litterman portfolio optimization but want systematic, probabilistic foundation model forecasts to drive the views and quantify view uncertainty.</p>
 <hr />
+<h2 id="deep-learning-foundation-models-mistral-timestral">Deep Learning / Foundation Models: Mistral Timestral<a class="headerlink" href="#deep-learning-foundation-models-mistral-timestral" title="Permanent link">&para;</a></h2>
+<p>Mistral AI's <a href="https://github.com/mistralai/timestral">Timestral</a> (<code>mistralai/Timestral-5M</code>, <code>Timestral-28M</code>, <code>Timestral-123M</code>, <code>Timestral-209M</code>) is a family of open-source time-series foundation models built on Decoupled Horizon Forecasting (DHF) that supports up to 32,768 historical time steps and outputs <strong>21 non-crossing quantiles</strong> (<code>0.01</code> to <code>0.99</code>) per forecast step on CPU or GPU.</p>
+<div class="admonition note">
+<p class="admonition-title">Installation requirement</p>
+<p>Install the deep learning extra along with the standalone <code>timestral</code> package:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;pyalloq[dl]&quot;</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/mistralai/timestral.git
+</span></code></pre></div></p>
+</div>
+<h3 id="zero-shot-return-estimation-with-timestral">Zero-Shot Return Estimation with Timestral<a class="headerlink" href="#zero-shot-return-estimation-with-timestral" title="Permanent link">&para;</a></h3>
+<p>PyAlloq provides both univariate and multivariate return estimators powered by <code>TimestralForecaster</code>:</p>
+<ul>
+<li><strong><code>TimestralUnivariateReturnEstimator</code></strong>: Forecasts each asset series independently as a 3D batch <code>(N_assets, 1, T)</code>.</li>
+<li><strong><code>TimestralMultivariateReturnEstimator</code></strong>: Forecasts all assets jointly <code>(1, N_assets, T)</code> while incorporating both past-only covariates (<code>MarketData.features</code> <span class="arithmatex">\(\to\)</span> <code>past_covariates</code>) and known-future covariates (<code>MarketData.future_features</code> <span class="arithmatex">\(\to\)</span> <code>known_covariates</code>).</li>
+</ul>
+<p>Both classes accept either a pre-loaded <code>TimestralForecaster</code> instance or a Hugging Face model ID string (defaulting to lazy-loading <code>"mistralai/Timestral-28M"</code> on first call).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="n">TimestralMultivariateReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">TimestralUnivariateReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="p">)</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">timestral</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimestralForecaster</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1"># Option A: Pass a pre-loaded TimestralForecaster</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="n">forecaster</span> <span class="o">=</span> <span class="n">TimestralForecaster</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;mistralai/Timestral-209M&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="n">univariate_est</span> <span class="o">=</span> <span class="n">TimestralUnivariateReturnEstimator</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">forecaster</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="c1"># Option B: Lazy-load directly by Hugging Face checkpoint ID</span>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="n">multivariate_est</span> <span class="o">=</span> <span class="n">TimestralMultivariateReturnEstimator</span><span class="p">(</span>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;mistralai/Timestral-28M&quot;</span><span class="p">,</span>
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    <span class="n">horizon</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span>
+</span><span id="__span-15-15"><a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    <span class="n">annualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-15-16"><a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+</span><span id="__span-15-17"><a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="p">)</span>
+</span><span id="__span-15-18"><a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>
+</span><span id="__span-15-19"><a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-15-20"><a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
+</span><span id="__span-15-21"><a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">multivariate_est</span><span class="p">,</span>
+</span><span id="__span-15-22"><a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="timestral-black-litterman-view-generation-21-quantiles">Timestral Black-Litterman View Generation (21 Quantiles)<a class="headerlink" href="#timestral-black-litterman-view-generation-21-quantiles" title="Permanent link">&para;</a></h3>
+<p>Because Timestral outputs 21 calibrated quantiles (<code>0.01</code> through <code>0.99</code>), <code>TimestralUnivariateViewGenerator</code> and <code>TimestralMultivariateViewGenerator</code> allow customizing the <code>confidence_interval=(q_low, q_high)</code> (default <code>(0.10, 0.90)</code>):</p>
+<ol>
+<li><strong>View Vector (<span class="arithmatex">\(Q\)</span>)</strong>: Computed from the median trajectory <code>forecast.median</code>:
+   [
+   Q_i = \left(\frac{p_{50, i}}{P_{T, i}} - 1\right) \times \frac{252}{H}
+   ]</li>
+<li><strong>Uncertainty Matrix (<span class="arithmatex">\(\Omega\)</span>)</strong>: For any chosen quantile pair <span class="arithmatex">\((q_{\text{low}}, q_{\text{high}})\)</span>, the Gaussian z-score spread <span class="arithmatex">\(\Delta z = \Phi^{-1}(q_{\text{high}}) - \Phi^{-1}(q_{\text{low}})\)</span> (which equals <span class="arithmatex">\(2.56\)</span> for <span class="arithmatex">\((0.10, 0.90)\)</span>) converts the inter-quantile price spread into an annualized return variance:
+   [
+   \sigma_i = \frac{Q_{q_{\text{high}}, i} - Q_{q_{\text{low}}, i}}{\Delta z \cdot P_{T, i}} \times \sqrt{\frac{252}{H}}, \qquad \Omega = \operatorname{diag}\left(\sigma_1^2, \ldots, \sigma_N^2\right)
+   ]</li>
+</ol>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="n">TimestralMultivariateViewGenerator</span><span class="p">,</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="n">TimestralUnivariateViewGenerator</span><span class="p">,</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="p">)</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.classical.estimators.black_litterman.bayesian</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlackLittermanEstimator</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1"># Generate views and uncertainty using Timestral&#39;s 5th-to-95th percentile spread</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="n">view_generator</span> <span class="o">=</span> <span class="n">TimestralMultivariateViewGenerator</span><span class="p">(</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;mistralai/Timestral-28M&quot;</span><span class="p">,</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="n">horizon</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    <span class="n">confidence_interval</span><span class="o">=</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">),</span>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="p">)</span>
+</span><span id="__span-16-13"><a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="n">P</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">Omega</span> <span class="o">=</span> <span class="n">view_generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+</span><span id="__span-16-14"><a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
+</span><span id="__span-16-15"><a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="n">bl</span> <span class="o">=</span> <span class="n">BlackLittermanEstimator</span><span class="p">(</span><span class="n">tau</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">risk_aversion</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>
+</span><span id="__span-16-16"><a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="n">mu_bl</span><span class="p">,</span> <span class="n">cov_bl</span> <span class="o">=</span> <span class="n">bl</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span>
+</span><span id="__span-16-17"><a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>    <span class="n">market_caps</span><span class="o">=</span><span class="n">market_data</span><span class="o">.</span><span class="n">cross_sectional</span><span class="p">,</span>
+</span><span id="__span-16-18"><a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>    <span class="n">cov_matrix</span><span class="o">=</span><span class="n">cov_matrix</span><span class="p">,</span>
+</span><span id="__span-16-19"><a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>    <span class="n">P</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+</span><span id="__span-16-20"><a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>    <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+</span><span id="__span-16-21"><a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>    <span class="n">Omega</span><span class="o">=</span><span class="n">Omega</span><span class="p">,</span>
+</span><span id="__span-16-22"><a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
 <h2 id="implementing-a-custom-return-estimator">Implementing a Custom Return Estimator<a class="headerlink" href="#implementing-a-custom-return-estimator" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseReturnEstimator</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyReturnEstimator</span><span class="p">(</span><span class="n">BaseReturnEstimator</span><span class="p">):</span>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        <span class="c1"># Annualized mean of log returns</span>
-</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        <span class="n">log_returns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1e-6</span><span class="p">))</span>
-</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        <span class="k">return</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span>
-</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
-</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-14-12"><a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
-</span><span id="__span-14-13"><a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">MyReturnEstimator</span><span class="p">(),</span>
-</span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseReturnEstimator</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyReturnEstimator</span><span class="p">(</span><span class="n">BaseReturnEstimator</span><span class="p">):</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>        <span class="c1"># Annualized mean of log returns</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        <span class="n">log_returns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1e-6</span><span class="p">))</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>        <span class="k">return</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
+</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">MyReturnEstimator</span><span class="p">(),</span>
+</span><span id="__span-17-14"><a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="p">)</span>
 </span></code></pre></div>
 
 

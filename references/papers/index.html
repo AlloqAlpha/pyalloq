@@ -1592,6 +1592,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tsfm-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das et al. (2024) &amp; Mistral AI (2026) — Time-Series Foundation Models (TimesFM &amp; Timestral)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2312,6 +2323,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tsfm-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Das et al. (2024) &amp; Mistral AI (2026) — Time-Series Foundation Models (TimesFM &amp; Timestral)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2668,6 +2690,15 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
         \left[(\tau\Sigma)^{-1} \Pi + P^\top \Omega^{-1} Q\right]
 ]</p>
 <p><strong>Implemented in:</strong> <code>BlackLittermanEstimator</code></p>
+<hr />
+<h3 id="tsfm-2026">Das et al. (2024) &amp; Mistral AI (2026) — Time-Series Foundation Models (TimesFM &amp; Timestral)<a class="headerlink" href="#tsfm-2026" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Das, A., Kong, W., Sen, R., &amp; Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting. <em>International Conference on Machine Learning (ICML)</em>.</p>
+<p>Mistral AI (2026). Timestral: Multivariate Probabilistic Time-Series Foundation Models with Decoupled Horizon Forecasting.
+<a href="https://github.com/mistralai/timestral">https://github.com/mistralai/timestral</a></p>
+</blockquote>
+<p><strong>Contribution:</strong> Pretrained patch-based causal transformer architectures that enable zero-shot univariate and multivariate probabilistic forecasting across up to 32,768 historical steps with past-only and known-future covariates. Multi-quantile trajectory predictions (<span class="arithmatex">\(p_{10}, p_{50}, p_{90}\)</span> and 21 non-crossing quantiles) provide both zero-shot point return estimates (<span class="arithmatex">\(\hat{\mu}\)</span>) and calibrated diagonal view uncertainty matrices (<span class="arithmatex">\(\Omega\)</span>) for Bayesian Black-Litterman allocation.</p>
+<p><strong>Implemented in:</strong> <code>TimesFM3UnivariateReturnEstimator</code>, <code>TimesFM3MultivariateReturnEstimator</code>, <code>TimesFM3UnivariateViewGenerator</code>, <code>TimesFM3MultivariateViewGenerator</code>, <code>TimestralUnivariateReturnEstimator</code>, <code>TimestralMultivariateReturnEstimator</code>, <code>TimestralUnivariateViewGenerator</code>, <code>TimestralMultivariateViewGenerator</code></p>
 <hr />
 <h2 id="covariance-estimation">Covariance Estimation<a class="headerlink" href="#covariance-estimation" title="Permanent link">&para;</a></h2>
 <h3 id="ledoit-wolf-2004">Ledoit &amp; Wolf (2004) — Shrinkage Estimation<a class="headerlink" href="#ledoit-wolf-2004" title="Permanent link">&para;</a></h3>
