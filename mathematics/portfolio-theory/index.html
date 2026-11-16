@@ -1364,6 +1364,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wasserstein-distributionally-robust-optimization-wassersteindroallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wasserstein Distributionally Robust Optimization (WassersteinDROAllocator)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wasserstein Distributionally Robust Optimization (WassersteinDROAllocator)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ground-metrics-dual-norm-regularization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Ground Metrics &amp; Dual Norm Regularization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-dynamic-bures-wasserstein-radius-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Dynamic Bures-Wasserstein Radius Calibration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wasserstein-kelly-log-growth-formulation-li-2023-fonseca-junca-views-2021" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wasserstein-Kelly Log-Growth Formulation (Li, 2023) &amp; Fonseca-Junca Views (2021)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2060,6 +2110,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#wasserstein-distributionally-robust-optimization-wassersteindroallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wasserstein Distributionally Robust Optimization (WassersteinDROAllocator)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Wasserstein Distributionally Robust Optimization (WassersteinDROAllocator)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ground-metrics-dual-norm-regularization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Ground Metrics &amp; Dual Norm Regularization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-dynamic-bures-wasserstein-radius-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Dynamic Bures-Wasserstein Radius Calibration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wasserstein-kelly-log-growth-formulation-li-2023-fonseca-junca-views-2021" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wasserstein-Kelly Log-Growth Formulation (Li, 2023) &amp; Fonseca-Junca Views (2021)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary-table" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2177,6 +2277,34 @@ u_t \ge -r_t^\top w - \alpha, \quad \mathbf{1}^\top w = 1, \quad l \le w \le b
 \]</div>
 <p>subject to linear path-monotonicity constraints <span class="arithmatex">\(M_t \ge C_t(w)\)</span>, <span class="arithmatex">\(M_t \ge M_{t-1}\)</span>, <span class="arithmatex">\(d_t \ge M_t - C_t(w)\)</span>, and <span class="arithmatex">\(u_t \ge d_t - \alpha\)</span>.</p>
 <hr />
+<h2 id="wasserstein-distributionally-robust-optimization-wassersteindroallocator">Wasserstein Distributionally Robust Optimization (<code>WassersteinDROAllocator</code>)<a class="headerlink" href="#wasserstein-distributionally-robust-optimization-wassersteindroallocator" title="Permanent link">&para;</a></h2>
+<p>Let <span class="arithmatex">\(\hat{\mathbb{P}} = \sum_{i=1}^M p_i \delta_{r_i}\)</span> denote the empirical (or synthetic scenario) distribution over <span class="arithmatex">\(M\)</span> return atoms <span class="arithmatex">\(r_i \in \mathbb{R}^N\)</span>. To hedge against distributional misspecification and structural regime shifts, <code>WassersteinDROAllocator</code> optimizes against the worst-case measure <span class="arithmatex">\(\mathbb{Q}\)</span> inside the <strong>Expected-Value-Constrained Wasserstein Ambiguity Set</strong> (Esfahani &amp; Kuhn, 2018; Fonseca &amp; Junca, 2021; Li, 2023):</p>
+<div class="arithmatex">\[
+\mathcal{P}_{\varepsilon_t}(G, q) = \left\{ \mathbb{Q} \in \mathcal{M}(\mathbb{R}^N) \;:\; W_p(\mathbb{Q}, \hat{\mathbb{P}}) \le \varepsilon_t, \quad \mathbb{E}_{\mathbb{Q}}[G r] = q \right\}
+\]</div>
+<h3 id="1-ground-metrics-dual-norm-regularization">1. Ground Metrics &amp; Dual Norm Regularization<a class="headerlink" href="#1-ground-metrics-dual-norm-regularization" title="Permanent link">&para;</a></h3>
+<p>For transport cost <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_{\mathcal{G}}\)</span> and effective exposure vector <span class="arithmatex">\(u = w - G^\top \lambda\)</span>, Kantorovich duality yields the exact dual norm penalty <span class="arithmatex">\(\varepsilon_t \|u\|_{\mathcal{G}^*}\)</span>:</p>
+<ul>
+<li><strong>Mahalanobis (<code>"mahalanobis"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|\Sigma^{-1/2}(r - \hat{r})\|_2 \implies \|u\|_{\mathcal{G}^*} = \|\Sigma^{1/2} u\|_2\)</span>.</li>
+<li><strong>Euclidean (<code>"l2"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_2 \implies \|u\|_{\mathcal{G}^*} = \|u\|_2\)</span>.</li>
+<li><strong>Manhattan (<code>"l1"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_1 \implies \|u\|_{\mathcal{G}^*} = \|u\|_\infty\)</span>.</li>
+</ul>
+<h3 id="2-dynamic-bures-wasserstein-radius-calibration">2. Dynamic Bures-Wasserstein Radius Calibration<a class="headerlink" href="#2-dynamic-bures-wasserstein-radius-calibration" title="Permanent link">&para;</a></h3>
+<p>When <code>radius_mode="regime_adaptive"</code>, the ambiguity radius <span class="arithmatex">\(\varepsilon_t\)</span> scales dynamically with the Bures-Wasserstein <span class="arithmatex">\(W_2\)</span> distance between fast and slow market covariance baths (via <code>WassersteinRegimeGate</code>):</p>
+<div class="arithmatex">\[
+\varepsilon_t = \varepsilon_{\text{base}} + \kappa_{\text{regime}} \cdot W_2\!\left(\mathcal{N}(\mu_{\text{fast}}, \Sigma_{\text{fast}}), \, \mathcal{N}(\mu_{\text{slow}}, \Sigma_{\text{slow}})\right)
+\]</div>
+<h3 id="3-wasserstein-kelly-log-growth-formulation-li-2023-fonseca-junca-views-2021">3. Wasserstein-Kelly Log-Growth Formulation (Li, 2023) &amp; Fonseca-Junca Views (2021)<a class="headerlink" href="#3-wasserstein-kelly-log-growth-formulation-li-2023-fonseca-junca-views-2021" title="Permanent link">&para;</a></h3>
+<p>Given view-projected atoms <span class="arithmatex">\(\tilde{r}_i = r_i + \Sigma G^\top (G \Sigma G^\top)^{-1}(q - G \hat{\mu})\)</span> and fractional Kelly parameter <span class="arithmatex">\(\eta \in (0, 1]\)</span>, the worst-case expected geometric log-growth program is solved as a single convex exponential-cone program over <span class="arithmatex">\((w, \lambda)\)</span>:</p>
+<div class="arithmatex">\[
+\max_{w \in \mathcal{W}, \, \lambda \in \mathbb{R}^K} \; \sum_{i=1}^M p_i \ln\!\left(1 + \eta \, \tilde{r}_i^\top w\right) - \varepsilon_t \, \eta \, \|w - G^\top \lambda\|_{\mathcal{G}^*} - \rho_{\text{view}} \|\lambda\|_2^2
+\]</div>
+<p>For <strong><code>WASSERSTEIN_CVAR</code></strong>, the worst-case Expected Shortfall at confidence <span class="arithmatex">\(\beta\)</span> reduces to:</p>
+<div class="arithmatex">\[
+\min_{w \in \mathcal{W}, \, \alpha, \, s \ge 0, \, \lambda} \; \alpha + \frac{1}{1 - \beta}\left(\sum_{i=1}^M p_i s_i + \varepsilon_t \|w - G^\top \lambda\|_{\mathcal{G}^*}\right) + \rho_{\text{view}} \|\lambda\|_2^2
+\quad \text{s.t.} \quad s_i \ge -\tilde{r}_i^\top w - \alpha
+\]</div>
+<hr />
 <h2 id="summary-table">Summary Table<a class="headerlink" href="#summary-table" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2235,6 +2363,11 @@ u_t \ge -r_t^\top w - \alpha, \quad \mathbf{1}^\top w = 1, \quad l \le w \le b
 <tr>
 <td>CDaR</td>
 <td><span class="arithmatex">\(\min \text{CDaR}_\beta(w)\)</span> over sample path drawdowns</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>Wasserstein DRO</td>
+<td><span class="arithmatex">\(\max_w \inf_{\mathbb{Q} \in \mathcal{P}_{\varepsilon_t}} \mathbb{E}_{\mathbb{Q}}[U(w^\top r)]\)</span> (Kelly / CVaR / Mean-Risk)</td>
 <td>Optional</td>
 </tr>
 <tr>
