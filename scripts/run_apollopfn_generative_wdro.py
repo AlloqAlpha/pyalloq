@@ -6,16 +6,29 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from pyalloq_backtest.engine import WalkForwardEngine
-from pyalloq_backtest.splitters import RollingWindowSplitter
+from pyalloq_backtest import (
+    AlmgrenChrissCostModel,
+    BacktestTracker,
+    BenchmarkSuite,
+    RollingWindowSplitter,
+    WalkForwardEngine,
+)
 from pyalloq_core.data import MarketData
 from pyalloq_core.enums import CovariateKey, CovariateMode, ObjectiveFunction
 from pyalloq_core.pipeline import StrategyPipeline
 from pyalloq_simulation import ConditionalDiffusionGenerator, NeuralSDEGenerator
-from pyalloq_viz import plot_foundation_posterior_and_attribution
+from pyalloq_viz import ComparisonTearSheet, plot_foundation_posterior_and_attribution
 
-from pyalloq.classical.estimators.covariance import ImpliedCovarianceEstimator
-from pyalloq.classical.optimizers import WassersteinDROAllocator
+from pyalloq.classical.estimators.covariance import (
+    ImpliedCovarianceEstimator,
+    LedoitWolfShrinkage,
+)
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.optimizers import (
+    EqualWeightAllocator,
+    MarkowitzAllocator,
+    WassersteinDROAllocator,
+)
 from pyalloq.dl import (
     ApolloPFNPretrainer,
     ApolloPFNReturnEstimator,
@@ -137,10 +150,29 @@ def build_synthetic_macro_market_data() -> MarketData:
         },
         index=future_dates,
     )
+    volume_df = pd.DataFrame(
+        rng.uniform(30_000_000.0, 95_000_000.0, size=(140, 5)),
+        index=dates,
+        columns=assets,
+    )
+    cross_sectional = pd.DataFrame(
+        {
+            "sector": [
+                "Technology",
+                "Technology",
+                "Semiconductors",
+                "Financials",
+                "Energy",
+            ],
+            "market_cap": [3.1e12, 2.9e12, 2.7e12, 5.8e11, 4.6e11],
+        },
+        index=assets,
+    )
 
     return MarketData(
         prices=prices,
         features={
+            CovariateKey.VOLUME: volume_df,
             CovariateKey.IMPLIED_VOL: iv_df,
             CovariateKey.COT_CROWDING: cot_df,
             CovariateKey.INTEREST_RATES: rates_df,
@@ -148,6 +180,7 @@ def build_synthetic_macro_market_data() -> MarketData:
         future_features={
             CovariateKey.CALENDAR_EVENTS: calendar_df,
         },
+        cross_sectional=cross_sectional,
         risk_free_rate=0.04,
     )
 
@@ -324,6 +357,81 @@ def main() -> None:
     print(
         f"Saved interactive Foundation Posterior & Attribution dashboard to: {html_out}"
     )
+
+    print(
+        "\n=== 5. Head-to-Head Multi-Strategy Benchmark Suite (DSR & Frictional Drag) ==="
+    )
+    lw_cov = LedoitWolfShrinkage()
+    iso_wdro = WassersteinDROAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+        epsilon=0.004,
+        ground_metric="mahalanobis",
+        radius_mode="regime_adaptive",
+    )
+    pipelines = {
+        "EqualWeight": StrategyPipeline(
+            allocator=EqualWeightAllocator(tickers=data.assets),
+        ),
+        "GaussianMarkowitz": StrategyPipeline(
+            allocator=MarkowitzAllocator(
+                tickers=data.assets, objective=ObjectiveFunction.MAX_RETURN
+            ),
+            returns_estimator=EWMAReturnEstimator(span=25),
+            cov_estimator=lw_cov,
+        ),
+        "IsotropicWDRO": StrategyPipeline(
+            allocator=iso_wdro,
+            cov_estimator=lw_cov,
+        ),
+        "ApolloPFN_TailWDRO": pipeline_wdro,
+        "ExploratoryRegimeMV": StrategyPipeline(
+            allocator=emv_alloc,
+            cov_estimator=lw_cov,
+        ),
+    }
+
+    cost_model = AlmgrenChrissCostModel(
+        portfolio_aum=10_000_000.0,
+        spread_bps=4.0,
+        gamma=0.08,
+    )
+    ens_scenarios = ensemble_ret.estimate_scenarios(
+        data, n_paths=50, horizon=20, refit=False
+    )
+
+    with BacktestTracker.session(reset=True) as tracker:
+        suite = BenchmarkSuite(
+            pipelines=pipelines,
+            splitter=RollingWindowSplitter(lookback_window=50),
+            cost_model=cost_model,
+            rebalance_freq="2W-FRI",
+            benchmark="EqualWeight",
+        )
+        comp_res = suite.run(data, scenario_data=ens_scenarios)
+        cols = [
+            "annualized_return",
+            "annualized_volatility",
+            "sharpe_ratio",
+            "deflated_sharpe_ratio",
+            "maximum_drawdown",
+            "annualized_turnover",
+            "total_cost_drag",
+        ]
+        print(
+            f"Executed {tracker.n_trials} Strategy Trials | "
+            f"Expected Max Sharpe Hurdle (SR_0): {comp_res.expected_max_sharpe:.3f}"
+        )
+        print(comp_res.summary_table[cols].round(4).to_string())
+
+        ts_out = output_dir / "apollopfn_wdro_comparison_tearsheet.html"
+        ComparisonTearSheet(
+            comp_res,
+            market_data=data,
+            scenario_data=ens_scenarios,
+            benchmark=comp_res.results["EqualWeight"],
+        ).to_html(path=ts_out)
+        print(f"Saved multi-strategy ComparisonTearSheet to: {ts_out}")
 
 
 if __name__ == "__main__":

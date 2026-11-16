@@ -524,3 +524,103 @@ def test_causal_no_lookahead_and_edge_cases(macro_market_data: MarketData) -> No
     assert len(mu_single) == 1 and np.isfinite(float(mu_single.iloc[0]))
     scen_single = est.generate(n_paths=8, horizon=5)
     assert scen_single.returns.shape == (8, 5, 1)
+
+
+def test_riemann_bar_hypothesis_invariants() -> None:
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from pyalloq.dl.estimators.apollopfn import RiemannBarDistribution
+
+    bar = RiemannBarDistribution(n_bins=64, z_min=-5.0, z_max=5.0)
+
+    @settings(max_examples=25, deadline=None)
+    @given(
+        seed=st.integers(min_value=0, max_value=10000),
+        temp=st.floats(min_value=0.2, max_value=3.0),
+        alpha=st.floats(min_value=0.60, max_value=0.98),
+    )
+    def _check_invariants(seed: int, temp: float, alpha: float) -> None:
+        rng = np.random.default_rng(seed)
+        raw_logits = torch.as_tensor(
+            rng.normal(0.0, 2.0, size=(2, 3, 64)), dtype=torch.float32
+        )
+        probs = bar.logits_to_probs(raw_logits, temperature=temp)
+
+        # 1. Monotonic Quantiles: q(0.10) <= q(0.25) <= q(0.50) <= q(0.75) <= q(0.90)
+        q_levels = [0.10, 0.25, 0.50, 0.75, 0.90]
+        qs = [bar.quantile(probs, q) for q in q_levels]
+        for idx in range(len(qs) - 1):
+            assert np.all(qs[idx] <= qs[idx + 1] + 1e-9)
+
+        # 2. Coherent Tail Dominance: -CVaR_alpha(Z) <= q_{1 - alpha}(Z)
+        #    (Expected Shortfall in the left tail is always <= the (1-alpha)-quantile)
+        q_tail = bar.quantile(probs, 1.0 - alpha)
+        cvar_val = bar.cvar(probs, alpha=alpha)
+        assert np.all(-cvar_val <= q_tail + 1e-6)
+
+        # 3. Bowley Skewness bounded strictly in [-1, 1] and downside_std > 0
+        skew = bar.bowley_skewness(probs)
+        assert np.all((skew >= -1.0 - 1e-7) & (skew <= 1.0 + 1e-7))
+        assert np.all(bar.downside_std(probs) > 0.0)
+
+    _check_invariants()
+
+
+def test_cpcv_and_pbo_with_foundation_ensemble_and_future_covariates(
+    macro_market_data: MarketData,
+) -> None:
+    from pyalloq_backtest import CPCVSplitter, PBOEvaluator, PurgedKFoldSplitter
+
+    # 1. Verify PurgedKFoldSplitter preserves future_features across purged folds
+    pkf = PurgedKFoldSplitter(n_splits=3, embargo_pct=0.02)
+    folds = list(pkf.split(macro_market_data))
+    assert len(folds) == 3
+    for train_md, test_md in folds:
+        assert CovariateKey.CALENDAR_EVENTS in train_md.future_features
+        assert CovariateKey.CALENDAR_EVENTS in test_md.future_features
+
+    # 2. Verify CPCVSplitter + ApolloPFN + WassersteinDROAllocator across combinatorial splits
+    cpcv = CPCVSplitter(n_groups=4, k_test_groups=2, purge_pct=0.02, embargo_pct=0.02)
+    splits = cpcv.split(macro_market_data)
+    assert len(splits) == 6  # C(4, 2) = 6
+
+    apfn_vg = ApolloPFNViewGenerator(
+        horizon=5, uncertainty_mode="cvar_tail", full_covariance_omega=True
+    )
+    alloc_candidates = [
+        WassersteinDROAllocator(
+            objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+            epsilon=eps,
+            ground_metric="quantile_mahalanobis",
+            view_generator=apfn_vg,
+        )
+        for eps in (0.002, 0.006, 0.015)
+    ]
+
+    oos_split_returns: dict[tuple[int, ...], pd.Series] = {}
+    strategy_ret_cols: dict[str, list[pd.Series]] = {
+        f"WDRO_{i}": [] for i in range(len(alloc_candidates))
+    }
+
+    for train_md, test_md, group_ids in splits:
+        test_rets = test_md.prices.pct_change().fillna(0.0)
+        for idx, alloc in enumerate(alloc_candidates):
+            res = alloc.allocate(train_md)
+            w = res.weights.reindex(test_rets.columns).fillna(0.0)
+            s_ret = test_rets @ w
+            if idx == 0:
+                oos_split_returns[group_ids] = s_ret
+            strategy_ret_cols[f"WDRO_{idx}"].append(s_ret)
+
+    cpcv_res = cpcv.assemble_cpcv_paths(oos_split_returns)
+    assert cpcv_res.returns_matrix.shape[1] == 3  # C(4 - 1, 2 - 1) = 3 paths
+    assert len(cpcv_res.sharpe_ratios) == 3
+
+    # 3. Evaluate Probability of Backtest Overfitting (PBO, Bailey et al., 2017) across the WDRO family
+    ret_matrix = pd.DataFrame(
+        {k: pd.concat(v).groupby(level=0).mean() for k, v in strategy_ret_cols.items()}
+    ).dropna()
+    pbo_res = PBOEvaluator(n_partitions=4).evaluate_cscv(ret_matrix)
+    assert 0.0 <= pbo_res.pbo <= 1.0
+    assert len(pbo_res.logits) > 0
