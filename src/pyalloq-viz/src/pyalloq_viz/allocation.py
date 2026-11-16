@@ -848,3 +848,105 @@ def plot_correlation_and_periodic_returns(
     fig.update_yaxes(autorange="reversed", row=1, col=1)
     fig.update_yaxes(autorange="reversed", row=1, col=2)
     return fig
+
+
+def plot_foundation_posterior_and_attribution(
+    horizon_quantiles: dict[float, pd.DataFrame],
+    covariate_importance: pd.DataFrame | None = None,
+    ensemble_model_weights: pd.DataFrame | None = None,
+    asset: str | None = None,
+    theme: ThemeName = "alloq_dark",
+    title: str = "Foundation Model Riemann Bar Posterior, Covariate Attribution & Ensemble Weights",
+) -> go.Figure:
+    """
+    3-Panel Interactive Diagnostic Figure for `ApolloPFN`, `TimesFM-3`, `Timestral`,
+    and `EnsembleReturnEstimator`:
+    - Panel 1: Multi-horizon Riemann Bar Posterior fan chart (20%, 40%, 60%, 80% prediction intervals).
+    - Panel 2: `AttnFeat` Exogenous Covariate Attribution heatmap (`Assets x Covariates`).
+    - Panel 3: `EnsembleReturnEstimator` per-asset Bayesian model weights (`M_models x N_assets`).
+    """
+    palette = get_theme(theme)
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        subplot_titles=(
+            "1. Riemann Bar Posterior Fan Chart (20%–80% PI)",
+            "2. AttnFeat Exogenous Covariate Attribution",
+            "3. Bayesian Ensemble Model Weights per Asset",
+        ),
+        horizontal_spacing=0.08,
+    )
+
+    if horizon_quantiles and 0.50 in horizon_quantiles:
+        med_df = horizon_quantiles[0.50]
+        target_asset = asset if (asset in med_df.columns) else str(med_df.columns[0])
+        x_idx = [str(idx) for idx in med_df.index]
+
+        for q_lo, q_hi, alpha_val, label in (
+            (0.10, 0.90, 0.14, "80% PI"),
+            (0.20, 0.80, 0.22, "60% PI"),
+            (0.30, 0.70, 0.30, "40% PI"),
+            (0.40, 0.60, 0.38, "20% PI"),
+        ):
+            if q_lo in horizon_quantiles and q_hi in horizon_quantiles:
+                y_lo = horizon_quantiles[q_lo][target_asset].to_numpy(dtype=np.float64)
+                y_hi = horizon_quantiles[q_hi][target_asset].to_numpy(dtype=np.float64)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_idx + x_idx[::-1],
+                        y=np.concatenate([y_hi, y_lo[::-1]]).tolist(),
+                        fill="toself",
+                        fillcolor=hex_to_rgba(palette.emerald, alpha_val),
+                        line={"color": "rgba(0,0,0,0)"},
+                        name=label,
+                        showlegend=True,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_idx,
+                y=med_df[target_asset].to_numpy(dtype=np.float64),
+                mode="lines+markers",
+                name=f"{target_asset} Median (p50)",
+                line={"color": palette.emerald, "width": 2.5},
+            ),
+            row=1,
+            col=1,
+        )
+
+    if covariate_importance is not None and not covariate_importance.empty:
+        z_cov = covariate_importance.to_numpy(dtype=np.float64)
+        fig.add_trace(
+            go.Heatmap(
+                z=z_cov,
+                x=[str(c) for c in covariate_importance.columns],
+                y=[str(r) for r in covariate_importance.index],
+                colorscale="Viridis",
+                text=np.round(z_cov, 2),
+                texttemplate="%{text:.2f}",
+                showscale=False,
+            ),
+            row=1,
+            col=2,
+        )
+
+    if ensemble_model_weights is not None and not ensemble_model_weights.empty:
+        colors = palette.categorical
+        for idx, model_name in enumerate(ensemble_model_weights.index):
+            fig.add_trace(
+                go.Bar(
+                    x=[str(c) for c in ensemble_model_weights.columns],
+                    y=ensemble_model_weights.loc[model_name].to_numpy(dtype=np.float64),
+                    name=str(model_name),
+                    marker_color=colors[idx % len(colors)],
+                ),
+                row=1,
+                col=3,
+            )
+        fig.update_layout(barmode="stack")
+
+    apply_plotly_theme(fig, theme=theme, title=title, height=480)
+    return fig

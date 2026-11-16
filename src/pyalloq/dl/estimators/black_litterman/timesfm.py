@@ -1,33 +1,92 @@
-import pandas as pd
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any, cast
+
 import numpy as np
-from typing import Any
+import pandas as pd
+from pyalloq_core.data import MarketData
+from pyalloq_core.enums import CovariateKey, CovariateMode
+from pyalloq_core.interfaces import BaseViewGenerator
+from scipy.stats import norm
 
 try:
     from timesfm3 import TimesFM3Evaluator
 except ImportError:
     TimesFM3Evaluator = Any  # type: ignore[misc,assignment]
 
-from pyalloq_core.data import MarketData
-from pyalloq_core.interfaces import BaseViewGenerator
-
 P10_INDEX = 0
 P50_INDEX = 4
 P90_INDEX = 8
+TIMESFM_QUANTILE_GRID = np.array(
+    [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90], dtype=np.float64
+)
+
+
+def _validate_timesfm_confidence_interval(
+    confidence_interval: tuple[float, float],
+) -> tuple[float, float, float]:
+    q_low, q_high = confidence_interval
+    if not (0.0 < q_low < q_high < 1.0):
+        raise ValueError(
+            f"confidence_interval must satisfy 0 < q_low < q_high < 1, got {confidence_interval}."
+        )
+    if np.isclose(q_low, 0.10) and np.isclose(q_high, 0.90):
+        z_spread = 2.56
+    else:
+        z_spread = float(norm.ppf(q_high) - norm.ppf(q_low))
+    return float(q_low), float(q_high), z_spread
+
+
+def _interpolate_timesfm_quantile(q_slice: np.ndarray, target_q: float) -> np.ndarray:
+    """
+    Interpolates a `(N_assets, 9)` quantile slice along TimesFM-3's 9 decile levels
+    `[0.10, ..., 0.90]` to evaluate arbitrary `target_q in (0, 1)`.
+    """
+    if np.isclose(target_q, 0.10):
+        return q_slice[:, P10_INDEX]
+    if np.isclose(target_q, 0.50):
+        return q_slice[:, P50_INDEX]
+    if np.isclose(target_q, 0.90):
+        return q_slice[:, P90_INDEX]
+
+    out = np.empty(len(q_slice), dtype=np.float64)
+    for i in range(len(q_slice)):
+        out[i] = float(np.interp(target_q, TIMESFM_QUANTILE_GRID, q_slice[i]))
+    return out
 
 
 class TimesFM3UnivariateViewGenerator(BaseViewGenerator):
     """
-    Generates Black-Litterman views (Q) and uncertainty (Omega)
+    Generates Black-Litterman views (`Q`) and uncertainty (`Omega`)
     using the probabilistic quantile outputs of TimesFM-3.0 in univariate mode.
     """
 
     def __init__(
         self,
-        tfm_model: TimesFM3Evaluator,
+        model: Any = None,
         horizon: int = 21,
+        confidence_interval: tuple[float, float] = (0.10, 0.90),
+        annualize: bool = True,
+        full_covariance_omega: bool = False,
+        covariate_mode: CovariateMode = CovariateMode.NONE,
+        covariate_keys: Sequence[CovariateKey | str] | None = None,
+        device: str | None = None,
+        tfm_model: Any = None,
     ) -> None:
-        self.tfm_model = tfm_model
-        self.horizon = horizon
+        resolved = model if model is not None else tfm_model
+        self.model = resolved
+        self.tfm_model = resolved
+        self.horizon = int(horizon)
+        self.confidence_interval = confidence_interval
+        self.annualize = bool(annualize)
+        self.full_covariance_omega = bool(full_covariance_omega)
+        self.covariate_mode = covariate_mode
+        self.covariate_keys = covariate_keys
+        self.device = device
+        self._q_low, self._q_high, self._z_spread = (
+            _validate_timesfm_confidence_interval(confidence_interval)
+        )
 
     def generate(
         self,
@@ -35,16 +94,11 @@ class TimesFM3UnivariateViewGenerator(BaseViewGenerator):
         **kwargs: Any,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         prices_df = data.prices
-        from typing import cast
-
         assets = list(cast(Any, prices_df.columns))
-        N = len(assets)
-        current_prices = prices_df.to_numpy(dtype=np.float32)[-1]
+        n_assets = len(assets)
+        current_prices = prices_df.to_numpy(dtype=np.float64)[-1]
 
-        # 1. TimesFM expects a list of 1D numpy arrays for univariate series
         ts_list = [prices_df[col].to_numpy(dtype=np.float32) for col in assets]
-
-        # 2. Run zero-shot probabilistic forecasting
         outputs = cast(
             list[Any],
             list(
@@ -57,45 +111,63 @@ class TimesFM3UnivariateViewGenerator(BaseViewGenerator):
             ),
         )
 
-        # 3. Extract quantiles for each asset (index 0 = p10, index 4 = p50, index 8 = p90)
-        p10_prices = np.array(
-            [out.quantiles[self.horizon - 1, P10_INDEX] for out in outputs]
-        )
-        p50_prices = np.array(
-            [out.quantiles[self.horizon - 1, P50_INDEX] for out in outputs]
-        )
-        p90_prices = np.array(
-            [out.quantiles[self.horizon - 1, P90_INDEX] for out in outputs]
-        )
+        q_horizon = np.stack(
+            [
+                np.asarray(out.quantiles[self.horizon - 1], dtype=np.float64)
+                for out in outputs
+            ],
+            axis=0,
+        )  # (N, 9)
+        p50_prices = _interpolate_timesfm_quantile(q_horizon, 0.50)
+        q_low_prices = _interpolate_timesfm_quantile(q_horizon, self._q_low)
+        q_high_prices = _interpolate_timesfm_quantile(q_horizon, self._q_high)
 
-        # 4. View Expected Returns (Q) - based on the median forecast
         view_returns = (p50_prices / current_prices) - 1.0
-        annualized_returns = view_returns * (252.0 / self.horizon)
-        Q = pd.Series(annualized_returns, index=assets, name="expected_returns")
+        if self.annualize:
+            view_returns = view_returns * (252.0 / self.horizon)
+        Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
-        # 5. View Uncertainty Matrix (Omega)
-        price_std = (p90_prices - p10_prices) / 2.56
+        price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
-        annualized_std = return_std * np.sqrt(252.0 / self.horizon)
+        if self.annualize:
+            return_std = return_std * np.sqrt(252.0 / self.horizon)
 
-        omega_variances = cast(np.ndarray, annualized_std**2)
-        Omega = pd.DataFrame(np.diag(omega_variances), index=assets, columns=assets)
-
-        # 6. Picking Matrix (P) is the Identity Matrix
-        P = pd.DataFrame(np.eye(N), index=assets, columns=assets)
-
+        Omega = pd.DataFrame(np.diag(return_std**2), index=assets, columns=assets)
+        P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)
         return P, Q, Omega
 
 
 class TimesFM3MultivariateViewGenerator(BaseViewGenerator):
     """
-    Generates Black-Litterman views (Q) and uncertainty (Omega)
-    using the probabilistic outputs of TimesFM 3.0's Multivariate setup.
+    Generates Black-Litterman views (`Q`) and uncertainty (`Omega`)
+    using the probabilistic outputs of TimesFM 3.0's Multivariate setup,
+    supporting both `MarketData.features` and `MarketData.future_features`
+    via `CovariateMode` and `CovariateKey`, plus optional non-diagonal `Omega`.
     """
 
-    def __init__(self, model: TimesFM3Evaluator, horizon: int = 21):
-        self.model = model
-        self.horizon = horizon
+    def __init__(
+        self,
+        model: Any = None,
+        horizon: int = 21,
+        confidence_interval: tuple[float, float] = (0.10, 0.90),
+        annualize: bool = True,
+        full_covariance_omega: bool = False,
+        covariate_mode: CovariateMode = CovariateMode.AUTO,
+        covariate_keys: Sequence[CovariateKey | str] | None = None,
+        device: str | None = None,
+        tfm_model: Any = None,
+    ) -> None:
+        self.model = model if model is not None else tfm_model
+        self.horizon = int(horizon)
+        self.confidence_interval = confidence_interval
+        self.annualize = bool(annualize)
+        self.full_covariance_omega = bool(full_covariance_omega)
+        self.covariate_mode = covariate_mode
+        self.covariate_keys = covariate_keys
+        self.device = device
+        self._q_low, self._q_high, self._z_spread = (
+            _validate_timesfm_confidence_interval(confidence_interval)
+        )
 
     def generate(
         self,
@@ -103,33 +175,19 @@ class TimesFM3MultivariateViewGenerator(BaseViewGenerator):
         **kwargs: Any,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         stock_prices = data.prices
-        assets = data.assets
-        N = len(assets)
-        current_prices = stock_prices.to_numpy(dtype=np.float32)[-1]
+        assets = list(data.assets)
+        n_assets = len(assets)
+        current_prices = stock_prices.to_numpy(dtype=np.float64)[-1]
 
-        # 1. Target Variates: TimesFM expects shape (num_variates, context_length)
-        # We transpose our (T, N) price DataFrame to (N, T)
         target = stock_prices.to_numpy(dtype=np.float32).T
+        past_only_cov, past_future_cov = data.extract_covariates(
+            mode=self.covariate_mode,
+            covariate_keys=self.covariate_keys,
+            horizon=self.horizon,
+            dtype=np.float32,
+        )
 
-        # 2. Past-Only Covariates: Process MarketData.features
-        # TimesFM expects shape (num_covariate_channels, context_length)
-        past_covs = []
-        past_only_cov: np.ndarray | None = None
-        if data.features is not None:
-            for feat_name, df_feat in data.features.items():
-                # Reindex to ensure strict alignment with prices, just in case
-                aligned_feature = df_feat.reindex(
-                    index=stock_prices.index, columns=assets
-                ).fillna(0.0)
-
-                # Transpose to (N, T). Each asset's feature becomes a distinct covariate channel
-                past_covs.append(aligned_feature.to_numpy(dtype=np.float32).T)
-
-            past_only_cov = np.concatenate(past_covs, axis=0)
-        else:
-            past_only_cov = None
-
-        predict_kwargs = {
+        predict_kwargs: dict[str, Any] = {
             "contexts": [target],
             "horizon": self.horizon,
             "return_quantiles": True,
@@ -137,33 +195,44 @@ class TimesFM3MultivariateViewGenerator(BaseViewGenerator):
         }
         if past_only_cov is not None:
             predict_kwargs["past_only_covariates"] = [past_only_cov]
+        if past_future_cov is not None:
+            predict_kwargs["past_future_covariates"] = [past_future_cov]
 
-        # 4. Generate the Joint Multivariate Forecast
-        outputs = self.model.predict_batch(**predict_kwargs)
-        outputs = list(outputs)
+        outputs = list(self.model.predict_batch(**predict_kwargs))
+        quantiles = np.asarray(outputs[0].quantiles, dtype=np.float64)  # (N, H, 9)
+        q_horizon = quantiles[:, self.horizon - 1, :]
 
-        # 5. Extract Quantiles for the specific horizon
-        # For multivariate, outputs[0].quantiles shape is (N, Horizon, 9)
-        quantiles = outputs[0].quantiles
-        p10_prices = quantiles[:, self.horizon - 1, P10_INDEX]
-        p50_prices = quantiles[:, self.horizon - 1, P50_INDEX]
-        p90_prices = quantiles[:, self.horizon - 1, P90_INDEX]
+        p50_prices = _interpolate_timesfm_quantile(q_horizon, 0.50)
+        q_low_prices = _interpolate_timesfm_quantile(q_horizon, self._q_low)
+        q_high_prices = _interpolate_timesfm_quantile(q_horizon, self._q_high)
 
-        # 6. View Expected Returns (Q)
         view_returns = (p50_prices / current_prices) - 1.0
-        annualized_returns = view_returns * (252.0 / self.horizon)
-        Q = pd.Series(annualized_returns, index=assets)
+        if self.annualize:
+            view_returns = view_returns * (252.0 / self.horizon)
+        Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
-        # 7. View Uncertainty Matrix (Omega)
-        # Standard deviation estimated from the spread: std ≈ (p90 - p10) / 2.56
-        price_std = (p90_prices - p10_prices) / 2.56
+        price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
-        annualized_std = return_std * np.sqrt(252.0 / self.horizon)
+        if self.annualize:
+            return_std = return_std * np.sqrt(252.0 / self.horizon)
 
-        # Omega is a diagonal matrix of these variances
-        Omega = pd.DataFrame(np.diag(annualized_std**2), index=assets, columns=assets)
+        if self.full_covariance_omega and n_assets > 1 and quantiles.shape[1] >= 2:
+            # Compute cross-asset epistemic correlation from multi-horizon median trajectories
+            med_traj = quantiles[:, :, P50_INDEX] / current_prices[:, None] - 1.0
+            corr = np.corrcoef(med_traj)
+            corr = np.nan_to_num(corr, nan=0.0)
+            corr = 0.5 * (corr + corr.T)
+            np.fill_diagonal(corr, 1.0)
+            eigvals, eigvecs = np.linalg.eigh(corr)
+            corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+            d_inv = 1.0 / np.sqrt(np.diag(corr_psd))
+            corr_psd = corr_psd * np.outer(d_inv, d_inv)
+            omega_mat = np.outer(return_std, return_std) * (
+                0.7 * np.eye(n_assets) + 0.3 * corr_psd
+            )
+        else:
+            omega_mat = np.diag(return_std**2)
 
-        # 8. Picking Matrix (P)
-        P = pd.DataFrame(np.eye(N), index=assets, columns=assets)
-
+        Omega = pd.DataFrame(omega_mat, index=assets, columns=assets)
+        P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)
         return P, Q, Omega

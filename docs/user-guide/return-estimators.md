@@ -443,6 +443,64 @@ scenarios_3d = sde_estimator.estimate_scenarios(market_data, refit=False)
 
 ---
 
+## Time-Aware Prior-Data Fitted Networks (`ApolloPFN`) & Bayesian Ensemble
+
+**ApolloPFN** (Potapczynski et al., TMLR 2026 / `arXiv:2603.15802v2`) is a time-series-aware Prior-Data Fitted Network (PFN) that performs **zero-shot amortized Bayesian inference in a single forward pass**, conditioning jointly on historical target returns, past-only covariates (`MarketData.features`), and known-future covariates (`MarketData.future_features`).
+
+### Strongly-Typed Exogenous Covariates (`CovariateKey` & `CovariateMode`)
+
+To prevent macro indicators, COT crowding metrics, and scheduled calendar events from getting lost in magic strings, `pyalloq` provides `CovariateKey` and `CovariateMode` in `pyalloq_core.enums`. All three foundation families (`ApolloPFN`, `TimesFM-3`, and `Timestral`) call `data.extract_covariates()` and share **100% interchangeable constructor signatures**:
+
+```python
+from pyalloq import CovariateKey, CovariateMode, MarketData
+from pyalloq.dl import (
+    ApolloPFNReturnEstimator,
+    ApolloPFNViewGenerator,
+    EnsembleReturnEstimator,
+    EnsembleViewGenerator,
+    TimesFM3MultivariateReturnEstimator,
+    TimestralMultivariateReturnEstimator,
+)
+
+data = MarketData(
+    prices=prices_df,
+    features={
+        CovariateKey.COT_CROWDING: cot_df,
+        CovariateKey.INTEREST_RATES: rates_df,
+    },
+    future_features={
+        CovariateKey.CALENDAR_EVENTS: fomc_cpi_calendar_df,
+    },
+)
+
+# Interchangeable kwargs across ApolloPFN, TimesFM-3, and Timestral
+shared_kwargs = {
+    "horizon": 21,
+    "annualize": True,
+    "covariate_mode": CovariateMode.AUTO,
+    "covariate_keys": [
+        CovariateKey.COT_CROWDING,
+        CovariateKey.INTEREST_RATES,
+        CovariateKey.CALENDAR_EVENTS,
+    ],
+}
+
+apfn_est = ApolloPFNReturnEstimator(model=None, **shared_kwargs)
+tfm_est  = TimesFM3MultivariateReturnEstimator(model=tfm_model, **shared_kwargs)
+tms_est  = TimestralMultivariateReturnEstimator(model=tms_model, **shared_kwargs)
+
+# Precision-weighted / sCRPS-adaptive Bayesian Model Averaging
+ensemble = EnsembleReturnEstimator(
+    estimators=[apfn_est, tfm_est, tms_est],
+    weighting_mode="scrps_adaptive",
+    model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
+)
+mu_ensemble = ensemble.estimate(data)
+print(apfn_est.last_covariate_importance_)  # Zero-shot AttnFeat covariate attribution
+```
+
+---
+
 ## Implementing a Custom Return Estimator
 
 ```python

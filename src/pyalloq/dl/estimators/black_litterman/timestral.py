@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from pyalloq_core.data import MarketData
+from pyalloq_core.enums import CovariateKey, CovariateMode
 from pyalloq_core.interfaces import BaseViewGenerator
 from scipy.stats import norm
 
@@ -22,8 +26,6 @@ def _validate_confidence_interval(
         raise ValueError(
             f"confidence_interval must satisfy 0 < q_low < q_high < 1, got {confidence_interval}."
         )
-    # Use exact standard 2.56 divisor for the canonical (0.10, 0.90) interval for parity with TimesFM,
-    # otherwise compute the Gaussian z-score spread dynamically via norm.ppf.
     if np.isclose(q_low, 0.10) and np.isclose(q_high, 0.90):
         z_spread = 2.56
     else:
@@ -33,7 +35,7 @@ def _validate_confidence_interval(
 
 class TimestralUnivariateViewGenerator(BaseViewGenerator):
     """
-    Generates Black-Litterman views (Q) and uncertainty (Omega)
+    Generates Black-Litterman views (`Q`) and uncertainty (`Omega`)
     using the 21 non-crossing probabilistic quantiles of Mistral AI's Timestral in univariate mode.
     """
 
@@ -43,12 +45,18 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         horizon: int = 21,
         confidence_interval: tuple[float, float] = (0.10, 0.90),
         annualize: bool = True,
+        full_covariance_omega: bool = False,
+        covariate_mode: CovariateMode = CovariateMode.NONE,
+        covariate_keys: Sequence[CovariateKey | str] | None = None,
         device: str | None = None,
     ) -> None:
         self.model = model
-        self.horizon = horizon
+        self.horizon = int(horizon)
         self.confidence_interval = confidence_interval
-        self.annualize = annualize
+        self.annualize = bool(annualize)
+        self.full_covariance_omega = bool(full_covariance_omega)
+        self.covariate_mode = covariate_mode
+        self.covariate_keys = covariate_keys
         self.device = device
         self._q_low, self._q_high, self._z_spread = _validate_confidence_interval(
             confidence_interval
@@ -72,15 +80,10 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         n_assets = len(assets)
         current_prices = prices_df.to_numpy(dtype=np.float64)[-1]
 
-        # 1. Timestral univariate batch shape: (N_assets, 1, Context_Length)
         context = prices_df.to_numpy(dtype=np.float32).T[:, np.newaxis, :]
-
-        # 2. Run zero-shot probabilistic forecasting
         forecaster = self._get_forecaster()
         forecast = forecaster.forecast(context, prediction_length=self.horizon)
 
-        # 3. Extract median and lower/upper quantiles at target horizon
-        # Shapes: (N_assets, 1, horizon)
         p50_prices = np.asarray(forecast.median, dtype=np.float64)[
             :, 0, self.horizon - 1
         ]
@@ -91,33 +94,28 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
             :, 0, self.horizon - 1
         ]
 
-        # 4. View Expected Returns (Q) - based on the median forecast
         view_returns = (p50_prices / current_prices) - 1.0
         if self.annualize:
             view_returns = view_returns * (252.0 / self.horizon)
         Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
-        # 5. View Uncertainty Matrix (Omega)
         price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
         if self.annualize:
             return_std = return_std * np.sqrt(252.0 / self.horizon)
 
-        omega_variances = return_std**2
-        Omega = pd.DataFrame(np.diag(omega_variances), index=assets, columns=assets)
-
-        # 6. Picking Matrix (P) is the Identity Matrix
+        Omega = pd.DataFrame(np.diag(return_std**2), index=assets, columns=assets)
         P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)
-
         return P, Q, Omega
 
 
 class TimestralMultivariateViewGenerator(BaseViewGenerator):
     """
-    Generates Black-Litterman views (Q) and uncertainty (Omega)
+    Generates Black-Litterman views (`Q`) and uncertainty (`Omega`)
     using the probabilistic outputs of Mistral AI's Timestral in joint multivariate mode.
-    Incorporates both past-only covariates (MarketData.features) and known-future covariates
-    (MarketData.future_features).
+    Incorporates both past-only covariates (`MarketData.features`) and known-future covariates
+    (`MarketData.future_features`) via `CovariateMode` and `CovariateKey`, plus optional
+    non-diagonal `Omega`.
     """
 
     def __init__(
@@ -126,12 +124,18 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         horizon: int = 21,
         confidence_interval: tuple[float, float] = (0.10, 0.90),
         annualize: bool = True,
+        full_covariance_omega: bool = False,
+        covariate_mode: CovariateMode = CovariateMode.AUTO,
+        covariate_keys: Sequence[CovariateKey | str] | None = None,
         device: str | None = None,
     ) -> None:
         self.model = model
-        self.horizon = horizon
+        self.horizon = int(horizon)
         self.confidence_interval = confidence_interval
-        self.annualize = annualize
+        self.annualize = bool(annualize)
+        self.full_covariance_omega = bool(full_covariance_omega)
+        self.covariate_mode = covariate_mode
+        self.covariate_keys = covariate_keys
         self.device = device
         self._q_low, self._q_high, self._z_spread = _validate_confidence_interval(
             confidence_interval
@@ -155,9 +159,13 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         n_assets = len(assets)
         current_prices = stock_prices.to_numpy(dtype=np.float64)[-1]
 
-        # 1. Prepare 3D target and optional covariate tensors
         target, past_covariates, known_covariates = (
-            _prepare_multivariate_timestral_inputs(data, horizon=self.horizon)
+            _prepare_multivariate_timestral_inputs(
+                data,
+                horizon=self.horizon,
+                covariate_mode=self.covariate_mode,
+                covariate_keys=self.covariate_keys,
+            )
         )
 
         forecast_kwargs: dict[str, Any] = {
@@ -168,15 +176,11 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         if known_covariates is not None:
             forecast_kwargs["known_covariates"] = known_covariates
 
-        # 2. Generate the Joint Multivariate Forecast
         forecaster = self._get_forecaster()
         forecast = forecaster.forecast(target, **forecast_kwargs)
 
-        # 3. Extract Quantiles for the specific horizon
-        # Shape of forecast.median / forecast.quantile(q) is (1, N_assets, horizon)
-        p50_prices = np.asarray(forecast.median, dtype=np.float64)[
-            0, :, self.horizon - 1
-        ]
+        med_full = np.asarray(forecast.median, dtype=np.float64)[0]  # (N, H)
+        p50_prices = med_full[:, self.horizon - 1]
         q_low_prices = np.asarray(forecast.quantile(self._q_low), dtype=np.float64)[
             0, :, self.horizon - 1
         ]
@@ -184,21 +188,32 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
             0, :, self.horizon - 1
         ]
 
-        # 4. View Expected Returns (Q)
         view_returns = (p50_prices / current_prices) - 1.0
         if self.annualize:
             view_returns = view_returns * (252.0 / self.horizon)
         Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
-        # 5. View Uncertainty Matrix (Omega)
         price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
         if self.annualize:
             return_std = return_std * np.sqrt(252.0 / self.horizon)
 
-        Omega = pd.DataFrame(np.diag(return_std**2), index=assets, columns=assets)
+        if self.full_covariance_omega and n_assets > 1 and med_full.shape[1] >= 2:
+            med_traj = med_full / current_prices[:, None] - 1.0
+            corr = np.corrcoef(med_traj)
+            corr = np.nan_to_num(corr, nan=0.0)
+            corr = 0.5 * (corr + corr.T)
+            np.fill_diagonal(corr, 1.0)
+            eigvals, eigvecs = np.linalg.eigh(corr)
+            corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+            d_inv = 1.0 / np.sqrt(np.diag(corr_psd))
+            corr_psd = corr_psd * np.outer(d_inv, d_inv)
+            omega_mat = np.outer(return_std, return_std) * (
+                0.7 * np.eye(n_assets) + 0.3 * corr_psd
+            )
+        else:
+            omega_mat = np.diag(return_std**2)
 
-        # 6. Picking Matrix (P)
+        Omega = pd.DataFrame(omega_mat, index=assets, columns=assets)
         P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)
-
         return P, Q, Omega

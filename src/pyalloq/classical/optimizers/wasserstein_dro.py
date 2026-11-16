@@ -7,7 +7,11 @@ import numpy as np
 import pandas as pd
 from pyalloq_core.data import MarketData, ScenarioMarketData
 from pyalloq_core.enums import ObjectiveFunction
-from pyalloq_core.interfaces import BaseAllocator, BaseScenarioGenerator
+from pyalloq_core.interfaces import (
+    BaseAllocator,
+    BaseScenarioGenerator,
+    BaseViewGenerator,
+)
 from pyalloq_core.results import OptimizationResult
 
 from pyalloq.rl.thermodynamics import WassersteinRegimeGate
@@ -73,6 +77,7 @@ class WassersteinDROAllocator(BaseAllocator):
         beta: float = 0.95,
         risk_aversion: float = 1.0,
         target_return: float | None = None,
+        view_generator: BaseViewGenerator | None = None,
         view_matrix: np.ndarray | pd.DataFrame | None = None,
         view_targets: np.ndarray | pd.Series | None = None,
         view_uncertainty: float = 1e-2,
@@ -114,6 +119,7 @@ class WassersteinDROAllocator(BaseAllocator):
         self.beta = float(beta)
         self.risk_aversion = float(max(0.0, risk_aversion))
         self.target_return = target_return
+        self.view_generator = view_generator
         self.view_matrix = view_matrix
         self.view_targets = view_targets
         self.view_uncertainty = float(max(1e-6, view_uncertainty))
@@ -229,12 +235,25 @@ class WassersteinDROAllocator(BaseAllocator):
 
     def _resolve_views(
         self,
+        data: MarketData | ScenarioMarketData,
         assets: list[str],
         scale_factor: float,
         kwargs: dict[str, Any],
-    ) -> tuple[np.ndarray, np.ndarray] | None:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray | None] | None:
         v_mat = kwargs.get("view_matrix", self.view_matrix)
         v_tgt = kwargs.get("view_targets", self.view_targets)
+        v_gen = kwargs.get("view_generator", self.view_generator)
+
+        if v_mat is None and v_tgt is None and v_gen is not None:
+            md_for_views = (
+                data.get_path(0) if isinstance(data, ScenarioMarketData) else data
+            )
+            p_df, q_ser, omega_df = v_gen.generate(md_for_views)
+            G = p_df.reindex(columns=assets).fillna(0.0).to_numpy(dtype=np.float64)
+            q = q_ser.to_numpy(dtype=np.float64) / scale_factor
+            omega_np = omega_df.to_numpy(dtype=np.float64) / scale_factor
+            return G, q, omega_np
+
         if v_mat is None or v_tgt is None:
             return None
 
@@ -257,7 +276,7 @@ class WassersteinDROAllocator(BaseAllocator):
 
         if self.view_targets_are_annualized:
             q = q / scale_factor
-        return G, q
+        return G, q, None
 
     def allocate(
         self,
@@ -343,12 +362,19 @@ class WassersteinDROAllocator(BaseAllocator):
         # Fonseca & Junca (2021) Expected-Value Constraints:
         # 1. Minimum-W2 Optimal Transport projection of reference atoms onto {E_Q[G r] = q}
         # 2. Dual multiplier lambda in R^K absorbing Wasserstein ambiguity along row(G)
-        views = self._resolve_views(assets, scale_factor, kwargs)
+        views = self._resolve_views(data, assets, scale_factor, kwargs)
         if views is not None:
-            G, q = views
+            G, q, omega_view = views
             k_views = len(q)
-            g_cov_gt = G @ cov_daily_psd @ G.T + 1e-8 * np.eye(
-                k_views, dtype=np.float64
+            reg_omega = (
+                omega_view * self.view_uncertainty
+                if omega_view is not None
+                else 1e-8 * np.eye(k_views, dtype=np.float64)
+            )
+            g_cov_gt = (
+                G @ cov_daily_psd @ G.T
+                + reg_omega
+                + 1e-8 * np.eye(k_views, dtype=np.float64)
             )
             ot_shift = (
                 cov_daily_psd @ G.T @ np.linalg.solve(g_cov_gt, q - (G @ emp_mean))

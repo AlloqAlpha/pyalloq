@@ -89,16 +89,21 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 
 ---
 
-### Das et al. (2024) & Mistral AI (2026) — Time-Series Foundation Models (TimesFM & Timestral) {#tsfm-2026}
+### Das et al. (2024), Mistral AI (2026) & Potapczynski et al. (2026) — Time-Series Foundation Models & Prior-Data Fitted Networks (TimesFM-3, Timestral & ApolloPFN) {#tsfm-2026}
 
-> Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting. *International Conference on Machine Learning (ICML)*.
+>Potapczynski, A., Selvam, R. K., Konstantinova, T., Wolff, M., Olivares, K. G., Ma, R., Mahoney, M. W., Wilson, A. G., Oreshkin, B. N., & Efimov, D. (2026). Time-Aware Prior Fitted Networks for Zero-Shot Forecasting with Exogenous Variables (`ApolloPFN`). *Transactions on Machine Learning Research (TMLR, 06/2026)*.
+> [https://doi.org/10.48550/arxiv.2603.15802](https://doi.org/10.48550/arxiv.2603.15802)
+>
+> Hollmann, N., Müller, S., Purucker, L., Krishnakumar, A., Körfer, M., Hoo, S. B., Schirrmeister, R. T., & Hutter, F. (2025). Accurate predictions on small data with a tabular foundation model (`TabPFN-v2`). *Nature*, 637, 319–326.
+>
+> Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting (`TimesFM`). *International Conference on Machine Learning (ICML)*.
 >
 > Mistral AI (2026). Timestral: Multivariate Probabilistic Time-Series Foundation Models with Decoupled Horizon Forecasting.
 > [https://github.com/mistralai/timestral](https://github.com/mistralai/timestral)
 
-**Contribution:** Pretrained patch-based causal transformer architectures that enable zero-shot univariate and multivariate probabilistic forecasting across up to 32,768 historical steps with past-only and known-future covariates. Multi-quantile trajectory predictions ($p_{10}, p_{50}, p_{90}$ and 21 non-crossing quantiles) provide both zero-shot point return estimates ($\hat{\mu}$) and calibrated diagonal view uncertainty matrices ($\Omega$) for Bayesian Black-Litterman allocation.
+**Contribution:** Pretrained patch-based causal transformers (`TimesFM-3`, `Timestral`) and Time-Aware Prior-Data Fitted Networks (`ApolloPFN`, trained on `SRNGN` Algorithm 1 causal graphs with `AttnFeat` + RoPE `AttnSamp` and Riemann Bar distributions) that execute zero-shot Bayesian inference on multivariate time series with past-only and known-future exogenous covariates (`CovariateKey`, `CovariateMode`). Combined via inverse-variance and `sCRPS`-adaptive Bayesian Model Averaging in `EnsembleReturnEstimator` and `EnsembleViewGenerator`.
 
-**Implemented in:** `TimesFM3UnivariateReturnEstimator`, `TimesFM3MultivariateReturnEstimator`, `TimesFM3UnivariateViewGenerator`, `TimesFM3MultivariateViewGenerator`, `TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`
+**Implemented in:** `ApolloPFNReturnEstimator`, `ApolloPFNViewGenerator`, `ApolloPFNTransformer`, `ApolloPFNPretrainer`, `SRNGNPriorGenerator`, `RiemannBarDistribution`, `EnsembleReturnEstimator`, `EnsembleViewGenerator`, `TimesFM3UnivariateReturnEstimator`, `TimesFM3MultivariateReturnEstimator`, `TimesFM3UnivariateViewGenerator`, `TimesFM3MultivariateViewGenerator`, `TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`
 
 ---
 

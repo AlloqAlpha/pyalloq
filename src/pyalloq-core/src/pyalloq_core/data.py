@@ -1,8 +1,11 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
+
+from .enums import CovariateKey, CovariateMode
 
 
 @dataclass(kw_only=True)
@@ -41,22 +44,27 @@ class MarketData:
                 )
 
         for feat_name, df_feat in self.future_features.items():
-            if not self.prices.index.equals(df_feat.index):
+            t_len = len(self.prices.index)
+            if len(df_feat.index) < t_len or not df_feat.index[:t_len].equals(
+                self.prices.index
+            ):
                 raise ValueError(
                     f"Data misaligment: Future feature '{feat_name}' is missing historical dates."
                 )
 
-        if isinstance(self.risk_free_rate, pd.Series):
-            if not self.prices.index.equals(self.risk_free_rate.index):
-                raise ValueError(
-                    "Data misalignment: 'risk_free_rate' series index does not perfectly match 'prices' index."
-                )
+        if isinstance(self.risk_free_rate, pd.Series) and not self.prices.index.equals(
+            self.risk_free_rate.index
+        ):
+            raise ValueError(
+                "Data misalignment: 'risk_free_rate' series index does not perfectly match 'prices' index."
+            )
 
-        if isinstance(self.risk_aversion, pd.Series):
-            if not self.prices.index.equals(self.risk_aversion.index):
-                raise ValueError(
-                    "Data misalignment: 'risk_aversion' series index does not perfectly match 'prices' index."
-                )
+        if isinstance(self.risk_aversion, pd.Series) and not self.prices.index.equals(
+            self.risk_aversion.index
+        ):
+            raise ValueError(
+                "Data misalignment: 'risk_aversion' series index does not perfectly match 'prices' index."
+            )
 
     def slice_time(
         self,
@@ -120,6 +128,119 @@ class MarketData:
         if log_returns:
             returns = cast(pd.DataFrame, np.log1p(returns))
         return returns.dropna()
+
+    def extract_covariates(
+        self,
+        mode: CovariateMode = CovariateMode.AUTO,
+        covariate_keys: Sequence[CovariateKey | str] | None = None,
+        horizon: int | None = None,
+        dtype: Any = np.float32,
+        return_channel_names: bool = False,
+    ) -> Any:
+        """
+        Standardized, optional exogenous covariate extractor shared across `ApolloPFN`,
+        `TimesFM-3`, and `Timestral`.
+
+        Returns
+        -------
+        tuple[np.ndarray | None, np.ndarray | None] or tuple[np.ndarray | None, np.ndarray | None, list[str]]
+            - `past_covariates`: shape `(C_past, T)` or `None` when no past covariates match
+            - `future_covariates`: shape `(C_future, T + H)` or `None` when no future covariates match
+            - `channel_names` (if `return_channel_names=True`): list of covariate channel labels
+        """
+        if mode == CovariateMode.NONE:
+            if return_channel_names:
+                return None, None, []
+            return None, None
+
+        assets_set = set(self.assets)
+        selected_set = (
+            {str(k.value if isinstance(k, CovariateKey) else k) for k in covariate_keys}
+            if covariate_keys is not None
+            else None
+        )
+        t_steps = len(self.prices)
+        channel_names: list[str] = []
+
+        def _should_include(key: str, df: pd.DataFrame) -> tuple[bool, bool]:
+            str_key = str(key.value if isinstance(key, CovariateKey) else key)
+            if selected_set is not None and str_key not in selected_set:
+                return False, False
+            if mode == CovariateMode.SELECTED and selected_set is None:
+                return False, False
+            cols = [str(c) for c in df.columns]
+            is_asset_aligned = len(cols) > 0 and set(cols).issuperset(assets_set)
+            if mode == CovariateMode.ASSET_ONLY and not is_asset_aligned:
+                return False, False
+            if mode == CovariateMode.MACRO_ONLY and is_asset_aligned:
+                return False, False
+            return True, is_asset_aligned
+
+        past_list: list[np.ndarray] = []
+        if self.features:
+            for feat_key, df_feat in self.features.items():
+                inc, is_asset = _should_include(feat_key, df_feat)
+                if not inc:
+                    continue
+                k_label = str(
+                    feat_key.value if isinstance(feat_key, CovariateKey) else feat_key
+                )
+                if is_asset:
+                    aligned = (
+                        df_feat.reindex(index=self.prices.index, columns=self.assets)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    for col in self.assets:
+                        channel_names.append(f"{k_label}:{col}")
+                else:
+                    aligned = (
+                        df_feat.reindex(index=self.prices.index)
+                        .ffill()
+                        .bfill()
+                        .fillna(0.0)
+                    )
+                    for col in aligned.columns:
+                        channel_names.append(f"{k_label}:{col}")
+                past_list.append(aligned.to_numpy(dtype=dtype).T)
+
+        past_cov = np.concatenate(past_list, axis=0) if past_list else None
+
+        future_list: list[np.ndarray] = []
+        if self.future_features:
+            for feat_key, df_fut in self.future_features.items():
+                inc, is_asset = _should_include(feat_key, df_fut)
+                if not inc:
+                    continue
+                k_label = str(
+                    feat_key.value if isinstance(feat_key, CovariateKey) else feat_key
+                )
+                if is_asset:
+                    aligned_f = (
+                        df_fut.reindex(columns=self.assets).ffill().bfill().fillna(0.0)
+                    )
+                    for col in self.assets:
+                        channel_names.append(f"future_{k_label}:{col}")
+                else:
+                    aligned_f = df_fut.ffill().bfill().fillna(0.0)
+                    for col in aligned_f.columns:
+                        channel_names.append(f"future_{k_label}:{col}")
+                arr = aligned_f.to_numpy(dtype=dtype).T
+                if horizon is not None:
+                    expected_len = t_steps + int(horizon)
+                    if arr.shape[1] < expected_len:
+                        pad_w = expected_len - arr.shape[1]
+                        arr = np.pad(arr, ((0, 0), (0, pad_w)), mode="edge")
+                    elif arr.shape[1] > expected_len:
+                        arr = arr[:, :expected_len]
+                future_list.append(arr)
+
+        future_cov = np.concatenate(future_list, axis=0) if future_list else None
+
+        if return_channel_names:
+            return past_cov, future_cov, channel_names
+        return past_cov, future_cov
 
 
 @dataclass(kw_only=True)
