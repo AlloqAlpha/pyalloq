@@ -35,6 +35,7 @@ from pyalloq.classical.optimizers import (
     RiskBudgetingAllocator,
     RiskParityAllocator,
     StochasticScenarioMPCAllocator,
+    WassersteinDROAllocator,
 )
 
 __all__ = [
@@ -70,4 +71,5 @@ __all__ = [
     "StochasticScenarioMPCAllocator",
     "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
+    "WassersteinDROAllocator",
 ]

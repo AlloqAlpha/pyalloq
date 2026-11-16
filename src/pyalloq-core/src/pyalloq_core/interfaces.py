@@ -259,3 +259,27 @@ class BaseScenarioGenerator(ABC):
             columns_out[feat_name] = meta["columns"]
 
         return features_out, columns_out
+
+
+class BaseScenarioEstimator(BaseScenarioGenerator):
+    """
+    Base interface for multi-horizon generative trajectory estimators (such as
+    Conditional Diffusion Models and Arbitrage-Free Neural SDEs) that map a
+    `MarketData` context window into a 3D `ScenarioMarketData` tensor of shape
+    `(M_paths, T_horizon, N_assets)`.
+    """
+
+    def estimate_scenarios(
+        self,
+        data: MarketData,
+        n_paths: int = 250,
+        horizon: int = 20,
+        refit: bool = True,
+    ) -> ScenarioMarketData:
+        """
+        Fits (when `refit=True` or not yet fitted) on `data` and generates a 3D
+        `ScenarioMarketData` trajectory tensor.
+        """
+        if refit or not getattr(self, "is_fitted", False):
+            self.fit(data)
+        return self.generate(n_paths=n_paths, horizon=horizon)

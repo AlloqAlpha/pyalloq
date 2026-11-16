@@ -12,6 +12,10 @@ from pyalloq.dl.estimators.returns import (
     TimestralMultivariateReturnEstimator,
     TimestralUnivariateReturnEstimator,
 )
+from pyalloq.dl.estimators.sde_estimator import (
+    ArbitrageFreeNeuralSDENet,
+    NeuralSDEEstimator,
+)
 from pyalloq.dl.layers import (
     DifferentiableCVaRLayer,
     DifferentiableKKTAllocatorModule,
@@ -29,6 +33,7 @@ from pyalloq.dl.policy import (
 )
 
 __all__ = [
+    "ArbitrageFreeNeuralSDENet",
     "BasePolicyNetwork",
     "CRISPSparseSTGAT",
     "DeepCovarianceEstimator",
@@ -39,6 +44,7 @@ __all__ = [
     "LogSigSSMBlock",
     "MDFPOptimizationLayer",
     "NeuralJumpRDE",
+    "NeuralSDEEstimator",
     "TimesFM3MultivariateReturnEstimator",
     "TimesFM3MultivariateViewGenerator",
     "TimesFM3UnivariateReturnEstimator",
