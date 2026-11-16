@@ -565,6 +565,7 @@ class ApolloPFNTransformer(nn.Module):
             n_bins=self.n_bins, z_min=z_min, z_max=z_max
         )
         self.last_feat_attention_: torch.Tensor | None = None
+        self.last_cov_beta_: torch.Tensor | None = None
 
     def _sinusoidal_time_encoding(
         self, t_tot: int, device: torch.device, dtype: torch.dtype
@@ -624,6 +625,10 @@ class ApolloPFNTransformer(nn.Module):
         gram = torch.bmm(xw.transpose(1, 2), xw) + 1.5 * eye
         rhs = torch.bmm(xw.transpose(1, 2), yw)
         beta = torch.linalg.solve(gram, rhs)  # (B, d_feat, N_assets)
+        if d_feat > 1:
+            self.last_cov_beta_ = beta[:, 1:, :].detach()
+        else:
+            self.last_cov_beta_ = None
 
         # Combine covariate-driven prediction with recency-weighted local level
         recent_level = (yw.sum(dim=1) / w_sqrt.sum(dim=1)).unsqueeze(
@@ -1142,6 +1147,22 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
 
             if attn_mat.shape[1] > n_assets and len(ch_names) > 0:
                 cov_attn = attn_mat[:n_assets, n_assets:]
+                if (
+                    net.last_cov_beta_ is not None
+                    and net.last_cov_beta_.shape[1] == cov_attn.shape[1]
+                ):
+                    beta_mag = (
+                        torch.abs(net.last_cov_beta_[0])
+                        .detach()
+                        .cpu()
+                        .numpy()
+                        .astype(np.float64)
+                        .T
+                    )  # (N_assets, C_cov)
+                    beta_norm = beta_mag / np.maximum(
+                        np.sum(beta_mag, axis=1, keepdims=True), 1e-8
+                    )
+                    cov_attn = 0.35 * cov_attn + 0.65 * beta_norm
                 cov_sum = np.maximum(np.sum(cov_attn, axis=1, keepdims=True), 1e-8)
                 cov_norm = cov_attn / cov_sum
                 cols = (
@@ -1181,7 +1202,9 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         avg_daily_ret = np.mean(step_means, axis=0)
         avg_daily_std = np.mean(step_stds, axis=0)
         scale = 252.0 if self.annualize else float(h)
-        std_scale = float(np.sqrt(252.0)) if self.annualize else float(np.sqrt(h))
+        std_scale = (
+            float(np.sqrt(252.0 / max(1, h))) if self.annualize else float(np.sqrt(h))
+        )
 
         ann_ret = avg_daily_ret * scale
         ann_std = avg_daily_std * std_scale
@@ -1192,19 +1215,22 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             np.mean(net.bar_dist.entropy(probs), axis=0), index=assets, name="entropy"
         )
 
-        # Populate decile quantiles and Table 8 prediction intervals (20%, 40%, 60%, 80%)
+        # Populate cumulative horizon return quantiles (H, N) and annualized quantiles (N,)
         fut_idx = self._build_future_timestamps(h)
+        cum_mean_traj = np.cumsum(step_means, axis=0)  # (H, N)
+        cum_std_traj = np.sqrt(np.cumsum(step_stds**2, axis=0))  # (H, N)
+
         self.last_quantiles_ = {}
         self.last_horizon_quantiles_ = {}
         for q_lvl in (0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90):
             q_z = net.bar_dist.quantile(probs, q_lvl)  # (H, N)
-            q_daily = ret_mean[None, :] + ret_std[None, :] * q_z
+            z_offset = q_z - step_means_z
+            cum_q_traj = cum_mean_traj + cum_std_traj * z_offset
             self.last_horizon_quantiles_[q_lvl] = pd.DataFrame(
-                q_daily * scale, index=fut_idx, columns=assets
+                cum_q_traj, index=fut_idx, columns=assets
             )
-            self.last_quantiles_[q_lvl] = pd.Series(
-                np.mean(q_daily, axis=0) * scale, index=assets
-            )
+            ann_q = ann_ret + np.mean(z_offset, axis=0) * ann_std
+            self.last_quantiles_[q_lvl] = pd.Series(ann_q, index=assets)
 
         for pi_label, (q_lo, q_hi) in (
             ("20%", (0.40, 0.60)),
@@ -1357,7 +1383,9 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
         q_hi_z = np.mean(net.bar_dist.quantile(probs, self._q_high), axis=0)
         daily_std = np.maximum(q_hi_z - q_lo_z, 1e-6) * ret_std / self._z_spread
         std_scale = (
-            float(np.sqrt(252.0)) if self.annualize else float(np.sqrt(self.horizon))
+            float(np.sqrt(252.0 / max(1, self.horizon)))
+            if self.annualize
+            else float(np.sqrt(self.horizon))
         )
         view_std = daily_std * std_scale
 

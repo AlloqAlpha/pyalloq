@@ -949,4 +949,10 @@ def plot_foundation_posterior_and_attribution(
         fig.update_layout(barmode="stack")
 
     apply_plotly_theme(fig, theme=theme, title=title, height=480)
+    fig.update_yaxes(
+        title_text="Cumulative Horizon Return (%)", tickformat=".1%", row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="Ensemble Weight", tickformat=".0%", range=[0.0, 1.0], row=1, col=3
+    )
     return fig

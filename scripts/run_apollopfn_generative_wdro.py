@@ -87,8 +87,26 @@ def build_synthetic_macro_market_data() -> MarketData:
 
     factor = rng.normal(0.0006, 0.011, size=(140, 1))
     betas = np.array([[1.15, 1.0, 1.45, 0.85, 0.70]])
-    idio = rng.standard_t(df=5, size=(140, 5)) * 0.008
+    idio = rng.standard_t(df=5, size=(140, 5)) * 0.006
+
+    cot_spec = np.sin(np.linspace(0.0, 4.0 * np.pi, 140)) + rng.normal(0, 0.2, 140)
+    cot_deal = np.cos(np.linspace(0.0, 4.0 * np.pi, 140)) + rng.normal(0, 0.2, 140)
+    us10y_chg = rng.normal(0.0, 0.02, 140)
+    us10y = 4.10 + np.cumsum(us10y_chg)
+    term_spread = -0.25 + np.linspace(0.0, 0.45, 140)
+    fomc = (np.arange(160) % 21 == 0).astype(float)
+    cpi = (np.arange(160) % 15 == 0).astype(float)
+
+    # Inject structured heterogeneous covariate sensitivities across assets:
+    # - NVDA & AAPL sensitive to FOMC/CPI & US10Y changes
+    # - JPM sensitive to US10Y & Term Spread
+    # - XOM sensitive to COT_Net_Speculative & COT_Dealer_Hedging
     rets = factor @ betas + idio
+    rets[:, 0] += 0.008 * fomc[:140] - 0.15 * us10y_chg
+    rets[:, 2] += 0.012 * fomc[:140] + 0.009 * cpi[:140] - 0.22 * us10y_chg
+    rets[:, 3] += 0.28 * us10y_chg + 0.015 * term_spread
+    rets[:, 4] += 0.007 * cot_spec - 0.005 * cot_deal
+
     prices = pd.DataFrame(
         100.0 * np.cumprod(1.0 + rets, axis=0), index=dates, columns=assets
     )
@@ -100,24 +118,22 @@ def build_synthetic_macro_market_data() -> MarketData:
     )
     cot_df = pd.DataFrame(
         {
-            "COT_Net_Speculative": np.sin(np.linspace(0.0, 4.0 * np.pi, 140))
-            + rng.normal(0, 0.2, 140),
-            "COT_Dealer_Hedging": np.cos(np.linspace(0.0, 4.0 * np.pi, 140))
-            + rng.normal(0, 0.2, 140),
+            "COT_Net_Speculative": cot_spec,
+            "COT_Dealer_Hedging": cot_deal,
         },
         index=dates,
     )
     rates_df = pd.DataFrame(
         {
-            "US10Y_Yield": 4.10 + np.cumsum(rng.normal(0.0, 0.02, 140)),
-            "Term_Spread_10Y2Y": -0.25 + np.linspace(0.0, 0.45, 140),
+            "US10Y_Yield": us10y,
+            "Term_Spread_10Y2Y": term_spread,
         },
         index=dates,
     )
     calendar_df = pd.DataFrame(
         {
-            "FOMC_Decision": (np.arange(160) % 21 == 0).astype(float),
-            "CPI_Print": (np.arange(160) % 15 == 0).astype(float),
+            "FOMC_Decision": fomc,
+            "CPI_Print": cpi,
         },
         index=future_dates,
     )
