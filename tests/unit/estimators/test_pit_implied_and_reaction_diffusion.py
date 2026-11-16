@@ -751,6 +751,15 @@ class TestAuditEdgeCasesAndGradcheck:
         ).estimate(md)
         assert float(cov_cf.loc[ticker, ticker]) >= float(cov_base.loc[ticker, ticker])
 
+        # Implied correlation matrix exposure
+        imp_est = ImpliedCovarianceEstimator(index_implied_vol=0.25)
+        corr_imp = imp_est.estimate_correlation(md)
+        assert corr_imp.shape == (len(md.assets), len(md.assets))
+        assert np.allclose(np.diag(corr_imp.to_numpy(dtype=np.float64)), 1.0)
+        assert np.allclose(corr_imp.to_numpy(), corr_imp.to_numpy().T)
+        assert np.all(np.linalg.eigvalsh(corr_imp.to_numpy(dtype=np.float64)) > 0.0)
+        assert imp_est.last_implied_correlation_ is not None
+
         # Variance Risk Premium (VRP) return estimator produces finite expected returns
         vrp_est = VarianceRiskPremiumEstimator(realized_window=20, vrp_aversion=1.5)
         mu_vrp = vrp_est.estimate(md)

@@ -57,17 +57,21 @@ All generators implement `BaseScenarioGenerator` and output a `ScenarioMarketDat
 | `GARCHEVTCopulaGenerator` | AR(1)-GARCH(1,1) marginals + Generalized Pareto (EVT) tails + Student-\(t\) Copula | Modeling extreme tail risk and simultaneous crash dependence (\(\lambda_L > 0\)) |
 | `GMMRegimeGenerator` | \(K\)-state Gaussian Mixture Model + Markov transition matrix | Stress-testing structural breaks and Bull/Bear regime shifts |
 | `ReactionDiffusionGenerator` | Coupled FitzHugh-Nagumo Graph Reaction-Diffusion SDE + Leverage Effect on Precision Graph Laplacian | Simulating cross-asset volatility spillover, network contagion, and localized shock propagation |
+| `ConditionalDiffusionGenerator` | Factor-bottleneck score-based denoising diffusion conditioned on PIT `implied_vol` & Depth-2 Rough Log-Signatures + DDIM sampler | Non-parametric cross-sectional trajectories capturing fat tails, skewness, and correlation breakdowns |
+| `NeuralSDEGenerator` | Arbitrage-free coupled jump-diffusion Neural SDE with Hansen-Jagannathan Sharpe bound & Signature-MMD calibration | Continuous-time multi-horizon trajectory synthesis and instantaneous covariance surfaces |
 
 ### Generating Scenarios
 
 ```python
 import numpy as np
 from pyalloq_simulation import (
+    ConditionalDiffusionGenerator,
     GaussianGenerator,
     PCAFactorGenerator,
     FHSGenerator,
     GARCHEVTCopulaGenerator,
     GMMRegimeGenerator,
+    NeuralSDEGenerator,
     ReactionDiffusionGenerator,
 )
 
@@ -92,6 +96,23 @@ contagion_scenarios = rd_gen.generate(
     horizon=60,
     initial_shock={data.assets[0]: 0.80},  # Inject localized volatility shock
 )
+
+# Example 3: Factor-Based Conditional Diffusion with Fast DDIM Sampling
+diff_gen = ConditionalDiffusionGenerator(
+    n_factors=4,
+    condition_window=15,
+    ddim_steps=20,
+    ddim_eta=0.25,
+)
+diff_scenarios = diff_gen.estimate_scenarios(data, n_paths=500, horizon=30)
+
+# Example 4: Arbitrage-Free Neural SDE Generator
+sde_gen = NeuralSDEGenerator(
+    max_market_price_of_risk=1.75,
+    substeps_per_day=2,
+)
+sde_scenarios = sde_gen.estimate_scenarios(data, n_paths=500, horizon=30)
+cov_t0 = sde_gen.estimate_instantaneous_covariance()
 ```
 
 ### Memory Management & Tensor Batching

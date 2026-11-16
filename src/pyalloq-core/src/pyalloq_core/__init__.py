@@ -6,6 +6,7 @@ from .interfaces import (
     BaseAllocator,
     BaseCovarianceEstimator,
     BaseReturnEstimator,
+    BaseScenarioEstimator,
     BaseScenarioGenerator,
     BaseViewGenerator,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "BaseAllocator",
     "BaseCovarianceEstimator",
     "BaseReturnEstimator",
+    "BaseScenarioEstimator",
     "BaseScenarioGenerator",
     "BaseViewGenerator",
     "ConstraintType",

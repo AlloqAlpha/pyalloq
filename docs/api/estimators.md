@@ -88,6 +88,18 @@
 
 ---
 
+### NeuralSDEEstimator
+
+::: pyalloq.dl.estimators.sde_estimator.NeuralSDEEstimator
+
+---
+
+### ArbitrageFreeNeuralSDENet
+
+::: pyalloq.dl.estimators.sde_estimator.ArbitrageFreeNeuralSDENet
+
+---
+
 ## Covariance Estimators
 
 ### EmpiricalCovariance

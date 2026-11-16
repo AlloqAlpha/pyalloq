@@ -10,6 +10,9 @@ class ObjectiveFunction(Enum):
     EFFICIENT_RISK = auto()
     MIN_CVAR = auto()
     MIN_CDAR = auto()
+    WASSERSTEIN_KELLY = auto()
+    WASSERSTEIN_CVAR = auto()
+    WASSERSTEIN_MEAN_RISK = auto()
 
 
 class ConstraintType(Enum):

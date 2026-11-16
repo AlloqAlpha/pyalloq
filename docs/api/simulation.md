@@ -30,6 +30,14 @@ This page auto-generates documentation from the `pyalloq-simulation` package doc
 
 ::: pyalloq_simulation.generators.reaction_diffusion.ReactionDiffusionGenerator
 
+### ConditionalDiffusionGenerator
+
+::: pyalloq_simulation.generators.diffusion.ConditionalDiffusionGenerator
+
+### NeuralSDEGenerator
+
+::: pyalloq_simulation.generators.neural_sde.NeuralSDEGenerator
+
 ---
 
 ## Pre-Processing & Imputation

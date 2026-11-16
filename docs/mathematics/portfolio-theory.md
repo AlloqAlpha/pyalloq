@@ -138,6 +138,44 @@ subject to linear path-monotonicity constraints \(M_t \ge C_t(w)\), \(M_t \ge M_
 
 ---
 
+## Wasserstein Distributionally Robust Optimization (`WassersteinDROAllocator`)
+
+Let \(\hat{\mathbb{P}} = \sum_{i=1}^M p_i \delta_{r_i}\) denote the empirical (or synthetic scenario) distribution over \(M\) return atoms \(r_i \in \mathbb{R}^N\). To hedge against distributional misspecification and structural regime shifts, `WassersteinDROAllocator` optimizes against the worst-case measure \(\mathbb{Q}\) inside the **Expected-Value-Constrained Wasserstein Ambiguity Set** (Esfahani & Kuhn, 2018; Fonseca & Junca, 2021; Li, 2023):
+
+\[
+\mathcal{P}_{\varepsilon_t}(G, q) = \left\{ \mathbb{Q} \in \mathcal{M}(\mathbb{R}^N) \;:\; W_p(\mathbb{Q}, \hat{\mathbb{P}}) \le \varepsilon_t, \quad \mathbb{E}_{\mathbb{Q}}[G r] = q \right\}
+\]
+
+### 1. Ground Metrics & Dual Norm Regularization
+For transport cost \(d(r, \hat{r}) = \|r - \hat{r}\|_{\mathcal{G}}\) and effective exposure vector \(u = w - G^\top \lambda\), Kantorovich duality yields the exact dual norm penalty \(\varepsilon_t \|u\|_{\mathcal{G}^*}\):
+
+- **Mahalanobis (`"mahalanobis"`)**: \(d(r, \hat{r}) = \|\Sigma^{-1/2}(r - \hat{r})\|_2 \implies \|u\|_{\mathcal{G}^*} = \|\Sigma^{1/2} u\|_2\).
+- **Euclidean (`"l2"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_2 \implies \|u\|_{\mathcal{G}^*} = \|u\|_2\).
+- **Manhattan (`"l1"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_1 \implies \|u\|_{\mathcal{G}^*} = \|u\|_\infty\).
+
+### 2. Dynamic Bures-Wasserstein Radius Calibration
+When `radius_mode="regime_adaptive"`, the ambiguity radius \(\varepsilon_t\) scales dynamically with the Bures-Wasserstein \(W_2\) distance between fast and slow market covariance baths (via `WassersteinRegimeGate`):
+
+\[
+\varepsilon_t = \varepsilon_{\text{base}} + \kappa_{\text{regime}} \cdot W_2\!\left(\mathcal{N}(\mu_{\text{fast}}, \Sigma_{\text{fast}}), \, \mathcal{N}(\mu_{\text{slow}}, \Sigma_{\text{slow}})\right)
+\]
+
+### 3. Wasserstein-Kelly Log-Growth Formulation (Li, 2023) & Fonseca-Junca Views (2021)
+Given view-projected atoms \(\tilde{r}_i = r_i + \Sigma G^\top (G \Sigma G^\top)^{-1}(q - G \hat{\mu})\) and fractional Kelly parameter \(\eta \in (0, 1]\), the worst-case expected geometric log-growth program is solved as a single convex exponential-cone program over \((w, \lambda)\):
+
+\[
+\max_{w \in \mathcal{W}, \, \lambda \in \mathbb{R}^K} \; \sum_{i=1}^M p_i \ln\!\left(1 + \eta \, \tilde{r}_i^\top w\right) - \varepsilon_t \, \eta \, \|w - G^\top \lambda\|_{\mathcal{G}^*} - \rho_{\text{view}} \|\lambda\|_2^2
+\]
+
+For **`WASSERSTEIN_CVAR`**, the worst-case Expected Shortfall at confidence \(\beta\) reduces to:
+
+\[
+\min_{w \in \mathcal{W}, \, \alpha, \, s \ge 0, \, \lambda} \; \alpha + \frac{1}{1 - \beta}\left(\sum_{i=1}^M p_i s_i + \varepsilon_t \|w - G^\top \lambda\|_{\mathcal{G}^*}\right) + \rho_{\text{view}} \|\lambda\|_2^2
+\quad \text{s.t.} \quad s_i \ge -\tilde{r}_i^\top w - \alpha
+\]
+
+---
+
 ## Summary Table
 
 | Allocator | Optimization Problem | Requires Returns? |
@@ -152,6 +190,7 @@ subject to linear path-monotonicity constraints \(M_t \ge C_t(w)\), \(M_t \ge M_
 | Efficient Risk | \(\max \mu^\top w \text{ s.t. } w^\top \Sigma w \le \sigma_{\text{target}}^2\) | Yes |
 | Mean-CVaR | \(\min \alpha + \frac{1}{(1-\beta)T}\sum u_t \text{ s.t. } u_t \ge -r_t^\top w - \alpha\) | Optional |
 | CDaR | \(\min \text{CDaR}_\beta(w)\) over sample path drawdowns | Optional |
+| Wasserstein DRO | \(\max_w \inf_{\mathbb{Q} \in \mathcal{P}_{\varepsilon_t}} \mathbb{E}_{\mathbb{Q}}[U(w^\top r)]\) (Kelly / CVaR / Mean-Risk) | Optional |
 | Risk Parity | \(\min \frac{1}{2}y^\top\Sigma y - \sum\ln y_i\) | No |
 | Risk Budgeting | \(\min \frac{1}{2}y^\top\Sigma y - \sum b_i\ln y_i\) | No |
 | Max Diversification | \(\min y^\top\Sigma y \text{ s.t. } \sigma^\top y=1\) | No |

@@ -109,6 +109,58 @@ When a negative return shock hits asset \(i\), the negative leverage correlation
 
 ---
 
+### Factor-Based Conditional Diffusion (`ConditionalDiffusionGenerator`)
+
+To synthesize non-parametric cross-sectional trajectories without suffering from the \(N \gg T\) curse of dimensionality, `ConditionalDiffusionGenerator` projects standardized returns \(Z_t = (R_t - \mu) \oslash \sigma \in \mathbb{R}^N\) onto \(K = \min(K_{\max}, N)\) orthogonal SVD factor loadings \(V_K \in \mathbb{R}^{N \times K}\):
+
+\[
+F_t = Z_t V_K \in \mathbb{R}^K, \qquad E_t = Z_t - F_t V_K^\top \in \mathbb{R}^N
+\]
+
+Under a cosine variance schedule \(\bar{\alpha}_\tau \in (0, 1)\) (Nichol & Dhariwal, 2021), forward diffusion corrupts factor vectors via \(x_\tau = \sqrt{\bar{\alpha}_\tau} F_t + \sqrt{1 - \bar{\alpha}_\tau} \varepsilon\) (\(\varepsilon \sim \mathcal{N}(0, I_K)\)). A conditional score network \(\hat{\varepsilon}_\theta(x_\tau, \tau, c_{t-1})\) is calibrated conditioned on:
+1. Trailing factor mean and volatility over `condition_window`,
+2. Point-in-Time `implied_vol` ratio and cross-sectional dispersion,
+3. Depth-2 Rough Log-Signature invariants \((\Delta F, \mathcal{A}_{\text{Lévy}})\).
+
+Forward paths are generated via **accelerated DDIM reverse sampling** across a subsequence \(\tau_S > \tau_{S-1} > \dots > 0\):
+
+\[
+\hat{x}_0 = \frac{x_\tau - \sqrt{1 - \bar{\alpha}_\tau}\,\hat{\varepsilon}_\theta(x_\tau, \tau, c_t)}{\sqrt{\bar{\alpha}_\tau}}, \qquad
+x_{\tau_{\text{prev}}} = \sqrt{\bar{\alpha}_{\tau_{\text{prev}}}} \hat{x}_0 + \sqrt{1 - \bar{\alpha}_{\tau_{\text{prev}}} - \sigma_\tau^2}\,\hat{\varepsilon}_\theta + \sigma_\tau z
+\]
+
+and recombined with kurtosis-matched Student-\(t\) idiosyncratic innovations \(E_{m,t}\).
+
+---
+
+### Arbitrage-Free Coupled Jump-Diffusion Neural SDE (`NeuralSDEGenerator` & `NeuralSDEEstimator`)
+
+`NeuralSDEGenerator` and `NeuralSDEEstimator` parameterize continuous-time price-volatility jump-diffusion dynamics over \(t \in [0, H]\):
+
+\[
+dX_t = \mu_\theta^{\text{arb-free}}(t, X_t, V_t)\,dt + D(V_t) L_{\text{corr}}\,dW_t^{(X)} + \left(J_t\,dN_t(\lambda) - \lambda \bar{\mu}_J\,dt\right)
+\]
+
+\[
+dV_t = \left(-\kappa V_t + g_\theta(X_t, V_t)\right) dt + \xi\,dW_t^{(V)}, \qquad D(V_t) = \operatorname{diag}\!\left(\bar{\sigma} \odot \exp(0.5 V_t)\right)
+\]
+
+1. **Hansen-Jagannathan Market-Price-of-Risk Bound (No-Statistical-Arbitrage):**
+   At every step, the instantaneous Sharpe vector \(\theta_t = L_{\text{corr}}^{-1} D(V_t)^{-1}(\mu_\theta - r_f \mathbf{1})\) is radially projected onto the ball of radius \(\theta_{\max, \Delta t} = \theta_{\max} / \sqrt{252}\):
+
+\[
+\tilde{\theta}_t = \theta_t \cdot \min\!\left(1, \frac{\theta_{\max, \Delta t}}{\|\theta_t\|_2}\right), \qquad \mu_\theta^{\text{arb-free}} = r_f \mathbf{1} + D(V_t) L_{\text{corr}} \tilde{\theta}_t
+\]
+
+2. **Depth-2 Rough Log-Signature MMD Calibration:**
+   In addition to Cholesky transition negative log-likelihood, `NeuralSDEEstimator` minimizes the discrepancy between empirical and simulated windowed Depth-2 Lyndon log-signatures:
+
+\[
+\mathcal{L}_{\text{Sig-MMD}}^2 = \left\| \mathbb{E}_{X \sim \mathbb{P}_{\text{emp}}}\!\left[\operatorname{LogSig}_2(X)\right] - \mathbb{E}_{\hat{X} \sim \mathbb{P}_\theta}\!\left[\operatorname{LogSig}_2(\hat{X})\right] \right\|_2^2
+\]
+
+---
+
 ## 3. Meucci's Entropy Pooling (`EntropyPooler` & `ViewBuilder`)
 
 Given \(M\) simulated scenarios with prior probability vector \(p \in \Delta^M\) (typically uniform \(p_m = 1/M\)), **Entropy Pooling** (Meucci, 2008) finds the posterior probability distribution \(x \in \Delta^M\) that satisfies linear equality and inequality views while minimizing Relative Entropy (Kullback-Leibler divergence):

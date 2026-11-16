@@ -259,6 +259,70 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 
 ---
 
+## Generative Diffusion, Neural SDEs & Wasserstein Distributionally Robust Optimization
+
+### Li (2023) — Wasserstein-Kelly Portfolios {#li-2023}
+
+> Li, J. Y.-M. (2023). Wasserstein-Kelly Portfolios: A Robust Data-Driven Solution to Optimize Portfolio Growth. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2302.13979](https://doi.org/10.48550/arxiv.2302.13979)
+
+**Contribution:** Formulated Distributionally Robust Kelly (log-optimal growth) portfolio optimization over a Wasserstein ball around the empirical distribution, proving tractable convex dual reformulations that prevent the extreme leverage and parameter sensitivity of classical Kelly portfolios.
+
+**Implemented in:** `WassersteinDROAllocator` (`ObjectiveFunction.WASSERSTEIN_KELLY`)
+
+---
+
+### Fonseca & Junca (2021) & Esfahani & Kuhn (2018) — Wasserstein DRO with Expected Value Constraints {#fonseca-junca-2021}
+
+> Fonseca, D., & Junca, M. (2021). Wasserstein Distributionally Robust Optimization with Expected Value Constraints. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2111.04663](https://doi.org/10.48550/arxiv.2111.04663)
+>
+> Mohajerin Esfahani, P., & Kuhn, D. (2018). Data-driven distributionally robust optimization using the Wasserstein metric: Performance guarantees and tractable reformulations. *Mathematical Programming*, 171(1–2), 115–166.
+
+**Contribution:** Derived strong duality and finite convex program reformulations for worst-case expectation and CVaR minimization over Wasserstein balls intersected with linear expected-value constraints \(\mathbb{E}_{\mathbb{Q}}[G r] = q\), preserving all empirical data atoms while anchoring first-moment views.
+
+**Implemented in:** `WassersteinDROAllocator` (`ObjectiveFunction.WASSERSTEIN_CVAR`, `ObjectiveFunction.WASSERSTEIN_MEAN_RISK`, `view_matrix`, `view_targets`)
+
+---
+
+### Cohen, Reisinger & Wang (2021) & Kidger et al. (2021) — Arbitrage-Free Neural SDE Market Models {#cohen-2021}
+
+> Cohen, S. N., Reisinger, C., & Wang, S. (2021). Arbitrage-free neural-SDE market models. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2105.11053](https://doi.org/10.48550/arxiv.2105.11053)
+>
+> Kidger, P., Foster, J., Li, X., & Lyons, T. J. (2021). Neural SDEs as Infinite-Dimensional GANs. *International Conference on Machine Learning (ICML)*.
+
+**Contribution:** Parameterized continuous-time asset price and implied-volatility factor SDEs with neural drift and diffusion coefficients subject to exact martingale / market-price-of-risk and calendar-spread no-arbitrage constraints, calibrated via pathwise rough-path signature discriminators.
+
+**Implemented in:** `NeuralSDEGenerator`, `NeuralSDEEstimator`, `ArbitrageFreeNeuralSDENet`
+
+---
+
+### Factor-Based Conditional Diffusion & Generative WDRO (2025–2026) {#diffusion-wdro-2026}
+
+> Factor-Based Conditional Diffusion Model for Portfolio Optimization (2025). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2509.22088](https://doi.org/10.48550/arxiv.2509.22088)
+>
+> Generative Models for Decision-Making under Distributional Shift (2026). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2604.04342](https://doi.org/10.48550/arxiv.2604.04342)
+
+**Contribution:** Combined factor-bottleneck conditional denoising diffusion models (with classifier-free guidance and DDIM sampling) with Wasserstein Distributionally Robust Optimization (Generative-WDRO), centering the Wasserstein ball on conditionally synthesized forward scenarios while scaling the ambiguity radius by regime shift and generator signature-MMD discrepancy.
+
+**Implemented in:** `ConditionalDiffusionGenerator`, `WassersteinDROAllocator(scenario_generator=...)`
+
+---
+
+### Exploratory Mean-Variance Portfolio Optimization with Regime-Switching (2026) {#exploratory-mv-2026}
+
+> Exploratory Mean-Variance Portfolio Optimization with Regime-Switching (2026). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2501.16659](https://doi.org/10.48550/arxiv.2501.16659)
+
+**Contribution:** Formulated continuous-time entropy-regularized ("exploratory") reinforcement learning for mean-variance portfolio control under latent Markov regime switching, combining continuous-time Wonham regime belief filtering with analytical Gaussian exploration covariance \(\Sigma_{\pi, t}^* = (\lambda_{\text{ent}}/\gamma)(\bar{\Sigma}(p_t) + \kappa_{\text{turn}} I)^{-1}\).
+
+**Implemented in:** `ExploratoryRegimeMVAllocator`, `WonhamRegimeFilter`
+
+---
+
 ## Multi-Strategy Evaluation, Deflated Sharpe Ratio & Performance Attribution
 
 ### Bailey & López de Prado (2014) — The Deflated Sharpe Ratio {#dsr-2014}

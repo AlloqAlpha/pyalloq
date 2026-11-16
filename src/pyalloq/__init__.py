@@ -3,6 +3,7 @@ from pyalloq_core import (
     BaseAllocator,
     BaseCovarianceEstimator,
     BaseReturnEstimator,
+    BaseScenarioEstimator,
     BaseScenarioGenerator,
     BaseViewGenerator,
     ConstraintType,
@@ -52,6 +53,7 @@ from pyalloq.classical import (
     StochasticScenarioMPCAllocator,
     VarianceRiskPremiumEstimator,
     VolatilityScaledMultiHorizonEstimator,
+    WassersteinDROAllocator,
 )
 from pyalloq.ml import (
     BayesianHRPAllocator,
@@ -69,6 +71,7 @@ __all__ = [
     "BaseAllocator",
     "BaseCovarianceEstimator",
     "BaseReturnEstimator",
+    "BaseScenarioEstimator",
     "BaseScenarioGenerator",
     "BaseViewGenerator",
     "BayesianHRPAllocator",
@@ -119,5 +122,6 @@ __all__ = [
     "StrategyPipeline",
     "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
+    "WassersteinDROAllocator",
     "__version__",
 ]

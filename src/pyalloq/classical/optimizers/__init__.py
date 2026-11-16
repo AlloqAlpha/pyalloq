@@ -13,6 +13,7 @@ from pyalloq.classical.optimizers.naive import (
 from pyalloq.classical.optimizers.risk_budgeting import RiskBudgetingAllocator
 from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
 from pyalloq.classical.optimizers.stochastic_mpc import StochasticScenarioMPCAllocator
+from pyalloq.classical.optimizers.wasserstein_dro import WassersteinDROAllocator
 
 __all__ = [
     "CDaRAllocator",
@@ -27,4 +28,5 @@ __all__ = [
     "RiskBudgetingAllocator",
     "RiskParityAllocator",
     "StochasticScenarioMPCAllocator",
+    "WassersteinDROAllocator",
 ]

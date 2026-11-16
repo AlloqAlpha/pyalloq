@@ -11,6 +11,10 @@ from pyalloq.rl.envs import (
     PortfolioGymEnv,
     ScenarioPortfolioEnv,
 )
+from pyalloq.rl.exploratory_mv import (
+    ExploratoryRegimeMVAllocator,
+    WonhamRegimeFilter,
+)
 from pyalloq.rl.rewards import (
     BaseRewardFunction,
     CARAUtilReward,
@@ -40,6 +44,7 @@ __all__ = [
     "DictFlattenWrapper",
     "DifferentialSharpeReward",
     "EndogenousLiquidityImpactWrapper",
+    "ExploratoryRegimeMVAllocator",
     "FeatureNormalizationWrapper",
     "HierarchicalMetaRLAllocator",
     "MetaPortfolioEnv",
@@ -55,5 +60,6 @@ __all__ = [
     "TrajectoryPolicyNet",
     "UnifiedE2EPolicyNetwork",
     "WassersteinRegimeGate",
+    "WonhamRegimeFilter",
     "make_dict_space",
 ]

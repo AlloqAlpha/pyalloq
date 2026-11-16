@@ -64,6 +64,10 @@ This page auto-generates documentation from the `pyalloq-core` package docstring
 
 ::: pyalloq_core.interfaces.BaseScenarioGenerator
 
+### BaseScenarioEstimator
+
+::: pyalloq_core.interfaces.BaseScenarioEstimator
+
 ---
 
 ## Enums & Utilities

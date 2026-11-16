@@ -55,6 +55,7 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
         self.use_cornish_fisher_tail = bool(use_cornish_fisher_tail)
         self.tail_confidence = float(np.clip(tail_confidence, 0.55, 0.999))
         self.last_implied_correlation_shift_: float = 0.0
+        self.last_implied_correlation_: pd.DataFrame | None = None
         self.last_cornish_fisher_multiplier_: np.ndarray | None = None
 
     @staticmethod
@@ -137,7 +138,7 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
         try:
             lw = LedoitWolf().fit(standardized)
             cov_z = lw.covariance_.astype(np.float64)
-        except Exception:
+        except (ValueError, np.linalg.LinAlgError):
             cov_z = np.cov(standardized, rowvar=False)
 
         d_inv = 1.0 / np.sqrt(np.clip(np.diag(cov_z), 1e-10, None))
@@ -253,9 +254,26 @@ class ImpliedCovarianceEstimator(BaseCovarianceEstimator):
 
         ones_mat = np.ones((n_assets, n_assets), dtype=np.float64)
         corr_imp = (1.0 - gamma_t) * corr_hist + gamma_t * ones_mat
+        corr_imp = 0.5 * (corr_imp + corr_imp.T)
         np.fill_diagonal(corr_imp, 1.0)
+        self.last_implied_correlation_ = pd.DataFrame(
+            corr_imp, index=tickers, columns=tickers
+        )
 
         cov_imp = np.outer(iv_vec, iv_vec) * corr_imp
         cov_imp = 0.5 * (cov_imp + cov_imp.T)
 
         return pd.DataFrame(cov_imp, index=tickers, columns=tickers)
+
+    def estimate_correlation(
+        self,
+        data: MarketData,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        """
+        Estimates and returns the Point-in-Time Buss & Vilkov (2012) Option-Implied
+        Correlation Matrix Gamma_imp = (1 - gamma_t) * Gamma_hist + gamma_t * (1 @ 1^T).
+        """
+        self.estimate(data, **kwargs)
+        assert self.last_implied_correlation_ is not None
+        return self.last_implied_correlation_.copy()
