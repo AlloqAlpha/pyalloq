@@ -2286,6 +2286,10 @@ u_t \ge -r_t^\top w - \alpha, \quad \mathbf{1}^\top w = 1, \quad l \le w \le b
 <p>For transport cost <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_{\mathcal{G}}\)</span> and effective exposure vector <span class="arithmatex">\(u = w - G^\top \lambda\)</span>, Kantorovich duality yields the exact dual norm penalty <span class="arithmatex">\(\varepsilon_t \|u\|_{\mathcal{G}^*}\)</span>:</p>
 <ul>
 <li><strong>Mahalanobis (<code>"mahalanobis"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|\Sigma^{-1/2}(r - \hat{r})\|_2 \implies \|u\|_{\mathcal{G}^*} = \|\Sigma^{1/2} u\|_2\)</span>.</li>
+<li><strong>Anisotropic Quantile-Mahalanobis (<code>"quantile_mahalanobis"</code>, Blanchet, Kang &amp; Murthy, 2019)</strong>: Calibrates an anisotropic transport matrix <span class="arithmatex">\(\Sigma_{\text{tail}} = D_{\text{tail}} C_{\text{corr}} D_{\text{tail}}\)</span> from the Riemann Bar inter-decile spread <span class="arithmatex">\((q_{0.90, i} - q_{0.10, i})\)</span> and negative Bowley skewness <span class="arithmatex">\(\mathcal{S}_{\text{Bowley}, i}\)</span>:
+  [
+  \left(D_{\text{tail}}\right)<em 0.90_="0.90," i="i">{i,i} = \frac{1}{2}\left(\sigma_i + \frac{q</em>} - q_{0.10, i}}{2.56 \sqrt{252}}\right)\sqrt{1 + \kappa_{\text{tail}} \max(0, -\mathcal{S<em _mathcal_G="\mathcal{G">{\text{Bowley}, i})}, \qquad |u|</em> u\right|_2
+  ]}^*} = \left|\Sigma_{\text{tail}}^{1/2</li>
 <li><strong>Euclidean (<code>"l2"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_2 \implies \|u\|_{\mathcal{G}^*} = \|u\|_2\)</span>.</li>
 <li><strong>Manhattan (<code>"l1"</code>)</strong>: <span class="arithmatex">\(d(r, \hat{r}) = \|r - \hat{r}\|_1 \implies \|u\|_{\mathcal{G}^*} = \|u\|_\infty\)</span>.</li>
 </ul>

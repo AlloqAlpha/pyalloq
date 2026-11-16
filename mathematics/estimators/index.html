@@ -1475,6 +1475,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#time-aware-prior-data-fitted-networks-apollopfn-potapczynski-et-al-tmlr-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time-Aware Prior-Data Fitted Networks (ApolloPFN, Potapczynski et al., TMLR 2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2221,6 +2232,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#time-aware-prior-data-fitted-networks-apollopfn-potapczynski-et-al-tmlr-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time-Aware Prior-Data Fitted Networks (ApolloPFN, Potapczynski et al., TMLR 2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2402,6 +2424,41 @@ m_{\text{CF}}(S, K_{\text{ex}}) = \frac{z_{\text{CF}}}{z_\alpha}, \qquad z_{\tex
 <div class="arithmatex">\[
 \mathcal{S}_{\text{vN}}(\Sigma) = -\frac{1}{\ln N} \sum_{i=1}^N p_i \ln p_i \in [0, 1]
 \]</div>
+<hr />
+<h3 id="time-aware-prior-data-fitted-networks-apollopfn-potapczynski-et-al-tmlr-2026">Time-Aware Prior-Data Fitted Networks (<code>ApolloPFN</code>, Potapczynski et al., TMLR 2026)<a class="headerlink" href="#time-aware-prior-data-fitted-networks-apollopfn-potapczynski-et-al-tmlr-2026" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Amortized In-Context Posterior Predictive Distribution (PPD):</strong>
+   Trained offline on synthetic Structural Causal Model (SCM) time-series tasks <span class="arithmatex">\(\mathcal{D} \sim p(\mathcal{D})\)</span> generated via <strong>Algorithm 1 (<code>SRNGNPriorGenerator</code>, Single Root Node Random Growing Network)</strong>, <code>ApolloPFNTransformer</code> directly approximates the Bayesian posterior predictive distribution in a single forward pass:</li>
+</ol>
+<div class="arithmatex">\[
+q_\theta\!\left(Y_{T+1:T+H} \;\middle|\; X_{1:T+H}, \, Y_{1:T}\right) \;\approx\; \int p\!\left(Y_{T+1:T+H} \mid X_{T+1:T+H}, \xi\right) p\!\left(\xi \mid X_{1:T}, Y_{1:T}\right) d\xi
+\]</div>
+<ol>
+<li><strong>Temporal-Feature Factorized Transformer (<code>AttnFeat</code> + RoPE <code>AttnSamp</code>):</strong>
+   Given embedding tensor <span class="arithmatex">\(Z \in \mathbb{R}^{(T+H) \times F \times D}\)</span> with observation mask tokens <span class="arithmatex">\(0\)</span> (observed) and <span class="arithmatex">\(-2\)</span> (unobserved horizon targets) plus absolute sinusoidal encodings <span class="arithmatex">\(\Omega_{t, 2d}\)</span>, each layer <span class="arithmatex">\(\ell = 1, \dots, L\)</span> alternates cross-variate attention and Rotary Position Embedded (RoPE) full-horizon temporal attention:</li>
+</ol>
+<div class="arithmatex">\[
+Z \leftarrow \operatorname{LN}_1\!\left(Z + \operatorname{AttnFeat}(Z)\right), \quad
+Z \leftarrow \operatorname{LN}_2\!\left(Z + \operatorname{AttnSamp}_{\text{RoPE}}(Z)\right), \quad
+Z \leftarrow \operatorname{LN}_3\!\left(Z + \operatorname{MLP}(Z)\right)
+\]</div>
+<ol>
+<li><strong>Riemann Bar Distribution &amp; <code>sCRPS</code>-Adaptive Bayesian Model Averaging (<code>EnsembleReturnEstimator</code>):</strong>
+   The output head parameterizes a piecewise-constant density over <span class="arithmatex">\(B\)</span> Riemann bins spanning <span class="arithmatex">\([z_{\min}, z_{\max}]\)</span>. Evaluated across quantile levels <span class="arithmatex">\(\alpha_1 &lt; \dots &lt; \alpha_Q\)</span>, the scale-free Continuous Ranked Probability Score (<code>sCRPS</code>, Appendix B) is:</li>
+</ol>
+<div class="arithmatex">\[
+\operatorname{sCRPS}(y, \hat{y}) = \frac{\sum_{t=T+1}^{T+H} \frac{2}{Q} \sum_{j=1}^Q \left[ \alpha_j \left(y_t - \hat{y}_t^{\alpha_j}\right)_+ + (1 - \alpha_j)\left(\hat{y}_t^{\alpha_j} - y_t\right)_+ \right]}{\sum_{t=T+1}^{T+H} |y_t|}
+\]</div>
+<p>In <code>EnsembleReturnEstimator</code>, model <span class="arithmatex">\(m\)</span>'s weight on asset <span class="arithmatex">\(i\)</span> under <code>weighting_mode="scrps_adaptive"</code> is proportional to its calibrated precision <span class="arithmatex">\(w_{m,i} \propto \left(\sigma_{m,i}^2 \cdot \operatorname{sCRPS}_m\right)^{-1}\)</span>, or under <code>weighting_mode="cvar_adaptive"</code> to its inverse squared tail risk <span class="arithmatex">\(w_{m,i} \propto \operatorname{CVaR}_{\alpha, m, i}^{-2}\)</span>.</p>
+<ol>
+<li><strong>Closed-Form Riemann Bar Tail Functionals &amp; Copula-Coupled Scenario Generation (Müller et al., ICLR 2022; Demarta &amp; McNeil, 2005; Patton, 2006):</strong>
+   Given Riemann bin edges <span class="arithmatex">\(b_0 &lt; b_1 &lt; \dots &lt; b_B\)</span>, widths <span class="arithmatex">\(w_k = b_{k+1} - b_k\)</span>, probabilities <span class="arithmatex">\(p_k\)</span>, and cumulative probabilities <span class="arithmatex">\(C_k = \sum_{j &lt; k} p_j\)</span>, the truncated probability mass in bin <span class="arithmatex">\(k\)</span> below tail threshold <span class="arithmatex">\(1 - \alpha\)</span> is <span class="arithmatex">\(\Delta p_k = \max(0, \min(p_k, 1 - \alpha - C_k))\)</span>. With the Müller et al. (2022) half-normal left-tail shift <span class="arithmatex">\(\delta_0 = \sqrt{2/\pi} w_0\)</span> on the outermost bucket <span class="arithmatex">\(k = 0\)</span>, <code>RiemannBarDistribution</code> evaluates exact Expected Shortfall (<span class="arithmatex">\(\operatorname{CVaR}_\alpha\)</span>), Sortino downside semi-deviation (<span class="arithmatex">\(\sigma_{-}\)</span>), and Bowley skewness (<span class="arithmatex">\(\mathcal{S}_{\text{Bowley}}\)</span>):</li>
+</ol>
+<div class="arithmatex">\[
+\operatorname{CVaR}_\alpha(Z) = -\frac{1}{1 - \alpha} \sum_{k=0}^{B-1} \Delta p_k \left(b_k + \frac{\Delta p_k}{2 p_k} w_k - \delta_0 \mathbb{I}_{\{k=0\}}\right), \qquad
+\mathcal{S}_{\text{Bowley}} = \frac{(q_{0.90} - q_{0.50}) - (q_{0.50} - q_{0.10})}{q_{0.90} - q_{0.10}}
+\]</div>
+<p>To synthesize joint <span class="arithmatex">\(N\)</span>-asset scenarios (<code>BaseScenarioEstimator</code>), correlated uniform variates <span class="arithmatex">\(u^{(m, h)} \sim C_{\nu, R_{\text{imp}}}^{\text{t}}\)</span> are drawn from a Student-<span class="arithmatex">\(t\)</span> (or stratified LHS-<span class="arithmatex">\(t\)</span>) copula parameterized by the Buss &amp; Vilkov (2012) option-implied correlation matrix blended with <code>AttnFeat</code> epistemic correlation, and inverted through each asset's exact Riemann Bar marginal CDF: <span class="arithmatex">\(\tilde{r}_{i, h}^{(m)} = \mu_{i,\text{ctx}} + \sigma_{i,\text{ctx}} F_{\text{bar}, i, h}^{-1}(u_i^{(m, h)})\)</span>.</p>
 
 
 

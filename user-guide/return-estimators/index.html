@@ -1092,6 +1092,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#time-aware-prior-data-fitted-networks-apollopfn-bayesian-ensemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time-Aware Prior-Data Fitted Networks (ApolloPFN) &amp; Bayesian Ensemble
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time-Aware Prior-Data Fitted Networks (ApolloPFN) &amp; Bayesian Ensemble">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strongly-typed-exogenous-covariates-covariatekey-covariatemode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strongly-Typed Exogenous Covariates (CovariateKey &amp; CovariateMode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementing-a-custom-return-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2226,6 +2254,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#time-aware-prior-data-fitted-networks-apollopfn-bayesian-ensemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time-Aware Prior-Data Fitted Networks (ApolloPFN) &amp; Bayesian Ensemble
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time-Aware Prior-Data Fitted Networks (ApolloPFN) &amp; Bayesian Ensemble">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strongly-typed-exogenous-covariates-covariatekey-covariatemode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strongly-Typed Exogenous Covariates (CovariateKey &amp; CovariateMode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementing-a-custom-return-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2603,21 +2659,78 @@ R_{i, t} = \alpha_i + \beta_i R_{m, t} + \epsilon_{i, t}
 </span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="n">scenarios_3d</span> <span class="o">=</span> <span class="n">sde_estimator</span><span class="o">.</span><span class="n">estimate_scenarios</span><span class="p">(</span><span class="n">market_data</span><span class="p">,</span> <span class="n">refit</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </span></code></pre></div>
 <hr />
-<h2 id="implementing-a-custom-return-estimator">Implementing a Custom Return Estimator<a class="headerlink" href="#implementing-a-custom-return-estimator" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseReturnEstimator</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyReturnEstimator</span><span class="p">(</span><span class="n">BaseReturnEstimator</span><span class="p">):</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>        <span class="c1"># Annualized mean of log returns</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>        <span class="n">log_returns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1e-6</span><span class="p">))</span>
-</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>        <span class="k">return</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span>
+<h2 id="time-aware-prior-data-fitted-networks-apollopfn-bayesian-ensemble">Time-Aware Prior-Data Fitted Networks (<code>ApolloPFN</code>) &amp; Bayesian Ensemble<a class="headerlink" href="#time-aware-prior-data-fitted-networks-apollopfn-bayesian-ensemble" title="Permanent link">&para;</a></h2>
+<p><strong>ApolloPFN</strong> (Potapczynski et al., TMLR 2026 / <code>arXiv:2603.15802v2</code>) is a time-series-aware Prior-Data Fitted Network (PFN) that performs <strong>zero-shot amortized Bayesian inference in a single forward pass</strong>, conditioning jointly on historical target returns, past-only covariates (<code>MarketData.features</code>), and known-future covariates (<code>MarketData.future_features</code>).</p>
+<h3 id="strongly-typed-exogenous-covariates-covariatekey-covariatemode">Strongly-Typed Exogenous Covariates (<code>CovariateKey</code> &amp; <code>CovariateMode</code>)<a class="headerlink" href="#strongly-typed-exogenous-covariates-covariatekey-covariatemode" title="Permanent link">&para;</a></h3>
+<p>To prevent macro indicators, COT crowding metrics, and scheduled calendar events from getting lost in magic strings, <code>pyalloq</code> provides <code>CovariateKey</code> and <code>CovariateMode</code> in <code>pyalloq_core.enums</code>. All three foundation families (<code>ApolloPFN</code>, <code>TimesFM-3</code>, and <code>Timestral</code>) call <code>data.extract_covariates()</code> and share <strong>100% interchangeable constructor signatures</strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">CovariateKey</span><span class="p">,</span> <span class="n">CovariateMode</span><span class="p">,</span> <span class="n">MarketData</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="n">ApolloPFNReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">ApolloPFNViewGenerator</span><span class="p">,</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">EnsembleReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="n">EnsembleViewGenerator</span><span class="p">,</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="n">TimesFM3MultivariateReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    <span class="n">TimestralMultivariateReturnEstimator</span><span class="p">,</span>
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="p">)</span>
 </span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>
-</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
-</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
-</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">MyReturnEstimator</span><span class="p">(),</span>
-</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="p">)</span>
+</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="n">data</span> <span class="o">=</span> <span class="n">MarketData</span><span class="p">(</span>
+</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    <span class="n">prices</span><span class="o">=</span><span class="n">prices_df</span><span class="p">,</span>
+</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>    <span class="n">features</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">COT_CROWDING</span><span class="p">:</span> <span class="n">cot_df</span><span class="p">,</span>
+</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">INTEREST_RATES</span><span class="p">:</span> <span class="n">rates_df</span><span class="p">,</span>
+</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>    <span class="p">},</span>
+</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>    <span class="n">future_features</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-18-18"><a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">CALENDAR_EVENTS</span><span class="p">:</span> <span class="n">fomc_cpi_calendar_df</span><span class="p">,</span>
+</span><span id="__span-18-19"><a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>    <span class="p">},</span>
+</span><span id="__span-18-20"><a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a><span class="p">)</span>
+</span><span id="__span-18-21"><a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>
+</span><span id="__span-18-22"><a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a><span class="c1"># Interchangeable kwargs across ApolloPFN, TimesFM-3, and Timestral</span>
+</span><span id="__span-18-23"><a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a><span class="n">shared_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-18-24"><a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>    <span class="s2">&quot;horizon&quot;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>
+</span><span id="__span-18-25"><a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>    <span class="s2">&quot;annualize&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-18-26"><a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a>    <span class="s2">&quot;covariate_mode&quot;</span><span class="p">:</span> <span class="n">CovariateMode</span><span class="o">.</span><span class="n">AUTO</span><span class="p">,</span>
+</span><span id="__span-18-27"><a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>    <span class="s2">&quot;covariate_keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-18-28"><a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">COT_CROWDING</span><span class="p">,</span>
+</span><span id="__span-18-29"><a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">INTEREST_RATES</span><span class="p">,</span>
+</span><span id="__span-18-30"><a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a>        <span class="n">CovariateKey</span><span class="o">.</span><span class="n">CALENDAR_EVENTS</span><span class="p">,</span>
+</span><span id="__span-18-31"><a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a>    <span class="p">],</span>
+</span><span id="__span-18-32"><a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a><span class="p">}</span>
+</span><span id="__span-18-33"><a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a>
+</span><span id="__span-18-34"><a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a><span class="n">apfn_est</span> <span class="o">=</span> <span class="n">ApolloPFNReturnEstimator</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">shared_kwargs</span><span class="p">)</span>
+</span><span id="__span-18-35"><a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a><span class="n">tfm_est</span>  <span class="o">=</span> <span class="n">TimesFM3MultivariateReturnEstimator</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">tfm_model</span><span class="p">,</span> <span class="o">**</span><span class="n">shared_kwargs</span><span class="p">)</span>
+</span><span id="__span-18-36"><a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a><span class="n">tms_est</span>  <span class="o">=</span> <span class="n">TimestralMultivariateReturnEstimator</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">tms_model</span><span class="p">,</span> <span class="o">**</span><span class="n">shared_kwargs</span><span class="p">)</span>
+</span><span id="__span-18-37"><a id="__codelineno-18-37" name="__codelineno-18-37" href="#__codelineno-18-37"></a>
+</span><span id="__span-18-38"><a id="__codelineno-18-38" name="__codelineno-18-38" href="#__codelineno-18-38"></a><span class="c1"># Precision-weighted / sCRPS-adaptive / CVaR-adaptive Bayesian Model Averaging</span>
+</span><span id="__span-18-39"><a id="__codelineno-18-39" name="__codelineno-18-39" href="#__codelineno-18-39"></a><span class="n">ensemble</span> <span class="o">=</span> <span class="n">EnsembleReturnEstimator</span><span class="p">(</span>
+</span><span id="__span-18-40"><a id="__codelineno-18-40" name="__codelineno-18-40" href="#__codelineno-18-40"></a>    <span class="n">estimators</span><span class="o">=</span><span class="p">[</span><span class="n">apfn_est</span><span class="p">,</span> <span class="n">tfm_est</span><span class="p">,</span> <span class="n">tms_est</span><span class="p">],</span>
+</span><span id="__span-18-41"><a id="__codelineno-18-41" name="__codelineno-18-41" href="#__codelineno-18-41"></a>    <span class="n">weighting_mode</span><span class="o">=</span><span class="s2">&quot;scrps_adaptive&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;cvar_adaptive&quot;, &quot;inverse_uncertainty&quot;</span>
+</span><span id="__span-18-42"><a id="__codelineno-18-42" name="__codelineno-18-42" href="#__codelineno-18-42"></a>    <span class="n">copula_type</span><span class="o">=</span><span class="s2">&quot;student_t&quot;</span><span class="p">,</span>
+</span><span id="__span-18-43"><a id="__codelineno-18-43" name="__codelineno-18-43" href="#__codelineno-18-43"></a>    <span class="n">model_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ApolloPFN&quot;</span><span class="p">,</span> <span class="s2">&quot;TimesFM-3&quot;</span><span class="p">,</span> <span class="s2">&quot;Timestral&quot;</span><span class="p">],</span>
+</span><span id="__span-18-44"><a id="__codelineno-18-44" name="__codelineno-18-44" href="#__codelineno-18-44"></a><span class="p">)</span>
+</span><span id="__span-18-45"><a id="__codelineno-18-45" name="__codelineno-18-45" href="#__codelineno-18-45"></a><span class="n">mu_ensemble</span> <span class="o">=</span> <span class="n">ensemble</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-18-46"><a id="__codelineno-18-46" name="__codelineno-18-46" href="#__codelineno-18-46"></a><span class="nb">print</span><span class="p">(</span><span class="n">apfn_est</span><span class="o">.</span><span class="n">last_covariate_importance_</span><span class="p">)</span>  <span class="c1"># Zero-shot AttnFeat covariate attribution</span>
+</span><span id="__span-18-47"><a id="__codelineno-18-47" name="__codelineno-18-47" href="#__codelineno-18-47"></a><span class="nb">print</span><span class="p">(</span><span class="n">ensemble</span><span class="o">.</span><span class="n">last_posterior_cvar_</span><span class="p">)</span>        <span class="c1"># Exact Riemann Bar Expected Shortfall (CVaR_95%)</span>
+</span><span id="__span-18-48"><a id="__codelineno-18-48" name="__codelineno-18-48" href="#__codelineno-18-48"></a><span class="nb">print</span><span class="p">(</span><span class="n">ensemble</span><span class="o">.</span><span class="n">last_posterior_skewness_</span><span class="p">)</span>    <span class="c1"># Non-parametric Bowley decile skewness</span>
+</span><span id="__span-18-49"><a id="__codelineno-18-49" name="__codelineno-18-49" href="#__codelineno-18-49"></a>
+</span><span id="__span-18-50"><a id="__codelineno-18-50" name="__codelineno-18-50" href="#__codelineno-18-50"></a><span class="c1"># Synthesize Copula-Coupled Riemann Bar 3D Scenarios (BaseScenarioEstimator)</span>
+</span><span id="__span-18-51"><a id="__codelineno-18-51" name="__codelineno-18-51" href="#__codelineno-18-51"></a><span class="n">scenarios_3d</span> <span class="o">=</span> <span class="n">ensemble</span><span class="o">.</span><span class="n">estimate_scenarios</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n_paths</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">horizon</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="implementing-a-custom-return-estimator">Implementing a Custom Return Estimator<a class="headerlink" href="#implementing-a-custom-return-estimator" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseReturnEstimator</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyReturnEstimator</span><span class="p">(</span><span class="n">BaseReturnEstimator</span><span class="p">):</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>        <span class="c1"># Annualized mean of log returns</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>        <span class="n">log_returns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">prices</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1e-6</span><span class="p">))</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>        <span class="k">return</span> <span class="n">log_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">252</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">allocator</span><span class="p">,</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>    <span class="n">returns_estimator</span><span class="o">=</span><span class="n">MyReturnEstimator</span><span class="p">(),</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="p">)</span>
 </span></code></pre></div>
 
 
