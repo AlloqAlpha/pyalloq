@@ -226,7 +226,7 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
                 clean_data.features[self.implied_vol_feature]
                 .reindex(index=returns.index, columns=self.assets)
                 .ffill()
-                .bfill()
+                .fillna(0.0)
             )
             iv_mat = iv_df.to_numpy(dtype=np.float64)
             valid_rows = np.all(np.isfinite(iv_mat) & (iv_mat > 0.0), axis=1)

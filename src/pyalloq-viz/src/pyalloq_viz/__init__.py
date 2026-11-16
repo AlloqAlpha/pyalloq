@@ -1,5 +1,6 @@
 from pyalloq_viz.allocation import (
     plot_correlation_and_periodic_returns,
+    plot_foundation_posterior_and_attribution,
     plot_hierarchical_composition,
     plot_multi_universe_frontier,
     plot_risk_contributions,
@@ -87,6 +88,7 @@ __all__ = [
     "plot_equity_drawdown_overlay",
     # Simulation & Multiverse
     "plot_fan_chart",
+    "plot_foundation_posterior_and_attribution",
     "plot_fragility_hawkes_regime_portrait",
     "plot_hierarchical_composition",
     "plot_mpc_trajectory",

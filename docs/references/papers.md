@@ -89,16 +89,21 @@ D(w) = \frac{w^\top \sigma}{\sqrt{w^\top \Sigma w}}
 
 ---
 
-### Das et al. (2024) & Mistral AI (2026) — Time-Series Foundation Models (TimesFM & Timestral) {#tsfm-2026}
+### Das et al. (2024), Mistral AI (2026) & Potapczynski et al. (2026) — Time-Series Foundation Models & Prior-Data Fitted Networks (TimesFM-3, Timestral & ApolloPFN) {#tsfm-2026}
 
-> Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting. *International Conference on Machine Learning (ICML)*.
+>Potapczynski, A., Selvam, R. K., Konstantinova, T., Wolff, M., Olivares, K. G., Ma, R., Mahoney, M. W., Wilson, A. G., Oreshkin, B. N., & Efimov, D. (2026). Time-Aware Prior Fitted Networks for Zero-Shot Forecasting with Exogenous Variables (`ApolloPFN`). *Transactions on Machine Learning Research (TMLR, 06/2026)*.
+> [https://doi.org/10.48550/arxiv.2603.15802](https://doi.org/10.48550/arxiv.2603.15802)
+>
+> Hollmann, N., Müller, S., Purucker, L., Krishnakumar, A., Körfer, M., Hoo, S. B., Schirrmeister, R. T., & Hutter, F. (2025). Accurate predictions on small data with a tabular foundation model (`TabPFN-v2`). *Nature*, 637, 319–326.
+>
+> Das, A., Kong, W., Sen, R., & Zhou, Y. (2024). A Decoder-Only Foundation Model for Time-Series Forecasting (`TimesFM`). *International Conference on Machine Learning (ICML)*.
 >
 > Mistral AI (2026). Timestral: Multivariate Probabilistic Time-Series Foundation Models with Decoupled Horizon Forecasting.
 > [https://github.com/mistralai/timestral](https://github.com/mistralai/timestral)
 
-**Contribution:** Pretrained patch-based causal transformer architectures that enable zero-shot univariate and multivariate probabilistic forecasting across up to 32,768 historical steps with past-only and known-future covariates. Multi-quantile trajectory predictions ($p_{10}, p_{50}, p_{90}$ and 21 non-crossing quantiles) provide both zero-shot point return estimates ($\hat{\mu}$) and calibrated diagonal view uncertainty matrices ($\Omega$) for Bayesian Black-Litterman allocation.
+**Contribution:** Pretrained patch-based causal transformers (`TimesFM-3`, `Timestral`) and Time-Aware Prior-Data Fitted Networks (`ApolloPFN`, trained on `SRNGN` Algorithm 1 causal graphs with `AttnFeat` + RoPE `AttnSamp` and Riemann Bar distributions) that execute zero-shot Bayesian inference on multivariate time series with past-only and known-future exogenous covariates (`CovariateKey`, `CovariateMode`). Combined via inverse-variance and `sCRPS`-adaptive Bayesian Model Averaging in `EnsembleReturnEstimator` and `EnsembleViewGenerator`.
 
-**Implemented in:** `TimesFM3UnivariateReturnEstimator`, `TimesFM3MultivariateReturnEstimator`, `TimesFM3UnivariateViewGenerator`, `TimesFM3MultivariateViewGenerator`, `TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`
+**Implemented in:** `ApolloPFNReturnEstimator`, `ApolloPFNViewGenerator`, `ApolloPFNTransformer`, `ApolloPFNPretrainer`, `SRNGNPriorGenerator`, `RiemannBarDistribution`, `EnsembleReturnEstimator`, `EnsembleViewGenerator`, `TimesFM3UnivariateReturnEstimator`, `TimesFM3MultivariateReturnEstimator`, `TimesFM3UnivariateViewGenerator`, `TimesFM3MultivariateViewGenerator`, `TimestralUnivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`, `TimestralUnivariateViewGenerator`, `TimestralMultivariateViewGenerator`
 
 ---
 
@@ -320,6 +325,33 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Formulated continuous-time entropy-regularized ("exploratory") reinforcement learning for mean-variance portfolio control under latent Markov regime switching, combining continuous-time Wonham regime belief filtering with analytical Gaussian exploration covariance \(\Sigma_{\pi, t}^* = (\lambda_{\text{ent}}/\gamma)(\bar{\Sigma}(p_t) + \kappa_{\text{turn}} I)^{-1}\).
 
 **Implemented in:** `ExploratoryRegimeMVAllocator`, `WonhamRegimeFilter`
+
+---
+
+### Potapczynski et al. (2026) & Müller et al. (2022) — Time-Aware Prior-Data Fitted Networks (`ApolloPFN`) & Riemann Bar Posteriors {#apollopfn-2026}
+
+> Potapczynski, A., Finzi, M., Goldblum, M., & Wilson, A. G. (2026). Time-Aware Prior-Data Fitted Networks for Time Series Forecasting (`ApolloPFN`). *Transactions on Machine Learning Research (TMLR)*.
+> [https://doi.org/10.48550/arxiv.2603.15802](https://doi.org/10.48550/arxiv.2603.15802)
+>
+> Müller, S., Hollmann, N., Arango, S. P., Grabocka, J., & Hutter, F. (2022). Transformers Can Do Bayesian Inference. *International Conference on Learning Representations (ICLR)*.
+> [https://doi.org/10.48550/arxiv.2112.10510](https://doi.org/10.48550/arxiv.2112.10510)
+
+**Contribution:** Introduced synthetic Structural Causal Model (SCM) prior meta-training via Single Root Node Random Growing Networks (`SRNGNPriorGenerator`, Algorithm 1), factorized cross-variate (`AttnFeat`) and Rotary Position Embedded temporal (`AttnSamp`) attention, and the piecewise-constant **Riemann Bar Posterior Predictive Distribution** with half-normal outer tails—enabling exact closed-form expectations, quantiles, Expected Shortfall (\(\text{CVaR}_\alpha\)), Sortino downside semi-deviation, and Bowley skewness in a single zero-shot forward pass.
+
+**Implemented in:** `SRNGNPriorGenerator`, `ApolloPFNTransformer`, `RiemannBarDistribution`, `ApolloPFNPretrainer`, `ApolloPFNReturnEstimator`, `ApolloPFNViewGenerator`, `EnsembleReturnEstimator`, `EnsembleViewGenerator`
+
+---
+
+### Blanchet, Kang & Murthy (2019) & Patton (2006) — Anisotropic Wasserstein Geometry & Conditional Copula Tail Integration {#blanchet-2019}
+
+> Blanchet, J., Kang, Y., & Murthy, K. (2019). Robust Wasserstein Profile Inference and Applications to Machine Learning. *Journal of Applied Probability*, 56(3), 830–857.
+> [https://doi.org/10.48550/arxiv.1610.05627](https://doi.org/10.48550/arxiv.1610.05627)
+>
+> Patton, A. J. (2006). Modelling Asymmetric Exchange Rate Dependence. *International Economic Review*, 47(2), 527–556.
+
+**Contribution:** Established anisotropic optimal-transport Mahalanobis cost geometries \(c(\xi, \hat{\xi}) = \|\Sigma_{\text{tail}}^{-1/2}(\xi - \hat{\xi})\|_2\) that weight adversarial perturbations according to directional predictive uncertainty, and conditional Student-\(t\) copula factorizations coupling non-Gaussian marginal inverse CDFs \(F_{\text{bar}, i}^{-1}(u_i)\) with forward-looking option-implied correlations.
+
+**Implemented in:** `WassersteinDROAllocator(ground_metric="quantile_mahalanobis")`, `ApolloPFNReturnEstimator(copula_type="student_t" | "stratified_t")`, `ApolloPFNViewGenerator(uncertainty_mode="cvar_tail" | "downside_semivariance")`
 
 ---
 

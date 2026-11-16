@@ -94,11 +94,31 @@ class PurgedKFoldSplitter:
             train_dates = dates[train_indices]
             test_dates = dates[test_indices]
 
+            train_futures = {
+                k: pd.concat(
+                    [
+                        v.reindex(train_dates).ffill().fillna(0.0),
+                        v.loc[v.index > train_dates[-1]],
+                    ]
+                )
+                for k, v in data.future_features.items()
+            }
+            test_futures = {
+                k: pd.concat(
+                    [
+                        v.reindex(test_dates).ffill().fillna(0.0),
+                        v.loc[v.index > test_dates[-1]],
+                    ]
+                )
+                for k, v in data.future_features.items()
+            }
+
             train_data = MarketData(
                 prices=data.prices.loc[train_dates],
                 features={k: v.loc[train_dates] for k, v in data.features.items()}
                 if data.features
                 else {},
+                future_features=train_futures,
                 cross_sectional=data.cross_sectional,
                 risk_free_rate=data.risk_free_rate.loc[train_dates]
                 if isinstance(data.risk_free_rate, pd.Series)
@@ -110,6 +130,7 @@ class PurgedKFoldSplitter:
                 features={k: v.loc[test_dates] for k, v in data.features.items()}
                 if data.features
                 else {},
+                future_features=test_futures,
                 cross_sectional=data.cross_sectional,
                 risk_free_rate=data.risk_free_rate.loc[test_dates]
                 if isinstance(data.risk_free_rate, pd.Series)

@@ -64,3 +64,12 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_stgat_kkt_and_endogenous_rl.py
    ```
+
+8. **[`run_apollopfn_generative_wdro.py`](./run_apollopfn_generative_wdro.py)**
+   - Builds `MarketData` with strongly-typed `CovariateKey` (`IMPLIED_VOL`, `COT_CROWDING`, `INTEREST_RATES`, `CALENDAR_EVENTS`) and extracts optional past/future covariates via `CovariateMode`.
+   - Pretrains and saves a financial-SCM `ApolloPFNTransformer` checkpoint using `SRNGNPriorGenerator` (Algorithm 1) and `ApolloPFNPretrainer` (with Table 6 SWA checkpoint averaging).
+   - Runs `ApolloPFN`, `TimesFM-3`, and `Timestral` interchangeably inside `EnsembleReturnEstimator` (`weighting_mode="scrps_adaptive"`) and `EnsembleViewGenerator`.
+   - Executes `WassersteinDROAllocator` in native **Generative-WDRO** mode (paired with `ConditionalDiffusionGenerator`, `ImpliedCovarianceEstimator`, and `EnsembleViewGenerator`) inside `WalkForwardEngine`, plus `ExploratoryRegimeMVAllocator` (`WonhamRegimeFilter`), and exports `foundation_posterior_attribution.html`.
+   ```bash
+   uv run python scripts/run_apollopfn_generative_wdro.py
+   ```

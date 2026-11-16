@@ -224,3 +224,42 @@ m_{\text{CF}}(S, K_{\text{ex}}) = \frac{z_{\text{CF}}}{z_\alpha}, \qquad z_{\tex
 \[
 \mathcal{S}_{\text{vN}}(\Sigma) = -\frac{1}{\ln N} \sum_{i=1}^N p_i \ln p_i \in [0, 1]
 \]
+
+---
+
+### Time-Aware Prior-Data Fitted Networks (`ApolloPFN`, Potapczynski et al., TMLR 2026)
+
+1. **Amortized In-Context Posterior Predictive Distribution (PPD):**
+   Trained offline on synthetic Structural Causal Model (SCM) time-series tasks \(\mathcal{D} \sim p(\mathcal{D})\) generated via **Algorithm 1 (`SRNGNPriorGenerator`, Single Root Node Random Growing Network)**, `ApolloPFNTransformer` directly approximates the Bayesian posterior predictive distribution in a single forward pass:
+
+\[
+q_\theta\!\left(Y_{T+1:T+H} \;\middle|\; X_{1:T+H}, \, Y_{1:T}\right) \;\approx\; \int p\!\left(Y_{T+1:T+H} \mid X_{T+1:T+H}, \xi\right) p\!\left(\xi \mid X_{1:T}, Y_{1:T}\right) d\xi
+\]
+
+2. **Temporal-Feature Factorized Transformer (`AttnFeat` + RoPE `AttnSamp`):**
+   Given embedding tensor \(Z \in \mathbb{R}^{(T+H) \times F \times D}\) with observation mask tokens \(0\) (observed) and \(-2\) (unobserved horizon targets) plus absolute sinusoidal encodings \(\Omega_{t, 2d}\), each layer \(\ell = 1, \dots, L\) alternates cross-variate attention and Rotary Position Embedded (RoPE) full-horizon temporal attention:
+
+\[
+Z \leftarrow \operatorname{LN}_1\!\left(Z + \operatorname{AttnFeat}(Z)\right), \quad
+Z \leftarrow \operatorname{LN}_2\!\left(Z + \operatorname{AttnSamp}_{\text{RoPE}}(Z)\right), \quad
+Z \leftarrow \operatorname{LN}_3\!\left(Z + \operatorname{MLP}(Z)\right)
+\]
+
+3. **Riemann Bar Distribution & `sCRPS`-Adaptive Bayesian Model Averaging (`EnsembleReturnEstimator`):**
+   The output head parameterizes a piecewise-constant density over \(B\) Riemann bins spanning \([z_{\min}, z_{\max}]\). Evaluated across quantile levels \(\alpha_1 < \dots < \alpha_Q\), the scale-free Continuous Ranked Probability Score (`sCRPS`, Appendix B) is:
+
+\[
+\operatorname{sCRPS}(y, \hat{y}) = \frac{\sum_{t=T+1}^{T+H} \frac{2}{Q} \sum_{j=1}^Q \left[ \alpha_j \left(y_t - \hat{y}_t^{\alpha_j}\right)_+ + (1 - \alpha_j)\left(\hat{y}_t^{\alpha_j} - y_t\right)_+ \right]}{\sum_{t=T+1}^{T+H} |y_t|}
+\]
+
+   In `EnsembleReturnEstimator`, model \(m\)'s weight on asset \(i\) under `weighting_mode="scrps_adaptive"` is proportional to its calibrated precision \(w_{m,i} \propto \left(\sigma_{m,i}^2 \cdot \operatorname{sCRPS}_m\right)^{-1}\), or under `weighting_mode="cvar_adaptive"` to its inverse squared tail risk \(w_{m,i} \propto \operatorname{CVaR}_{\alpha, m, i}^{-2}\).
+
+4. **Closed-Form Riemann Bar Tail Functionals & Copula-Coupled Scenario Generation (Müller et al., ICLR 2022; Demarta & McNeil, 2005; Patton, 2006):**
+   Given Riemann bin edges \(b_0 < b_1 < \dots < b_B\), widths \(w_k = b_{k+1} - b_k\), probabilities \(p_k\), and cumulative probabilities \(C_k = \sum_{j < k} p_j\), the truncated probability mass in bin \(k\) below tail threshold \(1 - \alpha\) is \(\Delta p_k = \max(0, \min(p_k, 1 - \alpha - C_k))\). With the Müller et al. (2022) half-normal left-tail shift \(\delta_0 = \sqrt{2/\pi} w_0\) on the outermost bucket \(k = 0\), `RiemannBarDistribution` evaluates exact Expected Shortfall (\(\operatorname{CVaR}_\alpha\)), Sortino downside semi-deviation (\(\sigma_{-}\)), and Bowley skewness (\(\mathcal{S}_{\text{Bowley}}\)):
+
+\[
+\operatorname{CVaR}_\alpha(Z) = -\frac{1}{1 - \alpha} \sum_{k=0}^{B-1} \Delta p_k \left(b_k + \frac{\Delta p_k}{2 p_k} w_k - \delta_0 \mathbb{I}_{\{k=0\}}\right), \qquad
+\mathcal{S}_{\text{Bowley}} = \frac{(q_{0.90} - q_{0.50}) - (q_{0.50} - q_{0.10})}{q_{0.90} - q_{0.10}}
+\]
+
+   To synthesize joint \(N\)-asset scenarios (`BaseScenarioEstimator`), correlated uniform variates \(u^{(m, h)} \sim C_{\nu, R_{\text{imp}}}^{\text{t}}\) are drawn from a Student-\(t\) (or stratified LHS-\(t\)) copula parameterized by the Buss & Vilkov (2012) option-implied correlation matrix blended with `AttnFeat` epistemic correlation, and inverted through each asset's exact Riemann Bar marginal CDF: \(\tilde{r}_{i, h}^{(m)} = \mu_{i,\text{ctx}} + \sigma_{i,\text{ctx}} F_{\text{bar}, i, h}^{-1}(u_i^{(m, h)})\).

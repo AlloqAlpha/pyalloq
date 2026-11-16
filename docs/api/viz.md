@@ -128,6 +128,12 @@ This page auto-generates documentation from the `pyalloq-viz` package docstrings
 
 ---
 
+### plot_foundation_posterior_and_attribution
+
+::: pyalloq_viz.allocation.plot_foundation_posterior_and_attribution
+
+---
+
 ## 5. Multi-Strategy Comparison & Attribution Plots
 
 ### plot_equity_drawdown_overlay

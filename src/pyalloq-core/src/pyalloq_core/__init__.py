@@ -1,7 +1,13 @@
 from .data import MarketData, ScenarioMarketData
 from .discrete import DiscreteAllocationResult, DiscreteShareAllocator
 from .engines import ParallelMonteCarloEngine
-from .enums import ConstraintType, DataFrequency, ObjectiveFunction
+from .enums import (
+    ConstraintType,
+    CovariateKey,
+    CovariateMode,
+    DataFrequency,
+    ObjectiveFunction,
+)
 from .interfaces import (
     BaseAllocator,
     BaseCovarianceEstimator,
@@ -28,6 +34,8 @@ __all__ = [
     "BaseScenarioGenerator",
     "BaseViewGenerator",
     "ConstraintType",
+    "CovariateKey",
+    "CovariateMode",
     "DataFrequency",
     "DiscreteAllocationResult",
     "DiscreteShareAllocator",

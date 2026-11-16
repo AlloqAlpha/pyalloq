@@ -1,3 +1,11 @@
+from pyalloq.dl.estimators.apollopfn import (
+    ApolloPFNPretrainer,
+    ApolloPFNReturnEstimator,
+    ApolloPFNTransformer,
+    ApolloPFNViewGenerator,
+    RiemannBarDistribution,
+    SRNGNPriorGenerator,
+)
 from pyalloq.dl.estimators.black_litterman import (
     TimesFM3MultivariateViewGenerator,
     TimesFM3UnivariateViewGenerator,
@@ -6,6 +14,11 @@ from pyalloq.dl.estimators.black_litterman import (
 )
 from pyalloq.dl.estimators.covariance.deep_cov import DeepCovarianceEstimator
 from pyalloq.dl.estimators.covariance.models.gnn import CRISPSparseSTGAT
+from pyalloq.dl.estimators.ensemble import (
+    EnsembleReturnEstimator,
+    EnsembleViewGenerator,
+    compute_quantile_scrps,
+)
 from pyalloq.dl.estimators.returns import (
     TimesFM3MultivariateReturnEstimator,
     TimesFM3UnivariateReturnEstimator,
@@ -33,6 +46,10 @@ from pyalloq.dl.policy import (
 )
 
 __all__ = [
+    "ApolloPFNPretrainer",
+    "ApolloPFNReturnEstimator",
+    "ApolloPFNTransformer",
+    "ApolloPFNViewGenerator",
     "ArbitrageFreeNeuralSDENet",
     "BasePolicyNetwork",
     "CRISPSparseSTGAT",
@@ -40,11 +57,15 @@ __all__ = [
     "DifferentiableCVaRLayer",
     "DifferentiableKKTAllocatorModule",
     "DifferentiableRiskParityLayer",
+    "EnsembleReturnEstimator",
+    "EnsembleViewGenerator",
     "FragilityShrinkageCholeskyLayer",
     "LogSigSSMBlock",
     "MDFPOptimizationLayer",
     "NeuralJumpRDE",
     "NeuralSDEEstimator",
+    "RiemannBarDistribution",
+    "SRNGNPriorGenerator",
     "TimesFM3MultivariateReturnEstimator",
     "TimesFM3MultivariateViewGenerator",
     "TimesFM3UnivariateReturnEstimator",
@@ -55,5 +76,6 @@ __all__ = [
     "TimestralUnivariateViewGenerator",
     "TorchLogSignatureExtractor",
     "UnifiedE2EPolicyNetwork",
+    "compute_quantile_scrps",
     "compute_von_neumann_entropy",
 ]

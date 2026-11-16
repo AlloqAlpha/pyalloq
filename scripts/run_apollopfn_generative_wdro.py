@@ -1,0 +1,438 @@
+from __future__ import annotations
+
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import numpy as np
+import pandas as pd
+from pyalloq_backtest import (
+    AlmgrenChrissCostModel,
+    BacktestTracker,
+    BenchmarkSuite,
+    RollingWindowSplitter,
+    WalkForwardEngine,
+)
+from pyalloq_core.data import MarketData
+from pyalloq_core.enums import CovariateKey, CovariateMode, ObjectiveFunction
+from pyalloq_core.pipeline import StrategyPipeline
+from pyalloq_simulation import ConditionalDiffusionGenerator, NeuralSDEGenerator
+from pyalloq_viz import ComparisonTearSheet, plot_foundation_posterior_and_attribution
+
+from pyalloq.classical.estimators.covariance import (
+    ImpliedCovarianceEstimator,
+    LedoitWolfShrinkage,
+)
+from pyalloq.classical.estimators.returns.classical.ewma import EWMAReturnEstimator
+from pyalloq.classical.optimizers import (
+    EqualWeightAllocator,
+    MarkowitzAllocator,
+    WassersteinDROAllocator,
+)
+from pyalloq.dl import (
+    ApolloPFNPretrainer,
+    ApolloPFNReturnEstimator,
+    ApolloPFNTransformer,
+    ApolloPFNViewGenerator,
+    EnsembleReturnEstimator,
+    EnsembleViewGenerator,
+    SRNGNPriorGenerator,
+    TimesFM3MultivariateReturnEstimator,
+    TimesFM3MultivariateViewGenerator,
+    TimestralMultivariateReturnEstimator,
+    TimestralMultivariateViewGenerator,
+)
+from pyalloq.rl import ExploratoryRegimeMVAllocator
+
+
+class _OfflineTimesFM3Adapter:
+    """Offline fallback evaluator used when the external `timesfm3` package is not installed."""
+
+    def __init__(self, horizon: int = 15) -> None:
+        self.horizon = horizon
+
+    def predict_batch(
+        self, contexts: list[np.ndarray], **kwargs: object
+    ) -> list[SimpleNamespace]:
+        ctx = contexts[0]
+        n_assets = ctx.shape[0]
+        last_vals = ctx[:, -1]
+        mom = (ctx[:, -1] / np.maximum(ctx[:, -min(20, ctx.shape[1])], 1e-6)) - 1.0
+        forecast = np.zeros((n_assets, self.horizon), dtype=np.float32)
+        for i in range(n_assets):
+            drift = np.clip(0.35 * mom[i], -0.04, 0.06)
+            forecast[i] = np.linspace(
+                last_vals[i] * (1.0 + drift / self.horizon),
+                last_vals[i] * (1.0 + drift),
+                self.horizon,
+            )
+        quantiles = np.zeros((n_assets, self.horizon, 9), dtype=np.float32)
+        for q_idx, q_lvl in enumerate(np.linspace(0.1, 0.9, 9)):
+            quantiles[:, :, q_idx] = forecast * (1.0 + (q_lvl - 0.5) * 0.12)
+        return [SimpleNamespace(forecast=forecast, quantiles=quantiles)]
+
+
+class _OfflineTimestralAdapter:
+    """Offline fallback forecaster used when the external `timestral` package is not installed."""
+
+    def forecast(
+        self, context: np.ndarray, prediction_length: int = 15, **kwargs: object
+    ) -> SimpleNamespace:
+        bsz, n_var, t_len = context.shape
+        last_vals = context[:, :, -1]
+        mom = (last_vals / np.maximum(context[:, :, -min(15, t_len)], 1e-6)) - 1.0
+        med = np.zeros((bsz, n_var, prediction_length), dtype=np.float32)
+        for h in range(prediction_length):
+            frac = float(h + 1) / float(prediction_length)
+            med[:, :, h] = last_vals * (1.0 + np.clip(0.3 * mom, -0.04, 0.06) * frac)
+
+        def _quantile(q: float) -> np.ndarray:
+            return med * (1.0 + (float(q) - 0.5) * 0.14)
+
+        return SimpleNamespace(median=med, quantile=_quantile)
+
+
+def build_synthetic_macro_market_data() -> MarketData:
+    rng = np.random.default_rng(2026)
+    dates = pd.bdate_range("2024-01-02", periods=140)
+    future_dates = pd.bdate_range("2024-01-02", periods=160)
+    assets = ["AAPL", "MSFT", "NVDA", "JPM", "XOM"]
+
+    factor = rng.normal(0.0006, 0.011, size=(140, 1))
+    betas = np.array([[1.15, 1.0, 1.45, 0.85, 0.70]])
+    idio = rng.standard_t(df=5, size=(140, 5)) * 0.006
+
+    cot_spec = np.sin(np.linspace(0.0, 4.0 * np.pi, 140)) + rng.normal(0, 0.2, 140)
+    cot_deal = np.cos(np.linspace(0.0, 4.0 * np.pi, 140)) + rng.normal(0, 0.2, 140)
+    us10y_chg = rng.normal(0.0, 0.02, 140)
+    us10y = 4.10 + np.cumsum(us10y_chg)
+    term_spread = -0.25 + np.linspace(0.0, 0.45, 140)
+    fomc = (np.arange(160) % 21 == 0).astype(float)
+    cpi = (np.arange(160) % 15 == 0).astype(float)
+
+    # Inject structured heterogeneous covariate sensitivities across assets:
+    # - NVDA & AAPL sensitive to FOMC/CPI & US10Y changes
+    # - JPM sensitive to US10Y & Term Spread
+    # - XOM sensitive to COT_Net_Speculative & COT_Dealer_Hedging
+    rets = factor @ betas + idio
+    rets[:, 0] += 0.008 * fomc[:140] - 0.15 * us10y_chg
+    rets[:, 2] += 0.012 * fomc[:140] + 0.009 * cpi[:140] - 0.22 * us10y_chg
+    rets[:, 3] += 0.28 * us10y_chg + 0.015 * term_spread
+    rets[:, 4] += 0.007 * cot_spec - 0.005 * cot_deal
+
+    prices = pd.DataFrame(
+        100.0 * np.cumprod(1.0 + rets, axis=0), index=dates, columns=assets
+    )
+
+    iv_df = pd.DataFrame(
+        0.20 + 0.06 * np.abs(rng.standard_normal(size=(140, 5))),
+        index=dates,
+        columns=assets,
+    )
+    cot_df = pd.DataFrame(
+        {
+            "COT_Net_Speculative": cot_spec,
+            "COT_Dealer_Hedging": cot_deal,
+        },
+        index=dates,
+    )
+    rates_df = pd.DataFrame(
+        {
+            "US10Y_Yield": us10y,
+            "Term_Spread_10Y2Y": term_spread,
+        },
+        index=dates,
+    )
+    calendar_df = pd.DataFrame(
+        {
+            "FOMC_Decision": fomc,
+            "CPI_Print": cpi,
+        },
+        index=future_dates,
+    )
+    volume_df = pd.DataFrame(
+        rng.uniform(30_000_000.0, 95_000_000.0, size=(140, 5)),
+        index=dates,
+        columns=assets,
+    )
+    cross_sectional = pd.DataFrame(
+        {
+            "sector": [
+                "Technology",
+                "Technology",
+                "Semiconductors",
+                "Financials",
+                "Energy",
+            ],
+            "market_cap": [3.1e12, 2.9e12, 2.7e12, 5.8e11, 4.6e11],
+        },
+        index=assets,
+    )
+
+    return MarketData(
+        prices=prices,
+        features={
+            CovariateKey.VOLUME: volume_df,
+            CovariateKey.IMPLIED_VOL: iv_df,
+            CovariateKey.COT_CROWDING: cot_df,
+            CovariateKey.INTEREST_RATES: rates_df,
+        },
+        future_features={
+            CovariateKey.CALENDAR_EVENTS: calendar_df,
+        },
+        cross_sectional=cross_sectional,
+        risk_free_rate=0.04,
+    )
+
+
+def main() -> None:
+    output_dir = Path("visualizations_output/apollopfn_wdro")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print("=== 1. Building MarketData with Strongly-Typed CovariateKey Enums ===")
+    data = build_synthetic_macro_market_data()
+    past_cov, fut_cov, _ch_names = data.extract_covariates(
+        mode=CovariateMode.AUTO, horizon=15, return_channel_names=True
+    )
+    assert past_cov is not None and fut_cov is not None
+    print(
+        f"Assets: {data.assets} | Past Covariate Channels: {past_cov.shape[0]} "
+        f"| Future Covariate Channels: {fut_cov.shape[0]}"
+    )
+
+    print(
+        "\n=== 2. Offline SRNGN Prior Meta-Training & Checkpoint Save (Table 6 SWA) ==="
+    )
+    ckpt_path = output_dir / "apollopfn_financial_prior.pt"
+    prior_gen = SRNGNPriorGenerator(min_nodes=14, max_nodes=28, random_state=2026)
+    net = ApolloPFNTransformer(
+        d_model=64, n_heads=4, n_layers=3, ffn_dim=128, n_bins=96
+    )
+    pretrainer = ApolloPFNPretrainer(
+        model=net,
+        prior_generator=prior_gen,
+        warmup_steps=4,
+        swa_steps=4,
+        random_state=2026,
+    )
+    pretrainer.pretrain_and_save(
+        ckpt_path, n_steps=12, batch_size=4, context_len=40, horizon=15
+    )
+    print(f"Saved pretrained ApolloPFN checkpoint to: {ckpt_path}")
+
+    print(
+        "\n=== 3. Interchangeable ApolloPFN, TimesFM-3 & Timestral + Bayesian Ensemble ==="
+    )
+    horizon = 15
+    shared_kwargs: dict[str, Any] = {
+        "horizon": horizon,
+        "annualize": True,
+        "covariate_mode": CovariateMode.AUTO,
+        "covariate_keys": [
+            CovariateKey.COT_CROWDING,
+            CovariateKey.INTEREST_RATES,
+            CovariateKey.CALENDAR_EVENTS,
+        ],
+    }
+
+    apfn_ret = ApolloPFNReturnEstimator(model=ckpt_path, **shared_kwargs)
+    tfm_ret = TimesFM3MultivariateReturnEstimator(
+        model=_OfflineTimesFM3Adapter(horizon=horizon), **shared_kwargs
+    )
+    tms_ret = TimestralMultivariateReturnEstimator(
+        model=_OfflineTimestralAdapter(), **shared_kwargs
+    )
+
+    ensemble_ret = EnsembleReturnEstimator(
+        estimators=[apfn_ret, tfm_ret, tms_ret],
+        weighting_mode="scrps_adaptive",
+        validation_horizon=10,
+        model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
+    )
+    mu_ens = ensemble_ret.estimate(data)
+    print("Ensemble Expected Annualized Returns:\n", mu_ens.round(4))
+    print(
+        "\nEnsemble Posterior 95% CVaR:\n",
+        ensemble_ret.last_posterior_cvar_.round(4),  # type: ignore[union-attr]
+    )
+    print("\nModel sCRPS Scores:\n", ensemble_ret.last_scrps_scores_.round(4))  # type: ignore[union-attr]
+
+    print(
+        "\n=== 4. Generative-WDRO + Foundation Ensemble View Pooling & Walk-Forward ==="
+    )
+    ensemble_vg = EnsembleViewGenerator(
+        view_generators=[
+            ApolloPFNViewGenerator(
+                model=ckpt_path,
+                horizon=horizon,
+                full_covariance_omega=True,
+                uncertainty_mode="cvar_tail",
+            ),
+            TimesFM3MultivariateViewGenerator(
+                model=_OfflineTimesFM3Adapter(horizon=horizon),
+                horizon=horizon,
+                full_covariance_omega=True,
+                uncertainty_mode="downside_semivariance",
+            ),
+            TimestralMultivariateViewGenerator(
+                model=_OfflineTimestralAdapter(),
+                horizon=horizon,
+                full_covariance_omega=True,
+                uncertainty_mode="cvar_tail",
+            ),
+        ],
+        model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
+    )
+
+    diff_gen = ConditionalDiffusionGenerator(
+        n_factors=3, ddim_steps=12, guidance_scale=1.25, random_state=42
+    )
+    sde_gen = NeuralSDEGenerator(max_market_price_of_risk=1.5, random_state=42)
+    sde_scen = sde_gen.estimate_scenarios(data, n_paths=60, horizon=10)
+    print(
+        f"NeuralSDE Scenarios: {sde_scen.returns.shape} | "
+        f"Calendar Arbitrage Violation: {sde_gen.calendar_arbitrage_violation_:.6f}"
+    )
+
+    wdro_alloc = WassersteinDROAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+        epsilon=0.004,
+        ground_metric="quantile_mahalanobis",
+        tail_skew_penalty=0.5,
+        radius_mode="regime_adaptive",
+        scenario_generator=diff_gen,
+        generator_n_paths=60,
+        generator_horizon=10,
+        view_generator=ensemble_vg,
+    )
+    wdro_single = wdro_alloc.allocate(data)
+    print(
+        "Anisotropic Quantile-Mahalanobis Tail Scaling:",
+        {
+            k: round(float(v), 3)
+            for k, v in wdro_single.metadata["anisotropic_tail_scaling"].items()
+        },
+    )
+    imp_cov = ImpliedCovarianceEstimator(index_implied_vol=0.22)
+    corr_imp = imp_cov.estimate_correlation(data)
+    print(
+        "Buss-Vilkov Implied Correlation Matrix (mean off-diag):",
+        round(float(corr_imp.to_numpy().mean()), 4),
+    )
+
+    pipeline_wdro = StrategyPipeline(
+        allocator=wdro_alloc,
+        returns_estimator=ensemble_ret,
+        cov_estimator=imp_cov,
+    )
+    wf = WalkForwardEngine(
+        pipeline=pipeline_wdro,
+        splitter=RollingWindowSplitter(lookback_window=60),
+        rebalance_freq="ME",
+    )
+    bt_res = wf.run(data)
+    final_eq = float(np.prod(1.0 + bt_res.returns.to_numpy(dtype=np.float64)))
+    print(f"Generative-WDRO Walk-Forward Final Equity: {final_eq:.4f}")
+
+    emv_alloc = ExploratoryRegimeMVAllocator(
+        tickers=data.assets, n_regimes=2, entropy_temperature=0.04
+    )
+    emv_res = emv_alloc.allocate(data)
+    print(
+        f"Exploratory Regime-MV Weights: {emv_res.weights.round(3).to_dict()} "
+        f"| Policy Entropy: {emv_alloc.last_policy_entropy_:.4f}"
+    )
+
+    fig = plot_foundation_posterior_and_attribution(
+        horizon_quantiles=apfn_ret.last_horizon_quantiles_,
+        covariate_importance=apfn_ret.last_covariate_importance_,
+        ensemble_model_weights=ensemble_ret.last_model_weights_,
+        posterior_cvar=ensemble_ret.last_posterior_cvar_,
+        anisotropic_tail_scaling=wdro_single.metadata["anisotropic_tail_scaling"],
+        asset="NVDA",
+    )
+    html_out = output_dir / "foundation_posterior_attribution.html"
+    fig.write_html(str(html_out))
+    print(
+        f"Saved interactive Foundation Posterior & Attribution dashboard to: {html_out}"
+    )
+
+    print(
+        "\n=== 5. Head-to-Head Multi-Strategy Benchmark Suite (DSR & Frictional Drag) ==="
+    )
+    lw_cov = LedoitWolfShrinkage()
+    iso_wdro = WassersteinDROAllocator(
+        tickers=data.assets,
+        objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+        epsilon=0.004,
+        ground_metric="mahalanobis",
+        radius_mode="regime_adaptive",
+    )
+    pipelines = {
+        "EqualWeight": StrategyPipeline(
+            allocator=EqualWeightAllocator(tickers=data.assets),
+        ),
+        "GaussianMarkowitz": StrategyPipeline(
+            allocator=MarkowitzAllocator(
+                tickers=data.assets, objective=ObjectiveFunction.MAX_RETURN
+            ),
+            returns_estimator=EWMAReturnEstimator(span=25),
+            cov_estimator=lw_cov,
+        ),
+        "IsotropicWDRO": StrategyPipeline(
+            allocator=iso_wdro,
+            cov_estimator=lw_cov,
+        ),
+        "ApolloPFN_TailWDRO": pipeline_wdro,
+        "ExploratoryRegimeMV": StrategyPipeline(
+            allocator=emv_alloc,
+            cov_estimator=lw_cov,
+        ),
+    }
+
+    cost_model = AlmgrenChrissCostModel(
+        portfolio_aum=10_000_000.0,
+        spread_bps=4.0,
+        gamma=0.08,
+    )
+    ens_scenarios = ensemble_ret.estimate_scenarios(
+        data, n_paths=50, horizon=20, refit=False
+    )
+
+    with BacktestTracker.session(reset=True) as tracker:
+        suite = BenchmarkSuite(
+            pipelines=pipelines,
+            splitter=RollingWindowSplitter(lookback_window=50),
+            cost_model=cost_model,
+            rebalance_freq="2W-FRI",
+            benchmark="EqualWeight",
+        )
+        comp_res = suite.run(data, scenario_data=ens_scenarios)
+        cols = [
+            "annualized_return",
+            "annualized_volatility",
+            "sharpe_ratio",
+            "deflated_sharpe_ratio",
+            "maximum_drawdown",
+            "annualized_turnover",
+            "total_cost_drag",
+        ]
+        print(
+            f"Executed {tracker.n_trials} Strategy Trials | "
+            f"Expected Max Sharpe Hurdle (SR_0): {comp_res.expected_max_sharpe:.3f}"
+        )
+        print(comp_res.summary_table[cols].round(4).to_string())
+
+        ts_out = output_dir / "apollopfn_wdro_comparison_tearsheet.html"
+        ComparisonTearSheet(
+            comp_res,
+            market_data=data,
+            scenario_data=ens_scenarios,
+            benchmark=comp_res.results["EqualWeight"],
+        ).to_html(path=ts_out)
+        print(f"Saved multi-strategy ComparisonTearSheet to: {ts_out}")
+
+
+if __name__ == "__main__":
+    main()

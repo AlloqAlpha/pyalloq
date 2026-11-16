@@ -100,6 +100,42 @@
 
 ---
 
+### ApolloPFNReturnEstimator
+
+::: pyalloq.dl.estimators.apollopfn.ApolloPFNReturnEstimator
+
+---
+
+### ApolloPFNTransformer
+
+::: pyalloq.dl.estimators.apollopfn.ApolloPFNTransformer
+
+---
+
+### ApolloPFNPretrainer
+
+::: pyalloq.dl.estimators.apollopfn.ApolloPFNPretrainer
+
+---
+
+### SRNGNPriorGenerator
+
+::: pyalloq.dl.estimators.apollopfn.SRNGNPriorGenerator
+
+---
+
+### RiemannBarDistribution
+
+::: pyalloq.dl.estimators.apollopfn.RiemannBarDistribution
+
+---
+
+### EnsembleReturnEstimator
+
+::: pyalloq.dl.estimators.ensemble.EnsembleReturnEstimator
+
+---
+
 ## Covariance Estimators
 
 ### EmpiricalCovariance
@@ -227,3 +263,15 @@
 ### TimestralMultivariateViewGenerator
 
 ::: pyalloq.dl.estimators.black_litterman.timestral.TimestralMultivariateViewGenerator
+
+---
+
+### ApolloPFNViewGenerator
+
+::: pyalloq.dl.estimators.apollopfn.ApolloPFNViewGenerator
+
+---
+
+### EnsembleViewGenerator
+
+::: pyalloq.dl.estimators.ensemble.EnsembleViewGenerator
