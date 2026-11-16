@@ -163,6 +163,46 @@ cdar_allocator = CDaRAllocator(
 
 ---
 
+### Wasserstein Distributionally Robust Optimization (`WassersteinDROAllocator`)
+
+Optimizes portfolio weights against the **worst-case return distribution** \(\mathbb{Q}\) inside a Wasserstein ambiguity ball \(\mathcal{B}_{\varepsilon_t}(\hat{\mathbb{P}})\) centered at either historical returns (`MarketData`) or synthetic 3D trajectory tensors (`ScenarioMarketData`), optionally intersected with **Fonseca & Junca (2021) linear expected-value constraints** \(\mathbb{E}_{\mathbb{Q}}[G r] = q\):
+
+- **`ObjectiveFunction.WASSERSTEIN_KELLY` (Li, 2023)**: Maximizes worst-case expected geometric log-growth \(\inf_{\mathbb{Q}} \mathbb{E}_{\mathbb{Q}}[\ln(1 + \eta r^\top w)]\) with optional fractional Kelly scaling `kelly_fraction`.
+- **`ObjectiveFunction.WASSERSTEIN_CVAR` (Esfahani & Kuhn, 2018)**: Minimizes worst-case Conditional Value-at-Risk (\(\text{CVaR}_\beta\)) over the Wasserstein ball.
+- **`ObjectiveFunction.WASSERSTEIN_MEAN_RISK`**: Maximizes worst-case expected return minus worst-case CVaR.
+- **Geometry-Aware Ground Metrics (`ground_metric`)**: Supports `"mahalanobis"` (dual norm \(\|\Sigma^{1/2}(w - G^\top \lambda)\|_2\)), `"l2"`, and `"l1"`.
+- **Dynamic Optimal-Transport Radius (`radius_mode="regime_adaptive"`)**: Automatically scales \(\varepsilon_t = \varepsilon + \kappa \cdot W_2(\mathcal{N}_{\text{fast}}, \mathcal{N}_{\text{slow}})\) using `WassersteinRegimeGate`.
+
+```python
+import numpy as np
+from pyalloq import ObjectiveFunction, WassersteinDROAllocator
+
+# 1. Wasserstein-Kelly Portfolio with adaptive regime-shift radius
+kelly_dro = WassersteinDROAllocator(
+    tickers=data.assets,
+    objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+    epsilon=0.005,
+    ground_metric="mahalanobis",
+    radius_mode="regime_adaptive",
+    kelly_fraction=0.5,
+)
+res_kelly = kelly_dro.allocate(data)
+
+# 2. Worst-Case Mean-CVaR with Fonseca & Junca (2021) expected-value view constraints
+view_G = np.array([[1.0, -1.0, 0.0, 0.0]])  # Asset 0 outperforms Asset 1
+view_q = np.array([0.0008])                 # by +8 bps/day in expectation
+view_dro = WassersteinDROAllocator(
+    tickers=data.assets,
+    objective=ObjectiveFunction.WASSERSTEIN_MEAN_RISK,
+    epsilon=0.005,
+    view_matrix=view_G,
+    view_targets=view_q,
+)
+res_view = view_dro.allocate(data)
+```
+
+---
+
 ### Risk Parity (`RiskParityAllocator`)
 
 Equal Risk Contribution (ERC). Every asset contributes the same amount of marginal risk to the portfolio. No expected return input needed — purely covariance-driven.
@@ -310,6 +350,7 @@ pipeline = StrategyPipeline(
 | Maximize Sharpe with box/sector/turnover constraints | `MarkowitzAllocator(MAX_SHARPE, weight_bounds=..., sector_upper=...)` |
 | Target return or target volatility / Efficient Frontier | `MarkowitzAllocator(EFFICIENT_RETURN)` / `MarkowitzAllocator(EFFICIENT_RISK)` |
 | Heavy-tailed downside or drawdown control | `MeanCVaRAllocator` or `CDaRAllocator` |
+| Structural breaks, regime shifts, or worst-case log-growth (Kelly) | `WassersteinDROAllocator` (`WASSERSTEIN_KELLY` / `WASSERSTEIN_CVAR`) |
 | Large universe (50+ assets), covariance unstable | `HRPAllocator`, `NCOAllocator`, or `BayesianHRPAllocator` |
 | Maximize portfolio diversification | `MaxDiversificationAllocator` |
 | Assign specific risk budgets per asset | `RiskBudgetingAllocator` |

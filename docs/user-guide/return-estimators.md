@@ -416,6 +416,33 @@ mu_bl, cov_bl = bl.estimate(
 
 ---
 
+## Arbitrage-Free Neural SDE (`NeuralSDEEstimator`)
+
+`NeuralSDEEstimator` is a dual-role continuous-time generative estimator that calibrates a coupled price-volatility jump-diffusion Neural SDE (`ArbitrageFreeNeuralSDENet`) using Cholesky transition likelihood, a **Hansen-Jagannathan market-price-of-risk bound** (\(\|\theta_t\|_2 \le \theta_{\max}\)), and differentiable **Depth-2 Rough Log-Signature MMD**.
+
+It supports:
+
+1. **Forward Return Estimation (`BaseReturnEstimator`)**: `.estimate(data)` returns annualized expected returns integrated over `horizon`.
+2. **3D Trajectory Synthesis (`BaseScenarioEstimator`)**: `.estimate_scenarios(data, n_paths, horizon)` returns a 3D `ScenarioMarketData` tensor.
+3. **Instantaneous & Horizon Covariance Surfaces**: `.estimate_covariance(data)` and `.estimate_instantaneous_covariance(data)` return strictly PSD \(N \times N\) covariance DataFrames.
+
+```python
+from pyalloq.dl import NeuralSDEEstimator
+
+sde_estimator = NeuralSDEEstimator(
+    horizon=20,
+    n_paths=250,
+    max_market_price_of_risk=1.75,
+    signature_mmd_weight=0.5,
+)
+
+expected_returns = sde_estimator.estimate(market_data)
+cov_surface = sde_estimator.estimate_covariance(market_data, refit=False)
+scenarios_3d = sde_estimator.estimate_scenarios(market_data, refit=False)
+```
+
+---
+
 ## Implementing a Custom Return Estimator
 
 ```python

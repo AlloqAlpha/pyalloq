@@ -259,6 +259,44 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 
 ---
 
+## Generative Diffusion, Neural SDEs & Wasserstein Distributionally Robust Optimization
+
+### Li (2023) — Wasserstein-Kelly Portfolios {#li-2023}
+
+> Li, J. Y.-M. (2023). Wasserstein-Kelly Portfolios: A Robust Data-Driven Solution to Optimize Portfolio Growth. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2302.13979](https://doi.org/10.48550/arxiv.2302.13979)
+
+**Contribution:** Formulated Distributionally Robust Kelly (log-optimal growth) portfolio optimization over a Wasserstein ball around the empirical distribution, proving tractable convex dual reformulations that prevent the extreme leverage and parameter sensitivity of classical Kelly portfolios.
+
+**Implemented in:** `WassersteinDROAllocator` (`ObjectiveFunction.WASSERSTEIN_KELLY`)
+
+---
+
+### Fonseca & Junca (2021) & Esfahani & Kuhn (2018) — Wasserstein DRO with Expected Value Constraints {#fonseca-junca-2021}
+
+> Fonseca, D., & Junca, M. (2021). Wasserstein Distributionally Robust Optimization with Expected Value Constraints. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2111.04663](https://doi.org/10.48550/arxiv.2111.04663)
+>
+> Mohajerin Esfahani, P., & Kuhn, D. (2018). Data-driven distributionally robust optimization using the Wasserstein metric: Performance guarantees and tractable reformulations. *Mathematical Programming*, 171(1–2), 115–166.
+
+**Contribution:** Derived strong duality and finite convex program reformulations for worst-case expectation and CVaR minimization over Wasserstein balls intersected with linear expected-value constraints \(\mathbb{E}_{\mathbb{Q}}[G r] = q\), preserving all empirical data atoms while anchoring first-moment views.
+
+**Implemented in:** `WassersteinDROAllocator` (`ObjectiveFunction.WASSERSTEIN_CVAR`, `ObjectiveFunction.WASSERSTEIN_MEAN_RISK`, `view_matrix`, `view_targets`)
+
+---
+
+### Kidger, Foster, Li & Lyons (2021) & Nichol & Dhariwal (2021) — Neural SDEs & Conditional Diffusion {#kidger-2021}
+
+> Kidger, P., Foster, J., Li, X., & Lyons, T. J. (2021). Neural SDEs as Infinite-Dimensional GANs. *International Conference on Machine Learning (ICML)*.
+>
+> Nichol, A. Q., & Dhariwal, P. (2021). Improved Denoising Diffusion Probabilistic Models. *International Conference on Machine Learning (ICML)*.
+
+**Contribution:** Established continuous-time Neural Stochastic Differential Equations calibrated via pathwise rough-path signature discriminators and cosine-scheduled denoising diffusion models with accelerated DDIM trajectory sampling.
+
+**Implemented in:** `ConditionalDiffusionGenerator`, `NeuralSDEGenerator`, `NeuralSDEEstimator`, `ArbitrageFreeNeuralSDENet`
+
+---
+
 ## Multi-Strategy Evaluation, Deflated Sharpe Ratio & Performance Attribution
 
 ### Bailey & López de Prado (2014) — The Deflated Sharpe Ratio {#dsr-2014}

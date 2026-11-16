@@ -46,6 +46,12 @@
 
 ---
 
+### WassersteinDROAllocator
+
+::: pyalloq.classical.optimizers.wasserstein_dro.WassersteinDROAllocator
+
+---
+
 ### RiskParityAllocator
 
 ::: pyalloq.classical.optimizers.risk_parity.RiskParityAllocator

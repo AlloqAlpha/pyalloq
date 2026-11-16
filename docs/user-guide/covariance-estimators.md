@@ -139,7 +139,7 @@ Combines forward-looking **Point-in-Time (PIT) Option-Implied Volatilities** (fr
 \Gamma_t^{\text{imp}} = (1 - \gamma_t) \Gamma_t^{\text{hist}} + \gamma_t \mathbf{1}\mathbf{1}^\top, \qquad \hat{\Sigma}_t^{\text{imp}} = D_{\text{IV}, t} \, \Gamma_t^{\text{imp}} \, D_{\text{IV}, t}
 \]
 
-When an index implied volatility `index_implied_vol` is supplied, \(\gamma_t\) is solved in closed form so the implied market portfolio variance matches \(\sigma_{M,\text{IV}}^2\). Enabling `use_cornish_fisher_tail=True` applies a **Cornish-Fisher four-moment tail expansion** using Bakshi-Kapadia-Madan option-implied skewness (`"implied_skew"`) and excess kurtosis (`"implied_kurtosis"`) to inflate standalone implied volatilities for negatively skewed or fat-tailed assets.
+When an index implied volatility `index_implied_vol` is supplied, \(\gamma_t\) is solved in closed form so the implied market portfolio variance matches \(\sigma_{M,\text{IV}}^2\). Enabling `use_cornish_fisher_tail=True` applies a **Cornish-Fisher four-moment tail expansion** using Bakshi-Kapadia-Madan option-implied skewness (`"implied_skew"`) and excess kurtosis (`"implied_kurtosis"`) to inflate standalone implied volatilities for negatively skewed or fat-tailed assets. You can also directly extract the \(N \times N\) implied correlation matrix \(\Gamma_t^{\text{imp}}\) via `.estimate_correlation(data)` or `estimator.last_implied_correlation_`.
 
 ```python
 from pyalloq_features.transformers import PITOptionsMFIVTransformer
@@ -147,14 +147,17 @@ from pyalloq.classical.estimators.covariance import ImpliedCovarianceEstimator
 
 data = PITOptionsMFIVTransformer(option_chain_df=chains_df).transform(data)
 
+imp_cov = ImpliedCovarianceEstimator(
+    index_implied_vol=0.22,
+    correlation_window=60,
+    use_cornish_fisher_tail=True,
+    tail_confidence=0.95,
+)
+corr_imp_df = imp_cov.estimate_correlation(data)  # Direct N x N implied correlation matrix
+
 pipeline = StrategyPipeline(
     allocator=allocator,
-    cov_estimator=ImpliedCovarianceEstimator(
-        index_implied_vol=0.22,
-        correlation_window=60,
-        use_cornish_fisher_tail=True,
-        tail_confidence=0.95,
-    ),
+    cov_estimator=imp_cov,
 )
 ```
 
