@@ -124,6 +124,7 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         self.is_fitted: bool = False
         self.assets: list[str] = []
         self._last_data: MarketData | None = None
+        self._last_mu_ens: pd.Series | None = None
         self.last_model_weights_: pd.DataFrame | None = None
         self.last_epistemic_std_: pd.Series | None = None
         self.last_posterior_std_: pd.Series | None = None
@@ -380,8 +381,8 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         self.last_scrps_scores_ = pd.Series(
             scrps_vec, index=self.model_names, name="sCRPS"
         )
-
-        return pd.Series(mu_ens, index=assets, name="expected_returns")
+        self._last_mu_ens = pd.Series(mu_ens, index=assets, name="expected_returns")
+        return self._last_mu_ens.copy()
 
     def fit(self, data: MarketData) -> None:
         self.estimate(data)
@@ -405,6 +406,14 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         n_assets = len(assets)
         rng = np.random.default_rng(self.random_state)
 
+        if self._last_mu_ens is None:
+            self.estimate(data)
+        assert (
+            self._last_mu_ens is not None
+            and self.last_epistemic_std_ is not None
+            and self.last_posterior_skewness_ is not None
+        )
+
         # If any constituent is a BaseScenarioEstimator (e.g. ApolloPFNReturnEstimator),
         # blend its copula-coupled Riemann Bar scenarios with the ensemble's posterior moments & skewness
         scen_children = [
@@ -412,30 +421,40 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         ]
         if len(scen_children) > 0:
             child = scen_children[0]
-            child.fit(data)
+            if not getattr(child, "is_fitted", False):
+                child.fit(data)
             base_scen = child.generate(n_paths=n_paths, horizon=horizon)
             R_base = np.asarray(base_scen.returns, dtype=np.float64)
         else:
             R_base = None
 
-        returns_df = data.prices.pct_change().dropna(how="all").fillna(0.0)
-        emp_corr = np.corrcoef(returns_df.to_numpy(dtype=np.float64).T)
-        emp_corr = np.nan_to_num(emp_corr, nan=0.0)
-        emp_corr = 0.5 * (emp_corr + emp_corr.T)
-        np.fill_diagonal(emp_corr, 1.0)
-        eigvals, eigvecs = np.linalg.eigh(emp_corr)
-        corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+        returns_df = (
+            data.prices.pct_change()
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna(how="all")
+            .fillna(0.0)
+        )
+        ret_mat = np.nan_to_num(
+            returns_df.to_numpy(dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0
+        )
+        if n_assets > 1 and len(ret_mat) >= 2:
+            r_cent = ret_mat - np.mean(ret_mat, axis=0, keepdims=True)
+            r_norm = np.linalg.norm(r_cent, axis=0, keepdims=True)
+            r_unit = np.where(r_norm > 1e-8, r_cent / np.maximum(r_norm, 1e-8), 0.0)
+            emp_corr = r_unit.T @ r_unit
+            emp_corr = 0.5 * (emp_corr + emp_corr.T)
+            np.fill_diagonal(emp_corr, 1.0)
+            eigvals, eigvecs = np.linalg.eigh(emp_corr)
+            corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+        else:
+            corr_psd = np.eye(n_assets, dtype=np.float64)
         chol = np.linalg.cholesky(corr_psd + 1e-6 * np.eye(n_assets))
 
-        assert (
-            self.last_epistemic_std_ is not None
-            and self.last_posterior_skewness_ is not None
-        )
+        mu_ens_vec = self._last_mu_ens.reindex(assets).to_numpy(dtype=np.float64)
         mu_daily = (
-            self.estimate(data).reindex(assets).to_numpy(dtype=np.float64) / 252.0
+            mu_ens_vec / 252.0
             if getattr(self.estimators[0], "annualize", True)
-            else self.estimate(data).reindex(assets).to_numpy(dtype=np.float64)
-            / max(1, horizon)
+            else mu_ens_vec / max(1, horizon)
         )
         std_daily = self.last_epistemic_std_.reindex(assets).to_numpy(
             dtype=np.float64

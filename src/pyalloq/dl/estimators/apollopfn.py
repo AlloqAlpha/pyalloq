@@ -1003,6 +1003,7 @@ class ApolloPFNPretrainer:
                     dtype=swa_snapshots[0][key].dtype, device=self.device
                 )
             self.model.load_state_dict(avg_state)
+        swa_snapshots.clear()
 
         self.model.eval()
         return self.model
@@ -1137,8 +1138,15 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         n_assets = len(assets)
         self._record_index_metadata(data.prices.index)
 
-        returns_df = data.prices.pct_change().dropna(how="all").fillna(0.0)
-        ret_np = returns_df.to_numpy(dtype=np.float64)
+        returns_df = (
+            data.prices.pct_change()
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna(how="all")
+            .fillna(0.0)
+        )
+        ret_np = np.nan_to_num(
+            returns_df.to_numpy(dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0
+        )
         t_obs = len(ret_np)
         if t_obs < 3:
             raise ValueError(
@@ -1146,7 +1154,8 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             )
 
         ret_mean = np.mean(ret_np, axis=0)
-        ret_std = np.maximum(np.std(ret_np, axis=0, ddof=1), 1e-5)
+        raw_std = np.std(ret_np, axis=0, ddof=1)
+        ret_std = np.where(raw_std > 1e-6, raw_std, 1e-4)
         y_hist_z = (ret_np - ret_mean[None, :]) / ret_std[None, :]
 
         past_cov, future_cov, ch_names = data.extract_covariates(
@@ -1211,8 +1220,11 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             asset_attn = attn_mat[:n_assets, :n_assets]
             asset_corr = 0.5 * (asset_attn + asset_attn.T)
             if n_assets > 1:
-                emp_corr = np.corrcoef(y_hist_z.T)
-                emp_corr = np.nan_to_num(emp_corr, nan=0.0)
+                y_cent = y_hist_z - np.mean(y_hist_z, axis=0, keepdims=True)
+                y_norm = np.linalg.norm(y_cent, axis=0, keepdims=True)
+                y_unit = np.where(y_norm > 1e-8, y_cent / np.maximum(y_norm, 1e-8), 0.0)
+                emp_corr = y_unit.T @ y_unit
+                np.fill_diagonal(emp_corr, 1.0)
                 if (
                     self.use_implied_correlation
                     and data.features

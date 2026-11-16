@@ -456,3 +456,71 @@ def test_riemann_bar_tail_wdro_and_copula_scenarios(
     assert res_tail.metadata["ground_metric"] == "quantile_mahalanobis"
     assert "anisotropic_tail_scaling" in res_tail.metadata
     assert len(res_tail.metadata["anisotropic_tail_scaling"]) == 4
+
+
+def test_causal_no_lookahead_and_edge_cases(macro_market_data: MarketData) -> None:
+    # 1. Verify no backward-fill (.bfill) look-ahead leakage on leading NaNs in features
+    dates = macro_market_data.prices.index
+    feat_a = pd.DataFrame({"Macro_Shock": np.nan}, index=dates)
+    feat_a.iloc[20:, 0] = 1.0
+    feat_b = pd.DataFrame({"Macro_Shock": np.nan}, index=dates)
+    feat_b.iloc[20:, 0] = 9999.0  # Massive future shock at t=20
+
+    md_a = MarketData(
+        prices=macro_market_data.prices.iloc[:15],
+        features={CovariateKey.MACRO_INDICATORS: feat_a.iloc[:15]},
+    )
+    md_b = MarketData(
+        prices=macro_market_data.prices.iloc[:15],
+        features={CovariateKey.MACRO_INDICATORS: feat_b.reindex(dates).iloc[:15]},
+    )
+    past_a, _ = md_a.extract_covariates(mode=CovariateMode.AUTO)
+    past_b, _ = md_b.extract_covariates(mode=CovariateMode.AUTO)
+    assert past_a is not None and past_b is not None
+    assert np.allclose(past_a, 0.0)
+    assert np.allclose(past_a, past_b)
+
+    # 2. Verify future_features starting earlier than prices.index[0] aligns to prices.index[0]
+    sliced_prices = macro_market_data.prices.iloc[10:40]
+    full_cal = macro_market_data.future_features[CovariateKey.CALENDAR_EVENTS]
+    md_misaligned = MarketData(
+        prices=sliced_prices,
+        future_features={CovariateKey.CALENDAR_EVENTS: full_cal},
+    )
+    _, fut_cov = md_misaligned.extract_covariates(mode=CovariateMode.AUTO, horizon=5)
+    assert fut_cov is not None and fut_cov.shape == (2, 35)
+    expected_cal = full_cal.loc[sliced_prices.index[0] :].iloc[:35].to_numpy().T
+    assert np.allclose(fut_cov, expected_cal)
+
+    # Verify slice_time on a non-trading weekend date with lookback preserves future_features
+    weekend_date = pd.Timestamp("2024-02-25")  # Sunday
+    md_weekend = macro_market_data.slice_time(
+        end_date=weekend_date, lookback=20, horizon_steps=5
+    )
+    assert len(md_weekend.prices) == 20
+    assert len(md_weekend.future_features[CovariateKey.CALENDAR_EVENTS]) == 25
+
+    # 3. Edge cases: zero-variance (constant cash) asset, NaN/Inf covariates, and 1-asset universe
+    edge_prices = macro_market_data.prices.iloc[:25].copy()
+    edge_prices["AAPL"] = 100.0  # Constant zero-variance asset
+    noisy_cov = pd.DataFrame(
+        {"Bad_Cov": np.linspace(0.0, 1.0, 25)}, index=edge_prices.index
+    )
+    noisy_cov.iloc[3, 0] = np.nan
+    noisy_cov.iloc[7, 0] = np.inf
+    md_edge = MarketData(
+        prices=edge_prices,
+        features={CovariateKey.MACRO_INDICATORS: noisy_cov},
+    )
+    est = ApolloPFNReturnEstimator(horizon=5)
+    mu_edge = est.estimate(md_edge)
+    assert np.all(np.isfinite(mu_edge.to_numpy(dtype=np.float64)))
+    scen_edge = est.generate(n_paths=10, horizon=5)
+    assert np.all(np.isfinite(scen_edge.returns))
+
+    # Single-asset (N=1) portfolio
+    md_single = MarketData(prices=macro_market_data.prices[["NVDA"]].iloc[:25])
+    mu_single = est.estimate(md_single)
+    assert len(mu_single) == 1 and np.isfinite(float(mu_single.iloc[0]))
+    scen_single = est.generate(n_paths=8, horizon=5)
+    assert scen_single.returns.shape == (8, 5, 1)

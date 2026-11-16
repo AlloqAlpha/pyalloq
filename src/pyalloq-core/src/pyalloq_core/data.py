@@ -43,8 +43,16 @@ class MarketData:
                     f"Data misalignment: Feature: {feat_name} index does not perfectly match 'prices' index."
                 )
 
-        for feat_name, df_feat in self.future_features.items():
+        for feat_name, df_feat in list(self.future_features.items()):
             t_len = len(self.prices.index)
+            if (
+                t_len > 0
+                and len(df_feat.index) > t_len
+                and df_feat.index[0] < self.prices.index[0]
+                and self.prices.index[0] in df_feat.index
+            ):
+                df_feat = df_feat.loc[self.prices.index[0] :]
+                self.future_features[feat_name] = df_feat
             if len(df_feat.index) < t_len or not df_feat.index[:t_len].equals(
                 self.prices.index
             ):
@@ -88,13 +96,23 @@ class MarketData:
 
         sliced_futures: dict[str, pd.DataFrame] = {}
         for name, feat in self.future_features.items():
-            if end_date in feat.index:
+            if feat.index.has_duplicates:
+                raise ValueError(
+                    f"Duplicate timestamps found in future_features['{name}']"
+                    "Time series indices must be strictly unique."
+                )
+            if len(sliced_prices.index) > 0 and sliced_prices.index[0] in feat.index:
+                start_ts = sliced_prices.index[0]
+                feat_from_start = feat.loc[start_ts:]
+                if horizon_steps > 0:
+                    sliced_futures[name] = feat_from_start.iloc[
+                        : len(sliced_prices) + horizon_steps
+                    ]
+                else:
+                    sliced_futures[name] = feat_from_start
+            elif end_date in feat.index:
                 loc = feat.index.get_loc(end_date)
-                if not isinstance(loc, int):
-                    raise ValueError(
-                        f"Duplicate timestamps found in future_features['{name}']"
-                        "Time series indices must be strictly unique."
-                    )
+                assert isinstance(loc, int)
                 start_loc = max(0, (loc - lookback + 1)) if lookback else 0
                 end_loc = loc + 1 + horizon_steps
                 sliced_futures[name] = feat.iloc[start_loc:end_loc]
@@ -189,21 +207,21 @@ class MarketData:
                     aligned = (
                         df_feat.reindex(index=self.prices.index, columns=self.assets)
                         .ffill()
-                        .bfill()
                         .fillna(0.0)
                     )
                     for col in self.assets:
                         channel_names.append(f"{k_label}:{col}")
                 else:
                     aligned = (
-                        df_feat.reindex(index=self.prices.index)
-                        .ffill()
-                        .bfill()
-                        .fillna(0.0)
+                        df_feat.reindex(index=self.prices.index).ffill().fillna(0.0)
                     )
                     for col in aligned.columns:
                         channel_names.append(f"{k_label}:{col}")
-                past_list.append(aligned.to_numpy(dtype=dtype).T)
+                past_list.append(
+                    np.nan_to_num(
+                        aligned.to_numpy(dtype=dtype).T, nan=0.0, posinf=0.0, neginf=0.0
+                    )
+                )
 
         past_cov = np.concatenate(past_list, axis=0) if past_list else None
 
@@ -216,17 +234,27 @@ class MarketData:
                 k_label = str(
                     feat_key.value if isinstance(feat_key, CovariateKey) else feat_key
                 )
+                df_fut_sliced = df_fut
+                if (
+                    len(self.prices.index) > 0
+                    and len(df_fut.index) > 0
+                    and df_fut.index[0] < self.prices.index[0]
+                ):
+                    df_fut_sliced = df_fut.loc[self.prices.index[0] :]
+
                 if is_asset:
                     aligned_f = (
-                        df_fut.reindex(columns=self.assets).ffill().bfill().fillna(0.0)
+                        df_fut_sliced.reindex(columns=self.assets).ffill().fillna(0.0)
                     )
                     for col in self.assets:
                         channel_names.append(f"future_{k_label}:{col}")
                 else:
-                    aligned_f = df_fut.ffill().bfill().fillna(0.0)
+                    aligned_f = df_fut_sliced.ffill().fillna(0.0)
                     for col in aligned_f.columns:
                         channel_names.append(f"future_{k_label}:{col}")
-                arr = aligned_f.to_numpy(dtype=dtype).T
+                arr = np.nan_to_num(
+                    aligned_f.to_numpy(dtype=dtype).T, nan=0.0, posinf=0.0, neginf=0.0
+                )
                 if horizon is not None:
                     expected_len = t_steps + int(horizon)
                     if arr.shape[1] < expected_len:
