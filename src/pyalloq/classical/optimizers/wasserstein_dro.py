@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from pyalloq_core.data import MarketData, ScenarioMarketData
 from pyalloq_core.enums import ObjectiveFunction
-from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.interfaces import BaseAllocator, BaseScenarioGenerator
 from pyalloq_core.results import OptimizationResult
 
 from pyalloq.rl.thermodynamics import WassersteinRegimeGate
@@ -65,6 +65,10 @@ class WassersteinDROAllocator(BaseAllocator):
         ] = "regime_adaptive",
         regime_sensitivity: float = 0.25,
         regime_gate: WassersteinRegimeGate | None = None,
+        scenario_generator: BaseScenarioGenerator | None = None,
+        generator_n_paths: int = 150,
+        generator_horizon: int = 10,
+        generator_mmd_sensitivity: float = 0.15,
         kelly_fraction: float = 1.0,
         beta: float = 0.95,
         risk_aversion: float = 1.0,
@@ -102,6 +106,10 @@ class WassersteinDROAllocator(BaseAllocator):
         self.radius_mode = radius_mode
         self.regime_sensitivity = float(max(0.0, regime_sensitivity))
         self.regime_gate = regime_gate or WassersteinRegimeGate()
+        self.scenario_generator = scenario_generator
+        self.generator_n_paths = max(10, int(generator_n_paths))
+        self.generator_horizon = max(1, int(generator_horizon))
+        self.generator_mmd_sensitivity = float(max(0.0, generator_mmd_sensitivity))
         self.kelly_fraction = float(np.clip(kelly_fraction, 0.05, 2.0))
         self.beta = float(beta)
         self.risk_aversion = float(max(0.0, risk_aversion))
@@ -269,6 +277,29 @@ class WassersteinDROAllocator(BaseAllocator):
             assets = list(data.prices.columns)
         n_assets = len(assets)
 
+        # Generative-WDRO (arXiv:2604.04342): synthesize conditional scenarios on-the-fly when configured
+        gen_mmd = 0.0
+        used_generative_wdro = False
+        if (
+            scenarios is None
+            and self.scenario_generator is not None
+            and isinstance(data, MarketData)
+        ):
+            self.scenario_generator.fit(data)
+            scenarios = self.scenario_generator.generate(
+                n_paths=self.generator_n_paths,
+                horizon=self.generator_horizon,
+            )
+            gen_mmd = float(
+                getattr(self.scenario_generator, "signature_mmd_loss_", 0.0)
+            )
+            used_generative_wdro = True
+        elif scenarios is not None and self.scenario_generator is not None:
+            gen_mmd = float(
+                getattr(self.scenario_generator, "signature_mmd_loss_", 0.0)
+            )
+            used_generative_wdro = True
+
         R, probs, hist_df, scale_factor = self._extract_atoms_and_probabilities(
             data=data,
             assets=assets,
@@ -340,6 +371,8 @@ class WassersteinDROAllocator(BaseAllocator):
             assets=assets,
             override_eps=kwargs.get("epsilon"),
         )
+        if used_generative_wdro and gen_mmd > 0.0:
+            eff_eps = eff_eps + self.generator_mmd_sensitivity * gen_mmd
 
         lb, ub = self._resolve_bounds(assets)
         w = cp.Variable(n_assets)
@@ -479,6 +512,8 @@ class WassersteinDROAllocator(BaseAllocator):
                 "radius_mode": self.radius_mode,
                 "effective_epsilon": eff_eps,
                 "wasserstein_regime_distance": w2_regime,
+                "generative_wdro": used_generative_wdro,
+                "generator_signature_mmd": gen_mmd,
                 "dual_norm_penalty": dual_pen_val,
                 "worst_case_objective": wc_obj_val,
                 "active_view_multipliers": lam_val,

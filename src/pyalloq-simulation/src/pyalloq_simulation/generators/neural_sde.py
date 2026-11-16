@@ -90,6 +90,44 @@ class NeuralSDEGenerator(BaseScenarioEstimator):
         self._w_vol: np.ndarray | None = None
         self.signature_mmd_loss_: float = 0.0
         self.last_market_price_of_risk_norm_: float = 0.0
+        self.calendar_arbitrage_violation_: float = 0.0
+
+    def compute_arbitrage_free_forward_iv(
+        self,
+        v_state: np.ndarray,
+        maturity_days: float = 30.0,
+    ) -> np.ndarray:
+        """
+        Computes the Cohen, Reisinger & Wang (2021, arXiv:2105.11053) arbitrage-free
+        forward implied volatility surface `sigma_IV(t, tau)` over `maturity_days`.
+
+        Enforces the martingale forward-variance drift restriction so total implied variance
+        `W(t, tau) = tau * sigma_IV^2(t, tau)` satisfies `dW/dtau > 0` for all `tau > 0`
+        (strictly free of calendar-spread arbitrage):
+            sigma_IV^2(t, tau) = w(tau) * sigma_t^2 + (1 - w(tau)) * sigma_Q_bar^2
+        where `w(tau) = (1 - exp(-kappa * tau)) / (kappa * tau)`.
+        """
+        if self.sigma_base_ is None:
+            raise ValueError("NeuralSDEGenerator must be fitted first.")
+        tau_steps = max(1e-3, float(maturity_days))
+        kappa = self.mean_reversion
+        weight_spot = float((1.0 - np.exp(-kappa * tau_steps)) / (kappa * tau_steps))
+
+        spot_var_ann = (
+            (self.sigma_base_[None, :] ** 2)
+            * np.exp(np.clip(v_state, -2.5, 2.5))
+            * self.annualization_factor
+        )
+        # Risk-neutral long-run variance with vol-of-vol convexity + Poisson jump variance
+        jump_var_daily = self.jump_intensity * (self.jump_mean**2 + self.jump_std**2)
+        long_run_var_ann = (
+            (self.sigma_base_[None, :] ** 2)
+            * np.exp((self.vol_of_vol**2) / (4.0 * max(kappa, 1e-4)))
+            + jump_var_daily
+        ) * self.annualization_factor
+
+        fwd_var = weight_spot * spot_var_ann + (1.0 - weight_spot) * long_run_var_ann
+        return np.sqrt(np.maximum(fwd_var, 1e-8))
 
     @staticmethod
     def compute_depth2_log_signatures(paths: np.ndarray, window: int = 6) -> np.ndarray:
@@ -365,10 +403,18 @@ class NeuralSDEGenerator(BaseScenarioEstimator):
                 v_curr = np.clip(v_curr + dv, -2.5, 2.5)
 
             R_sim[:, t, :] = step_ret
-            sigma_end = self.sigma_base_[None, :] * np.exp(
-                0.5 * np.clip(v_curr, -2.5, 2.5)
+            IV_sim[:, t, :] = self.compute_arbitrage_free_forward_iv(
+                v_curr, maturity_days=30.0
             )
-            IV_sim[:, t, :] = sigma_end * np.sqrt(self.annualization_factor)
+
+        # Verify calendar-spread no-arbitrage condition W(t, 60d) >= W(t, 30d)
+        w_30 = (30.0 / self.annualization_factor) * (
+            self.compute_arbitrage_free_forward_iv(v_curr, maturity_days=30.0) ** 2
+        )
+        w_60 = (60.0 / self.annualization_factor) * (
+            self.compute_arbitrage_free_forward_iv(v_curr, maturity_days=60.0) ** 2
+        )
+        self.calendar_arbitrage_violation_ = float(np.max(np.maximum(0.0, w_30 - w_60)))
 
         R_sim_out = R_sim.astype(self.dtype, copy=False)
         if self.log_returns:

@@ -285,15 +285,41 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 
 ---
 
-### Kidger, Foster, Li & Lyons (2021) & Nichol & Dhariwal (2021) — Neural SDEs & Conditional Diffusion {#kidger-2021}
+### Cohen, Reisinger & Wang (2021) & Kidger et al. (2021) — Arbitrage-Free Neural SDE Market Models {#cohen-2021}
 
-> Kidger, P., Foster, J., Li, X., & Lyons, T. J. (2021). Neural SDEs as Infinite-Dimensional GANs. *International Conference on Machine Learning (ICML)*.
+> Cohen, S. N., Reisinger, C., & Wang, S. (2021). Arbitrage-free neural-SDE market models. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2105.11053](https://doi.org/10.48550/arxiv.2105.11053)
 >
-> Nichol, A. Q., & Dhariwal, P. (2021). Improved Denoising Diffusion Probabilistic Models. *International Conference on Machine Learning (ICML)*.
+> Kidger, P., Foster, J., Li, X., & Lyons, T. J. (2021). Neural SDEs as Infinite-Dimensional GANs. *International Conference on Machine Learning (ICML)*.
 
-**Contribution:** Established continuous-time Neural Stochastic Differential Equations calibrated via pathwise rough-path signature discriminators and cosine-scheduled denoising diffusion models with accelerated DDIM trajectory sampling.
+**Contribution:** Parameterized continuous-time asset price and implied-volatility factor SDEs with neural drift and diffusion coefficients subject to exact martingale / market-price-of-risk and calendar-spread no-arbitrage constraints, calibrated via pathwise rough-path signature discriminators.
 
-**Implemented in:** `ConditionalDiffusionGenerator`, `NeuralSDEGenerator`, `NeuralSDEEstimator`, `ArbitrageFreeNeuralSDENet`
+**Implemented in:** `NeuralSDEGenerator`, `NeuralSDEEstimator`, `ArbitrageFreeNeuralSDENet`
+
+---
+
+### Factor-Based Conditional Diffusion & Generative WDRO (2025–2026) {#diffusion-wdro-2026}
+
+> Factor-Based Conditional Diffusion Model for Portfolio Optimization (2025). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2509.22088](https://doi.org/10.48550/arxiv.2509.22088)
+>
+> Generative Models for Decision-Making under Distributional Shift (2026). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2604.04342](https://doi.org/10.48550/arxiv.2604.04342)
+
+**Contribution:** Combined factor-bottleneck conditional denoising diffusion models (with classifier-free guidance and DDIM sampling) with Wasserstein Distributionally Robust Optimization (Generative-WDRO), centering the Wasserstein ball on conditionally synthesized forward scenarios while scaling the ambiguity radius by regime shift and generator signature-MMD discrepancy.
+
+**Implemented in:** `ConditionalDiffusionGenerator`, `WassersteinDROAllocator(scenario_generator=...)`
+
+---
+
+### Exploratory Mean-Variance Portfolio Optimization with Regime-Switching (2026) {#exploratory-mv-2026}
+
+> Exploratory Mean-Variance Portfolio Optimization with Regime-Switching (2026). *arXiv*.
+> [https://doi.org/10.48550/arxiv.2501.16659](https://doi.org/10.48550/arxiv.2501.16659)
+
+**Contribution:** Formulated continuous-time entropy-regularized ("exploratory") reinforcement learning for mean-variance portfolio control under latent Markov regime switching, combining continuous-time Wonham regime belief filtering with analytical Gaussian exploration covariance \(\Sigma_{\pi, t}^* = (\lambda_{\text{ent}}/\gamma)(\bar{\Sigma}(p_t) + \kappa_{\text{turn}} I)^{-1}\).
+
+**Implemented in:** `ExploratoryRegimeMVAllocator`, `WonhamRegimeFilter`
 
 ---
 

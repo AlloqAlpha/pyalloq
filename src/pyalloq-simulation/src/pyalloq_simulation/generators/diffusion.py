@@ -41,6 +41,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         diffusion_steps: int = 100,
         ddim_steps: int = 20,
         ddim_eta: float = 0.25,
+        guidance_scale: float = 1.0,
+        condition_dropout: float = 0.15,
         hidden_dim: int = 64,
         ridge_penalty: float = 1e-2,
         implied_vol_feature: str = "implied_vol",
@@ -55,6 +57,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self.diffusion_steps = max(10, int(diffusion_steps))
         self.ddim_steps = max(2, min(int(ddim_steps), self.diffusion_steps))
         self.ddim_eta = float(np.clip(ddim_eta, 0.0, 1.0))
+        self.guidance_scale = float(max(0.0, guidance_scale))
+        self.condition_dropout = float(np.clip(condition_dropout, 0.0, 0.5))
         self.hidden_dim = max(16, int(hidden_dim))
         self.ridge_penalty = float(max(1e-6, ridge_penalty))
         self.implied_vol_feature = implied_vol_feature
@@ -88,6 +92,7 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self._terminal_factors_window: np.ndarray | None = None
         self._terminal_iv_ratio: float = 1.0
         self._terminal_iv_dispersion: float = 0.0
+        self.signature_mmd_loss_: float = 0.0
 
     @staticmethod
     def _build_cosine_schedule(steps: int, s: float = 0.008) -> np.ndarray:
@@ -272,8 +277,14 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         # Replicate across multiple diffusion noise scales for score-matching regression
         n_aug = max(8, min(24, 600 // max(1, n_samples)))
         x0_rep = np.repeat(target_mat, n_aug, axis=0)
-        cond_rep = np.repeat(cond_norm, n_aug, axis=0)
+        cond_rep = np.repeat(cond_norm, n_aug, axis=0).copy()
         total_rows = len(x0_rep)
+
+        # Classifier-Free Guidance conditioning dropout (arXiv:2509.22088):
+        # zero out conditioning vector with probability `condition_dropout` to learn unconditional score
+        if self.condition_dropout > 0.0:
+            drop_mask = rng.random(size=total_rows) < self.condition_dropout
+            cond_rep[drop_mask] = 0.0
 
         step_indices = rng.integers(0, self.diffusion_steps, size=total_rows)
         alpha_bar_sample = self.alphas_cumprod_[step_indices][:, None]
@@ -294,14 +305,33 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self._readout_weights = np.linalg.solve(gram, phi.T @ eps_true)
         self.is_fitted = True
 
+        # Compute Signature-MMD validation discrepancy for Generative-WDRO (arXiv:2604.04342)
+        emp_sig = self._compute_factor_log_signature(
+            factors[-min(len(factors), max(3, self.signature_window)) :]
+        )
+        preview = self.generate(
+            n_paths=min(24, max(6, t_obs)),
+            horizon=min(max(3, self.signature_window), t_obs),
+        )
+        sim_z = (preview.returns - self.mean_vector) / self.std_vector
+        sim_f = sim_z @ self.factor_loadings_
+        sim_sigs = np.vstack(
+            [self._compute_factor_log_signature(sim_f[m]) for m in range(len(sim_f))]
+        )
+        self.signature_mmd_loss_ = float(
+            np.linalg.norm(emp_sig - np.mean(sim_sigs, axis=0))
+            / np.sqrt(max(1, len(emp_sig)))
+        )
+
     def _ddim_sample_step(
         self,
         cond_batch: np.ndarray,
         rng: np.random.Generator,
+        guidance_scale: float | None = None,
     ) -> np.ndarray:
         """
-        Runs accelerated DDIM reverse-time sampling for one cross-sectional step across
-        `M` paths given conditioning batch `cond_batch` of shape `(M, d_cond)`.
+        Runs accelerated DDIM reverse-time sampling with Classifier-Free Guidance
+        (`guidance_scale`) for one cross-sectional step across `M` paths.
         """
         assert (
             self.alphas_cumprod_ is not None
@@ -311,6 +341,10 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         )
         m_paths = len(cond_batch)
         cond_norm = np.clip((cond_batch - self._cond_mean) / self._cond_std, -5.0, 5.0)
+        uncond_norm = np.zeros_like(cond_norm)
+        g_scale = (
+            self.guidance_scale if guidance_scale is None else float(guidance_scale)
+        )
 
         # Sub-sequence of diffusion steps for DDIM
         tau_seq = np.linspace(0, self.diffusion_steps - 1, self.ddim_steps, dtype=int)[
@@ -327,8 +361,14 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
             )
             ab_vec = np.full((m_paths, 1), ab_t, dtype=np.float64)
 
-            phi = self._encode_denoiser_features(x_tau, ab_vec, cond_norm)
-            eps_pred = phi @ self._readout_weights
+            phi_cond = self._encode_denoiser_features(x_tau, ab_vec, cond_norm)
+            eps_cond = phi_cond @ self._readout_weights
+            if abs(g_scale - 1.0) > 1e-6:
+                phi_uncond = self._encode_denoiser_features(x_tau, ab_vec, uncond_norm)
+                eps_uncond = phi_uncond @ self._readout_weights
+                eps_pred = g_scale * eps_cond + (1.0 - g_scale) * eps_uncond
+            else:
+                eps_pred = eps_cond
 
             # Predict x_0 and clip to prevent numerical blow-up
             x0_pred = (x_tau - np.sqrt(1.0 - ab_t) * eps_pred) / np.sqrt(ab_t)
@@ -356,6 +396,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self,
         n_paths: int,
         horizon: int,
+        guidance_scale: float | None = None,
+        stress_iv_multiplier: float = 1.0,
     ) -> ScenarioMarketData:
         if (
             not self.is_fitted
@@ -382,7 +424,7 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         R_sim = np.empty((n_paths, horizon, self.N), dtype=np.float64)
         IV_sim = np.empty((n_paths, horizon, self.N), dtype=np.float64)
         base_ann_vol = self.std_vector * np.sqrt(self.annualization_factor)
-        iv_scale = self._terminal_iv_ratio
+        iv_scale = self._terminal_iv_ratio * float(max(0.25, stress_iv_multiplier))
 
         for t in range(horizon):
             cond_batch = np.vstack(
@@ -393,7 +435,9 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
                     for m in range(n_paths)
                 ]
             )
-            f_next = self._ddim_sample_step(cond_batch, rng=rng)
+            f_next = self._ddim_sample_step(
+                cond_batch, rng=rng, guidance_scale=guidance_scale
+            )
 
             # Heavy-tailed idiosyncratic residuals calibrated to empirical excess kurtosis
             df_t = np.clip(

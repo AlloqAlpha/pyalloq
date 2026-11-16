@@ -157,3 +157,15 @@
 ### SignatureMMDRegimeGate
 
 ::: pyalloq.rl.thermodynamics.SignatureMMDRegimeGate
+
+---
+
+### ExploratoryRegimeMVAllocator
+
+::: pyalloq.rl.exploratory_mv.ExploratoryRegimeMVAllocator
+
+---
+
+### WonhamRegimeFilter
+
+::: pyalloq.rl.exploratory_mv.WonhamRegimeFilter

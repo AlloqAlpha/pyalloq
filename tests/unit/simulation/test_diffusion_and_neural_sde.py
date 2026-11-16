@@ -77,6 +77,15 @@ def test_conditional_diffusion_generator_end_to_end(
     )
     scen2 = gen2.estimate_scenarios(sample_market_data, n_paths=40, horizon=15)
     assert np.allclose(scenarios.returns, scen2.returns)
+    assert gen.signature_mmd_loss_ >= 0.0
+
+    # Classifier-Free Guidance and stress_iv_multiplier (arXiv:2509.22088)
+    scen_stress = gen.generate(
+        n_paths=40, horizon=15, guidance_scale=1.8, stress_iv_multiplier=1.5
+    )
+    assert float(np.mean(scen_stress.features["implied_vol"])) > float(
+        np.mean(scenarios.features["implied_vol"])
+    )
 
 
 def test_neural_sde_generator_no_arbitrage_and_surfaces(
@@ -106,6 +115,8 @@ def test_neural_sde_generator_no_arbitrage_and_surfaces(
     assert scenarios.prices.shape == (35, 12, 4)
     assert scenarios.returns.shape == (35, 12, 4)
     assert "implied_vol" in scenarios.features
+    # Joint underlying + forward variance surface no-calendar-arbitrage (arXiv:2105.11053)
+    assert sde_gen.calendar_arbitrage_violation_ == 0.0
 
 
 def test_neural_sde_estimator_dual_role_interfaces(

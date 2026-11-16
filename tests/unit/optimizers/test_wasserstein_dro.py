@@ -153,3 +153,47 @@ def test_dynamic_regime_adaptive_radius_and_diffusion_scenarios(
     res_scen = alloc.allocate(scenarios)
     assert np.isclose(float(res_scen.weights.sum()), 1.0, atol=1e-5)
     assert res_scen.metadata["n_atoms"] == 50
+
+    # Native Generative-WDRO pipeline (arXiv:2604.04342)
+    g_wdro = WassersteinDROAllocator(
+        objective=ObjectiveFunction.WASSERSTEIN_KELLY,
+        epsilon=0.002,
+        scenario_generator=diff_gen,
+        generator_n_paths=40,
+        generator_horizon=8,
+        generator_mmd_sensitivity=0.25,
+    )
+    res_gwdro = g_wdro.allocate(dro_market_data)
+    assert res_gwdro.metadata["generative_wdro"] is True
+    assert res_gwdro.metadata["generator_signature_mmd"] > 0.0
+    assert res_gwdro.metadata["n_atoms"] == 40
+
+
+def test_exploratory_regime_mv_allocator_and_wonham_filter(
+    dro_market_data: MarketData,
+) -> None:
+    from pyalloq.rl import ExploratoryRegimeMVAllocator, WonhamRegimeFilter
+
+    returns_df = dro_market_data.prices.pct_change().dropna()
+    w_filter = WonhamRegimeFilter(n_regimes=2, random_state=42)
+    beliefs = w_filter.filter_series(returns_df)
+    assert beliefs.shape == (len(returns_df), 2)
+    assert np.allclose(beliefs.sum(axis=1).to_numpy(), 1.0, atol=1e-5)
+
+    emv = ExploratoryRegimeMVAllocator(
+        n_regimes=2,
+        risk_aversion=2.0,
+        entropy_temperature=0.05,
+        turnover_penalty=0.02,
+        random_state=42,
+    )
+    res_det = emv.allocate(dro_market_data)
+    assert np.isclose(float(res_det.weights.sum()), 1.0, atol=1e-5)
+    assert emv.last_policy_cov_ is not None
+    assert emv.last_policy_cov_.shape == (4, 4)
+    assert np.isfinite(emv.last_policy_entropy_)
+    assert res_det.metadata["exploratory_sampled"] is False
+
+    w_sampled = emv.sample_action(dro_market_data, current_weights=res_det.weights)
+    assert np.isclose(float(w_sampled.sum()), 1.0, atol=1e-5)
+    assert np.all(w_sampled.to_numpy(dtype=np.float64) >= 0.0)
