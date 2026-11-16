@@ -218,6 +218,10 @@ def main() -> None:
     )
     mu_ens = ensemble_ret.estimate(data)
     print("Ensemble Expected Annualized Returns:\n", mu_ens.round(4))
+    print(
+        "\nEnsemble Posterior 95% CVaR:\n",
+        ensemble_ret.last_posterior_cvar_.round(4),  # type: ignore[union-attr]
+    )
     print("\nModel sCRPS Scores:\n", ensemble_ret.last_scrps_scores_.round(4))  # type: ignore[union-attr]
 
     print(
@@ -226,17 +230,22 @@ def main() -> None:
     ensemble_vg = EnsembleViewGenerator(
         view_generators=[
             ApolloPFNViewGenerator(
-                model=ckpt_path, horizon=horizon, full_covariance_omega=True
+                model=ckpt_path,
+                horizon=horizon,
+                full_covariance_omega=True,
+                uncertainty_mode="cvar_tail",
             ),
             TimesFM3MultivariateViewGenerator(
                 model=_OfflineTimesFM3Adapter(horizon=horizon),
                 horizon=horizon,
                 full_covariance_omega=True,
+                uncertainty_mode="downside_semivariance",
             ),
             TimestralMultivariateViewGenerator(
                 model=_OfflineTimestralAdapter(),
                 horizon=horizon,
                 full_covariance_omega=True,
+                uncertainty_mode="cvar_tail",
             ),
         ],
         model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
@@ -256,12 +265,21 @@ def main() -> None:
         tickers=data.assets,
         objective=ObjectiveFunction.WASSERSTEIN_KELLY,
         epsilon=0.004,
-        ground_metric="mahalanobis",
+        ground_metric="quantile_mahalanobis",
+        tail_skew_penalty=0.5,
         radius_mode="regime_adaptive",
         scenario_generator=diff_gen,
         generator_n_paths=60,
         generator_horizon=10,
         view_generator=ensemble_vg,
+    )
+    wdro_single = wdro_alloc.allocate(data)
+    print(
+        "Anisotropic Quantile-Mahalanobis Tail Scaling:",
+        {
+            k: round(float(v), 3)
+            for k, v in wdro_single.metadata["anisotropic_tail_scaling"].items()
+        },
     )
     imp_cov = ImpliedCovarianceEstimator(index_implied_vol=0.22)
     corr_imp = imp_cov.estimate_correlation(data)
@@ -297,6 +315,8 @@ def main() -> None:
         horizon_quantiles=apfn_ret.last_horizon_quantiles_,
         covariate_importance=apfn_ret.last_covariate_importance_,
         ensemble_model_weights=ensemble_ret.last_model_weights_,
+        posterior_cvar=ensemble_ret.last_posterior_cvar_,
+        anisotropic_tail_scaling=wdro_single.metadata["anisotropic_tail_scaling"],
         asset="NVDA",
     )
     html_out = output_dir / "foundation_posterior_attribution.html"

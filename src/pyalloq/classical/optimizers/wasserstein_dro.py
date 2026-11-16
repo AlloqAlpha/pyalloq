@@ -47,6 +47,10 @@ class WassersteinDROAllocator(BaseAllocator):
     ----------------------------------------
     - `"mahalanobis"`: Transport cost `d(r, r_hat) = ||Sigma^{-1/2}(r - r_hat)||_2`,
       yielding geometry-aware dual norm `||Sigma^{1/2} u||_2`.
+    - `"quantile_mahalanobis"` (Blanchet, Kang & Murthy, 2019): Anisotropic optimal
+      transport geometry calibrated to the Riemann Bar inter-decile spread `(q_0.90 - q_0.10)`
+      and negative Bowley skewness of foundation estimators (`ApolloPFN`, `TimesFM-3`, `Timestral`),
+      allocating larger ambiguity budget to heavy-tailed or negatively skewed assets.
     - `"l2"`: Euclidean transport cost, yielding dual norm `||u||_2`.
     - `"l1"`: L1 transport cost, yielding dual norm `||u||_inf`.
 
@@ -63,7 +67,10 @@ class WassersteinDROAllocator(BaseAllocator):
         tickers: list[str] | None = None,
         objective: ObjectiveFunction = ObjectiveFunction.WASSERSTEIN_KELLY,
         epsilon: float = 0.005,
-        ground_metric: Literal["mahalanobis", "l2", "l1"] = "mahalanobis",
+        ground_metric: Literal[
+            "mahalanobis", "quantile_mahalanobis", "l2", "l1"
+        ] = "mahalanobis",
+        tail_skew_penalty: float = 0.5,
         radius_mode: Literal[
             "regime_adaptive", "sample_scaling", "fixed"
         ] = "regime_adaptive",
@@ -96,9 +103,14 @@ class WassersteinDROAllocator(BaseAllocator):
             raise ValueError("`beta` confidence level must be strictly in (0, 1).")
         if epsilon < 0.0:
             raise ValueError("`epsilon` Wasserstein radius must be non-negative.")
-        if ground_metric not in ("mahalanobis", "l2", "l1"):
+        if ground_metric not in (
+            "mahalanobis",
+            "quantile_mahalanobis",
+            "l2",
+            "l1",
+        ):
             raise ValueError(
-                "`ground_metric` must be one of 'mahalanobis', 'l2', or 'l1'."
+                "`ground_metric` must be one of 'mahalanobis', 'quantile_mahalanobis', 'l2', or 'l1'."
             )
         if radius_mode not in ("regime_adaptive", "sample_scaling", "fixed"):
             raise ValueError(
@@ -108,6 +120,7 @@ class WassersteinDROAllocator(BaseAllocator):
         self.objective = objective
         self.epsilon = float(epsilon)
         self.ground_metric = ground_metric
+        self.tail_skew_penalty = float(max(0.0, tail_skew_penalty))
         self.radius_mode = radius_mode
         self.regime_sensitivity = float(max(0.0, regime_sensitivity))
         self.regime_gate = regime_gate or WassersteinRegimeGate()
@@ -309,11 +322,23 @@ class WassersteinDROAllocator(BaseAllocator):
                 n_paths=self.generator_n_paths,
                 horizon=self.generator_horizon,
             )
+            if scenario_probs is None:
+                gen_probs = getattr(
+                    self.scenario_generator, "last_scenario_probabilities_", None
+                )
+                if isinstance(gen_probs, np.ndarray):
+                    scenario_probs = gen_probs
             gen_mmd = float(
                 getattr(self.scenario_generator, "signature_mmd_loss_", 0.0)
             )
             used_generative_wdro = True
         elif scenarios is not None and self.scenario_generator is not None:
+            if scenario_probs is None:
+                gen_probs = getattr(
+                    self.scenario_generator, "last_scenario_probabilities_", None
+                )
+                if isinstance(gen_probs, np.ndarray):
+                    scenario_probs = gen_probs
             gen_mmd = float(
                 getattr(self.scenario_generator, "signature_mmd_loss_", 0.0)
             )
@@ -433,7 +458,64 @@ class WassersteinDROAllocator(BaseAllocator):
             w - G.T @ lam_var if (G is not None and lam_var is not None) else w
         )
 
-        if self.ground_metric == "mahalanobis":
+        # Blanchet, Kang & Murthy (2019) anisotropic quantile-scaled Mahalanobis metric
+        v_gen_active = kwargs.get("view_generator", self.view_generator)
+        idr_ser = getattr(self.scenario_generator, "last_interdecile_range_", None)
+        if idr_ser is None and v_gen_active is not None:
+            idr_ser = getattr(v_gen_active, "last_interdecile_range_", None)
+        skew_ser = getattr(self.scenario_generator, "last_posterior_skewness_", None)
+        if skew_ser is None and v_gen_active is not None:
+            skew_ser = getattr(v_gen_active, "last_posterior_skewness_", None)
+
+        anisotropic_scales = np.ones(n_assets, dtype=np.float64)
+        if self.ground_metric == "quantile_mahalanobis":
+            emp_daily_std = np.sqrt(np.maximum(np.diag(cov_daily_psd), 1e-8))
+            if isinstance(idr_ser, pd.Series):
+                fallback_idr = pd.Series(
+                    2.56 * emp_daily_std * np.sqrt(scale_factor), index=assets
+                )
+                idr_vec = (
+                    idr_ser.reindex(assets)
+                    .fillna(fallback_idr)
+                    .to_numpy(dtype=np.float64)
+                )
+                # Convert annualized inter-decile spread to daily standard deviation equivalent
+                q_daily_std = np.maximum(
+                    idr_vec / (2.56 * np.sqrt(max(1.0, scale_factor))), 1e-6
+                )
+            else:
+                q90_emp = np.quantile(R_tilde, 0.90, axis=0)
+                q10_emp = np.quantile(R_tilde, 0.10, axis=0)
+                q_daily_std = np.maximum((q90_emp - q10_emp) / 2.56, 1e-6)
+
+            if isinstance(skew_ser, pd.Series):
+                skew_vec = (
+                    skew_ser.reindex(assets).fillna(0.0).to_numpy(dtype=np.float64)
+                )
+            else:
+                q50_emp = np.quantile(R_tilde, 0.50, axis=0)
+                q90_emp = np.quantile(R_tilde, 0.90, axis=0)
+                q10_emp = np.quantile(R_tilde, 0.10, axis=0)
+                skew_vec = ((q90_emp - q50_emp) - (q50_emp - q10_emp)) / np.maximum(
+                    q90_emp - q10_emp, 1e-6
+                )
+
+            skew_mult = np.sqrt(
+                1.0 + self.tail_skew_penalty * np.maximum(0.0, -skew_vec)
+            )
+            tail_daily_std = (0.5 * emp_daily_std + 0.5 * q_daily_std) * skew_mult
+            anisotropic_scales = tail_daily_std / np.maximum(emp_daily_std, 1e-6)
+
+            d_inv = 1.0 / emp_daily_std
+            corr_psd = cov_daily_psd * np.outer(d_inv, d_inv)
+            cov_tail = np.outer(tail_daily_std, tail_daily_std) * corr_psd
+            cov_tail = 0.5 * (cov_tail + cov_tail.T)
+            t_eigs, t_vecs = np.linalg.eigh(cov_tail)
+            cov_tail_sqrt = (
+                t_vecs @ np.diag(np.sqrt(np.maximum(t_eigs, 1e-8))) @ t_vecs.T
+            )
+            dual_norm_expr = cp.norm2(cov_tail_sqrt @ eff_vec)
+        elif self.ground_metric == "mahalanobis":
             dual_norm_expr = cp.norm2(cov_sqrt @ eff_vec)
         elif self.ground_metric == "l2":
             dual_norm_expr = cp.norm2(eff_vec)
@@ -543,6 +625,9 @@ class WassersteinDROAllocator(BaseAllocator):
                 "dual_norm_penalty": dual_pen_val,
                 "worst_case_objective": wc_obj_val,
                 "active_view_multipliers": lam_val,
+                "anisotropic_tail_scaling": dict(
+                    zip(assets, anisotropic_scales.tolist(), strict=False)
+                ),
                 "n_atoms": m_atoms,
             },
         )

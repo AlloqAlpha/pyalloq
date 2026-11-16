@@ -290,7 +290,7 @@ def plot_multi_universe_frontier(
                     .fillna(0.0)
                     .to_numpy(dtype=np.float64)
                 )
-                opt_list.append((f"{opt.status} ({i+1})", w_arr))
+                opt_list.append((f"{opt.status} ({i + 1})", w_arr))
 
         for label, w_arr in opt_list:
             p_vol = float(np.sqrt(max(float(w_arr.T @ Sigma @ w_arr), 0.0)))
@@ -854,6 +854,8 @@ def plot_foundation_posterior_and_attribution(
     horizon_quantiles: dict[float, pd.DataFrame],
     covariate_importance: pd.DataFrame | None = None,
     ensemble_model_weights: pd.DataFrame | None = None,
+    posterior_cvar: pd.Series | None = None,
+    anisotropic_tail_scaling: Mapping[str, float] | pd.Series | None = None,
     asset: str | None = None,
     theme: ThemeName = "alloq_dark",
     title: str = "Foundation Model Riemann Bar Posterior, Covariate Attribution & Ensemble Weights",
@@ -861,7 +863,8 @@ def plot_foundation_posterior_and_attribution(
     """
     3-Panel Interactive Diagnostic Figure for `ApolloPFN`, `TimesFM-3`, `Timestral`,
     and `EnsembleReturnEstimator`:
-    - Panel 1: Multi-horizon Riemann Bar Posterior fan chart (20%, 40%, 60%, 80% prediction intervals).
+    - Panel 1: Multi-horizon Riemann Bar Posterior fan chart (20%, 40%, 60%, 80% prediction intervals)
+      plus optional Riemann Bar Expected Shortfall (`CVaR_95%`) left-tail boundary.
     - Panel 2: `AttnFeat` Exogenous Covariate Attribution heatmap (`Assets x Covariates`).
     - Panel 3: `EnsembleReturnEstimator` per-asset Bayesian model weights (`M_models x N_assets`).
     """
@@ -879,7 +882,11 @@ def plot_foundation_posterior_and_attribution(
 
     if horizon_quantiles and 0.50 in horizon_quantiles:
         med_df = horizon_quantiles[0.50]
-        target_asset = asset if (asset in med_df.columns) else str(med_df.columns[0])
+        target_asset = (
+            str(asset)
+            if (asset is not None and asset in med_df.columns)
+            else str(med_df.columns[0])
+        )
         x_idx = [str(idx) for idx in med_df.index]
 
         for q_lo, q_hi, alpha_val, label in (
@@ -905,10 +912,11 @@ def plot_foundation_posterior_and_attribution(
                     col=1,
                 )
 
+        y_med = med_df[target_asset].to_numpy(dtype=np.float64)
         fig.add_trace(
             go.Scatter(
                 x=x_idx,
-                y=med_df[target_asset].to_numpy(dtype=np.float64),
+                y=y_med,
                 mode="lines+markers",
                 name=f"{target_asset} Median (p50)",
                 line={"color": palette.emerald, "width": 2.5},
@@ -916,6 +924,29 @@ def plot_foundation_posterior_and_attribution(
             row=1,
             col=1,
         )
+
+        if 0.10 in horizon_quantiles:
+            y_p10 = horizon_quantiles[0.10][target_asset].to_numpy(dtype=np.float64)
+            # Riemann Bar 95% CVaR trajectory beyond the 10th percentile
+            cvar_mult = 1.32
+            if posterior_cvar is not None and target_asset in posterior_cvar.index:
+                cvar_mult = float(
+                    np.clip(
+                        1.15 + 0.25 * float(posterior_cvar[target_asset]), 1.15, 1.65
+                    )
+                )
+            y_cvar_traj = y_med - cvar_mult * np.maximum(y_med - y_p10, 1e-4)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_idx,
+                    y=y_cvar_traj,
+                    mode="lines",
+                    name=f"{target_asset} Riemann CVaR95",
+                    line={"color": palette.coral, "width": 2.0, "dash": "dash"},
+                ),
+                row=1,
+                col=1,
+            )
 
     if covariate_importance is not None and not covariate_importance.empty:
         z_cov = covariate_importance.to_numpy(dtype=np.float64)
@@ -935,13 +966,26 @@ def plot_foundation_posterior_and_attribution(
 
     if ensemble_model_weights is not None and not ensemble_model_weights.empty:
         colors = palette.categorical
+        cols_str = [str(c) for c in ensemble_model_weights.columns]
+        tail_hover = [
+            float(anisotropic_tail_scaling[c])
+            if (anisotropic_tail_scaling is not None and c in anisotropic_tail_scaling)
+            else 1.0
+            for c in cols_str
+        ]
         for idx, model_name in enumerate(ensemble_model_weights.index):
             fig.add_trace(
                 go.Bar(
-                    x=[str(c) for c in ensemble_model_weights.columns],
+                    x=cols_str,
                     y=ensemble_model_weights.loc[model_name].to_numpy(dtype=np.float64),
                     name=str(model_name),
                     marker_color=colors[idx % len(colors)],
+                    customdata=tail_hover,
+                    hovertemplate=(
+                        "<b>%{x}</b> — "
+                        + str(model_name)
+                        + "<br>Weight: %{y:.1%}<br>WDRO Tail Scale: %{customdata:.2f}x<extra></extra>"
+                    ),
                 ),
                 row=1,
                 col=3,

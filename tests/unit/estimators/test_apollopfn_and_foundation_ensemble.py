@@ -210,7 +210,7 @@ def test_srngn_prior_and_apollopfn_pretrainer_checkpoint(tmp_path: Path) -> None
     assert loaded_net.d_model == 32
     assert loaded_net.n_bins == 64
 
-    # Verify RiemannBarDistribution metrics including Appendix B sCRPS
+    # Verify RiemannBarDistribution metrics including Appendix B sCRPS, CVaR_alpha, downside_std, and Bowley skewness
     bar = loaded_net.bar_dist
     dummy_logits = torch.zeros((1, 6, 3, 64))
     probs = bar.logits_to_probs(dummy_logits, temperature=0.8)
@@ -221,6 +221,22 @@ def test_srngn_prior_and_apollopfn_pretrainer_checkpoint(tmp_path: Path) -> None
     assert np.all(q90 > q10)
     scrps_val = bar.s_crps(probs, np.ones((1, 6, 3)) * 0.25)
     assert scrps_val > 0.0
+
+    # Negatively skewed logits (mass concentrated in lower bins) must have higher CVaR and negative Bowley skewness
+    sym_cvar = float(bar.cvar(probs, alpha=0.95).mean())
+    sym_skew = float(bar.bowley_skewness(probs).mean())
+    assert abs(sym_skew) < 1e-4
+
+    skew_logits = torch.zeros((1, 6, 3, 64))
+    skew_logits[..., :16] = 2.0
+    skew_logits[..., 32:48] = 3.0
+    skew_probs = bar.logits_to_probs(skew_logits, temperature=1.0)
+    neg_cvar = float(bar.cvar(skew_probs, alpha=0.95).mean())
+    neg_skew = float(bar.bowley_skewness(skew_probs).mean())
+    assert neg_cvar > 0.0
+    assert neg_skew < 0.0
+    assert np.all(bar.downside_std(skew_probs) > 0.0)
+    _ = sym_cvar
 
 
 def test_interchangeable_apollopfn_timesfm_and_timestral(
@@ -351,6 +367,92 @@ def test_ensemble_estimators_wdro_views_and_viz(
         horizon_quantiles=apfn_est.last_horizon_quantiles_,
         covariate_importance=apfn_est.last_covariate_importance_,
         ensemble_model_weights=ens_inv.last_model_weights_,
+        posterior_cvar=apfn_est.last_posterior_cvar_,
+        anisotropic_tail_scaling=res_wdro.metadata.get("anisotropic_tail_scaling"),
         asset="AAPL",
     )
-    assert len(fig.data) >= 5
+    assert len(fig.data) >= 6
+
+
+def test_riemann_bar_tail_wdro_and_copula_scenarios(
+    macro_market_data: MarketData,
+) -> None:
+    horizon = 8
+    mock_tfm = _MockTimesFM3Multivariate(horizon=horizon, spread_mult=0.04)
+    mock_tms = _MockTimestralForecaster(spread_mult=0.09)
+
+    apfn_tail = ApolloPFNReturnEstimator(
+        horizon=horizon,
+        copula_type="stratified_t",
+        copula_df=4.0,
+        tail_tilt_gamma=2.0,
+    )
+    mu_apfn = apfn_tail.estimate(macro_market_data)
+    assert len(mu_apfn) == 4
+    assert apfn_tail.last_posterior_cvar_ is not None
+    assert apfn_tail.last_posterior_downside_std_ is not None
+    assert apfn_tail.last_posterior_skewness_ is not None
+    assert apfn_tail.last_interdecile_range_ is not None
+
+    scen_apfn = apfn_tail.generate(n_paths=25, horizon=horizon)
+    assert scen_apfn.returns.shape == (25, horizon, 4)
+    assert apfn_tail.last_scenario_probabilities_ is not None
+    assert np.isclose(float(np.sum(apfn_tail.last_scenario_probabilities_)), 1.0)
+    # Tilted scenario probabilities must be non-uniform
+    assert float(np.std(apfn_tail.last_scenario_probabilities_)) > 0.0
+
+    # Test cvar_adaptive ensemble + BaseScenarioEstimator interface on EnsembleReturnEstimator
+    ens_cvar = EnsembleReturnEstimator(
+        estimators=[
+            apfn_tail,
+            TimesFM3MultivariateReturnEstimator(model=mock_tfm, horizon=horizon),
+            TimestralMultivariateReturnEstimator(model=mock_tms, horizon=horizon),
+        ],
+        weighting_mode="cvar_adaptive",
+        copula_type="student_t",
+        model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
+    )
+    scen_ens = ens_cvar.estimate_scenarios(
+        macro_market_data, n_paths=30, horizon=horizon
+    )
+    assert isinstance(scen_ens, ScenarioMarketData)
+    assert scen_ens.returns.shape == (30, horizon, 4)
+    assert ens_cvar.last_posterior_cvar_ is not None
+    assert ens_cvar.last_interdecile_range_ is not None
+
+    # Test cvar_tail view uncertainty mode + quantile_mahalanobis ground metric in WassersteinDROAllocator
+    cvar_vg = EnsembleViewGenerator(
+        view_generators=[
+            ApolloPFNViewGenerator(
+                horizon=horizon,
+                uncertainty_mode="cvar_tail",
+                full_covariance_omega=True,
+            ),
+            TimesFM3MultivariateViewGenerator(
+                model=mock_tfm,
+                horizon=horizon,
+                uncertainty_mode="downside_semivariance",
+            ),
+            TimestralMultivariateViewGenerator(
+                model=mock_tms,
+                horizon=horizon,
+                uncertainty_mode="cvar_tail",
+            ),
+        ],
+        model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
+    )
+    wdro_tail = WassersteinDROAllocator(
+        objective=ObjectiveFunction.WASSERSTEIN_CVAR,
+        epsilon=0.005,
+        ground_metric="quantile_mahalanobis",
+        tail_skew_penalty=0.6,
+        scenario_generator=ens_cvar,
+        generator_n_paths=25,
+        generator_horizon=horizon,
+        view_generator=cvar_vg,
+    )
+    res_tail = wdro_tail.allocate(macro_market_data)
+    assert np.isclose(float(res_tail.weights.sum()), 1.0, atol=1e-5)
+    assert res_tail.metadata["ground_metric"] == "quantile_mahalanobis"
+    assert "anisotropic_tail_scaling" in res_tail.metadata
+    assert len(res_tail.metadata["anisotropic_tail_scaling"]) == 4

@@ -5,10 +5,16 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-from pyalloq_core.data import MarketData
-from pyalloq_core.interfaces import BaseReturnEstimator, BaseViewGenerator
+from pyalloq_core.data import MarketData, ScenarioMarketData
+from pyalloq_core.interfaces import (
+    BaseReturnEstimator,
+    BaseScenarioEstimator,
+    BaseViewGenerator,
+)
 
-WeightingMode = Literal["inverse_uncertainty", "scrps_adaptive", "equal", "custom"]
+WeightingMode = Literal[
+    "inverse_uncertainty", "scrps_adaptive", "cvar_adaptive", "equal", "custom"
+]
 
 
 def compute_quantile_scrps(
@@ -38,10 +44,10 @@ def compute_quantile_scrps(
     return float(max(numer / denom, 1e-4))
 
 
-class EnsembleReturnEstimator(BaseReturnEstimator):
+class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
     """
-    Precision-Weighted & sCRPS-Adaptive Bayesian Model Averaging Return Estimator
-    (`EnsembleReturnEstimator`).
+    Precision-Weighted, sCRPS-Adaptive & Tail-CVaR-Adaptive Bayesian Model Averaging
+    Return & Scenario Estimator (`EnsembleReturnEstimator`).
 
     Combines multiple peer foundation models (`ApolloPFNReturnEstimator`,
     `TimesFM3MultivariateReturnEstimator`, `TimestralMultivariateReturnEstimator`,
@@ -49,6 +55,11 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
 
         w_{m, i} = precision_{m, i} / sum_{k=1}^M precision_{k, i},
         mu_i^{ens} = sum_{m=1}^M w_{m, i} * mu_{m, i}
+
+    Also implements `BaseScenarioEstimator` (`.fit(data)` and `.generate(n_paths, horizon)`),
+    synthesizing Bayesian model-averaged non-Gaussian scenario paths coupled via a
+    Student-t or Gaussian copula (Demarta & McNeil, 2005; Meucci, 2006) so it can be
+    passed directly as `scenario_generator=...` into `WassersteinDROAllocator`.
 
     Weighting Modes (`weighting_mode`):
     -----------------------------------
@@ -59,8 +70,11 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
     2. `"scrps_adaptive"`:
        Evaluates each model on a held-out trailing validation slice of `data` using the
        Appendix B `sCRPS` metric and weights each model by `(sigma_{m, i}^2 * sCRPS_m)^{-1}`.
-    3. `"equal"`: Uniform `1 / M` weights across all models.
-    4. `"custom"`: User-supplied `custom_weights` vector of length `M`.
+    3. `"cvar_adaptive"`:
+       Weights each model per asset by its inverse squared posterior Expected Shortfall
+       `CVaR_{alpha, m, i}^{-2}` (Rockafellar & Uryasev, 2000; Müller et al., ICLR 2022).
+    4. `"equal"`: Uniform `1 / M` weights across all models.
+    5. `"custom"`: User-supplied `custom_weights` vector of length `M`.
     """
 
     def __init__(
@@ -70,6 +84,9 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
         custom_weights: Sequence[float] | None = None,
         validation_horizon: int = 10,
         model_names: Sequence[str] | None = None,
+        copula_type: Literal["student_t", "gaussian"] = "student_t",
+        copula_df: float = 4.0,
+        random_state: int = 42,
     ) -> None:
         if len(estimators) < 1:
             raise ValueError(
@@ -78,11 +95,12 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
         if weighting_mode not in (
             "inverse_uncertainty",
             "scrps_adaptive",
+            "cvar_adaptive",
             "equal",
             "custom",
         ):
             raise ValueError(
-                "`weighting_mode` must be 'inverse_uncertainty', 'scrps_adaptive', 'equal', or 'custom'."
+                "`weighting_mode` must be 'inverse_uncertainty', 'scrps_adaptive', 'cvar_adaptive', 'equal', or 'custom'."
             )
         self.estimators = list(estimators)
         self.weighting_mode: WeightingMode = weighting_mode
@@ -99,10 +117,21 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
                 f"{type(est).__name__}_{idx}" for idx, est in enumerate(self.estimators)
             ]
         )
+        self.copula_type = copula_type
+        self.copula_df = float(max(2.1, copula_df))
+        self.random_state = int(random_state)
 
+        self.is_fitted: bool = False
+        self.assets: list[str] = []
+        self._last_data: MarketData | None = None
         self.last_model_weights_: pd.DataFrame | None = None
         self.last_epistemic_std_: pd.Series | None = None
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
+        self.last_scenario_probabilities_: np.ndarray | None = None
         self.last_scrps_scores_: pd.Series | None = None
 
     @staticmethod
@@ -221,13 +250,69 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
 
         mu_mat = np.empty((n_models, n_assets), dtype=np.float64)
         std_mat = np.empty((n_models, n_assets), dtype=np.float64)
+        cvar_mat = np.empty((n_models, n_assets), dtype=np.float64)
+        down_mat = np.empty((n_models, n_assets), dtype=np.float64)
+        skew_mat = np.empty((n_models, n_assets), dtype=np.float64)
+        idr_mat = np.empty((n_models, n_assets), dtype=np.float64)
 
         for m_idx, est in enumerate(self.estimators):
-            mu_m, std_m, _ = self._evaluate_single_model(
+            mu_m, std_m, q_dict = self._evaluate_single_model(
                 est, data, assets, fallback_std
             )
             mu_mat[m_idx] = mu_m
             std_mat[m_idx] = np.maximum(std_m, 1e-5)
+
+            q10 = q_dict.get(0.10, mu_m - 1.2816 * std_mat[m_idx])
+            q50 = q_dict.get(0.50, mu_m)
+            q90 = q_dict.get(0.90, mu_m + 1.2816 * std_mat[m_idx])
+            default_idr = np.maximum(q90 - q10, 1e-5)
+            default_skew = ((q90 - q50) - (q50 - q10)) / default_idr
+            default_down = np.maximum(q50 - q10, 1e-5) / 1.2816
+            default_cvar = np.maximum(
+                -q50 + 2.0627 * default_down, 0.5 * std_mat[m_idx]
+            )
+
+            cvar_ser = getattr(est, "last_posterior_cvar_", None)
+            cvar_mat[m_idx] = (
+                np.maximum(
+                    cvar_ser.reindex(assets)
+                    .fillna(pd.Series(default_cvar, index=assets))
+                    .to_numpy(dtype=np.float64),
+                    1e-5,
+                )
+                if isinstance(cvar_ser, pd.Series)
+                else default_cvar
+            )
+            down_ser = getattr(est, "last_posterior_downside_std_", None)
+            down_mat[m_idx] = (
+                np.maximum(
+                    down_ser.reindex(assets)
+                    .fillna(pd.Series(default_down, index=assets))
+                    .to_numpy(dtype=np.float64),
+                    1e-5,
+                )
+                if isinstance(down_ser, pd.Series)
+                else default_down
+            )
+            skew_ser = getattr(est, "last_posterior_skewness_", None)
+            skew_mat[m_idx] = (
+                skew_ser.reindex(assets)
+                .fillna(pd.Series(default_skew, index=assets))
+                .to_numpy(dtype=np.float64)
+                if isinstance(skew_ser, pd.Series)
+                else default_skew
+            )
+            idr_ser = getattr(est, "last_interdecile_range_", None)
+            idr_mat[m_idx] = (
+                np.maximum(
+                    idr_ser.reindex(assets)
+                    .fillna(pd.Series(default_idr, index=assets))
+                    .to_numpy(dtype=np.float64),
+                    1e-5,
+                )
+                if isinstance(idr_ser, pd.Series)
+                else default_idr
+            )
 
         if self.weighting_mode == "equal":
             weights = np.full((n_models, n_assets), 1.0 / n_models, dtype=np.float64)
@@ -242,6 +327,9 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
         elif self.weighting_mode == "scrps_adaptive":
             prec = 1.0 / ((std_mat**2) * scrps_vec[:, None])
             weights = prec / np.sum(prec, axis=0, keepdims=True)
+        elif self.weighting_mode == "cvar_adaptive":
+            prec = 1.0 / (cvar_mat**2)
+            weights = prec / np.sum(prec, axis=0, keepdims=True)
         else:
             # "inverse_uncertainty"
             prec = 1.0 / (std_mat**2)
@@ -253,7 +341,23 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
             weights * ((std_mat**2) + (mu_mat - mu_ens[None, :]) ** 2), axis=0
         )
         std_ens = np.sqrt(np.maximum(var_ens, 1e-8))
+        cvar_ens = np.sum(weights * cvar_mat, axis=0)
+        down_ens = np.sqrt(
+            np.sum(
+                weights
+                * ((down_mat**2) + np.maximum(0.0, mu_ens[None, :] - mu_mat) ** 2),
+                axis=0,
+            )
+        )
+        skew_ens = np.sum(weights * skew_mat, axis=0)
+        idr_ens = np.sum(weights * idr_mat, axis=0) + 1.28 * np.sqrt(
+            np.sum(weights * ((mu_mat - mu_ens[None, :]) ** 2), axis=0)
+        )
 
+        self.assets = assets
+        self._last_data = data
+        self._record_index_metadata(data.prices.index)
+        self.is_fitted = True
         self.last_model_weights_ = pd.DataFrame(
             weights, index=self.model_names, columns=assets
         )
@@ -261,11 +365,121 @@ class EnsembleReturnEstimator(BaseReturnEstimator):
             std_ens, index=assets, name="epistemic_std"
         )
         self.last_posterior_std_ = self.last_epistemic_std_.copy()
+        self.last_posterior_cvar_ = pd.Series(
+            cvar_ens, index=assets, name="posterior_cvar"
+        )
+        self.last_posterior_downside_std_ = pd.Series(
+            down_ens, index=assets, name="posterior_downside_std"
+        )
+        self.last_posterior_skewness_ = pd.Series(
+            skew_ens, index=assets, name="posterior_skewness"
+        )
+        self.last_interdecile_range_ = pd.Series(
+            idr_ens, index=assets, name="interdecile_range"
+        )
         self.last_scrps_scores_ = pd.Series(
             scrps_vec, index=self.model_names, name="sCRPS"
         )
 
         return pd.Series(mu_ens, index=assets, name="expected_returns")
+
+    def fit(self, data: MarketData) -> None:
+        self.estimate(data)
+
+    def generate(self, n_paths: int, horizon: int) -> ScenarioMarketData:
+        """
+        Synthesizes 3D `(n_paths, horizon, n_assets)` Bayesian Model-Averaged non-Gaussian
+        scenario trajectories by combining constituent `BaseScenarioEstimator` Riemann Bar
+        marginals and split-normal asymmetric quantile marginals via a Student-t or Gaussian
+        copula (Demarta & McNeil, 2005; Meucci, 2006).
+        """
+        if not self.is_fitted or self._last_data is None:
+            raise ValueError(
+                "EnsembleReturnEstimator must be fitted via .fit(data) or .estimate_scenarios(data) first."
+            )
+        from scipy.stats import norm
+        from scipy.stats import t as student_t
+
+        data = self._last_data
+        assets = self.assets
+        n_assets = len(assets)
+        rng = np.random.default_rng(self.random_state)
+
+        # If any constituent is a BaseScenarioEstimator (e.g. ApolloPFNReturnEstimator),
+        # blend its copula-coupled Riemann Bar scenarios with the ensemble's posterior moments & skewness
+        scen_children = [
+            est for est in self.estimators if isinstance(est, BaseScenarioEstimator)
+        ]
+        if len(scen_children) > 0:
+            child = scen_children[0]
+            child.fit(data)
+            base_scen = child.generate(n_paths=n_paths, horizon=horizon)
+            R_base = np.asarray(base_scen.returns, dtype=np.float64)
+        else:
+            R_base = None
+
+        returns_df = data.prices.pct_change().dropna(how="all").fillna(0.0)
+        emp_corr = np.corrcoef(returns_df.to_numpy(dtype=np.float64).T)
+        emp_corr = np.nan_to_num(emp_corr, nan=0.0)
+        emp_corr = 0.5 * (emp_corr + emp_corr.T)
+        np.fill_diagonal(emp_corr, 1.0)
+        eigvals, eigvecs = np.linalg.eigh(emp_corr)
+        corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+        chol = np.linalg.cholesky(corr_psd + 1e-6 * np.eye(n_assets))
+
+        assert (
+            self.last_epistemic_std_ is not None
+            and self.last_posterior_skewness_ is not None
+        )
+        mu_daily = (
+            self.estimate(data).reindex(assets).to_numpy(dtype=np.float64) / 252.0
+            if getattr(self.estimators[0], "annualize", True)
+            else self.estimate(data).reindex(assets).to_numpy(dtype=np.float64)
+            / max(1, horizon)
+        )
+        std_daily = self.last_epistemic_std_.reindex(assets).to_numpy(
+            dtype=np.float64
+        ) / np.sqrt(252.0)
+        skew_vec = self.last_posterior_skewness_.reindex(assets).to_numpy(
+            dtype=np.float64
+        )
+
+        nu = self.copula_df
+        R_copula = np.empty((n_paths, horizon, n_assets), dtype=np.float64)
+        for t_step in range(horizon):
+            z_corr = rng.standard_normal(size=(n_paths, n_assets)) @ chol.T
+            if self.copula_type == "student_t":
+                chi2_s = rng.chisquare(df=nu, size=(n_paths, 1)) / nu
+                t_var = z_corr / np.sqrt(np.maximum(chi2_s, 1e-6))
+                u_unif = np.clip(student_t.cdf(t_var, df=nu), 1e-4, 1.0 - 1e-4)
+                z_std = norm.ppf(u_unif)
+            else:
+                z_std = z_corr
+            # Apply Cornish-Fisher / split-normal skewness shift from pooled Bowley skewness
+            z_skewed = z_std + (skew_vec[None, :] / 6.0) * (z_std**2 - 1.0)
+            R_copula[:, t_step, :] = mu_daily[None, :] + std_daily[None, :] * z_skewed
+
+        if R_base is not None and R_base.shape == R_copula.shape:
+            # Center R_base around the Bayesian ensemble daily mean while preserving Riemann Bar tails
+            base_mean = np.mean(R_base, axis=(0, 1), keepdims=True)
+            R_final = (
+                0.65 * (R_base - base_mean + mu_daily[None, None, :]) + 0.35 * R_copula
+            ).astype(np.float32)
+        else:
+            R_final = R_copula.astype(np.float32)
+
+        self.last_scenario_probabilities_ = np.full(
+            n_paths, 1.0 / max(1, n_paths), dtype=np.float64
+        )
+        init_prices = data.prices.iloc[-1].to_numpy(dtype=np.float32)
+        prices_sim = init_prices * np.cumprod(1.0 + R_final, axis=1)
+        return ScenarioMarketData(
+            prices=prices_sim.astype(np.float32, copy=False),
+            returns=R_final,
+            asset_names=list(assets),
+            initial_prices=init_prices.copy(),
+            timestamps=self._build_future_timestamps(horizon),
+        )
 
 
 class EnsembleViewGenerator(BaseViewGenerator):
@@ -299,6 +513,10 @@ class EnsembleViewGenerator(BaseViewGenerator):
             ]
         )
         self.last_model_weights_: pd.DataFrame | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
 
     def generate(
         self,
@@ -312,6 +530,10 @@ class EnsembleViewGenerator(BaseViewGenerator):
         prec_sum = np.zeros((n_assets, n_assets), dtype=np.float64)
         prec_q_sum = np.zeros(n_assets, dtype=np.float64)
         diag_precs = np.zeros((n_models, n_assets), dtype=np.float64)
+        cvar_mat = np.zeros((n_models, n_assets), dtype=np.float64)
+        down_mat = np.zeros((n_models, n_assets), dtype=np.float64)
+        skew_mat = np.zeros((n_models, n_assets), dtype=np.float64)
+        idr_mat = np.zeros((n_models, n_assets), dtype=np.float64)
 
         for m_idx, vg in enumerate(self.view_generators):
             _, q_ser, omega_df = vg.generate(data, **kwargs)
@@ -323,10 +545,36 @@ class EnsembleViewGenerator(BaseViewGenerator):
             )
             omega_mat = 0.5 * (omega_mat + omega_mat.T) + 1e-6 * np.eye(n_assets)
             omega_inv = np.linalg.inv(omega_mat)
+            std_vec = np.sqrt(np.maximum(np.diag(omega_mat), 1e-8))
 
             prec_sum += omega_inv
             prec_q_sum += omega_inv @ q_vec
             diag_precs[m_idx] = np.maximum(np.diag(omega_inv), 1e-8)
+
+            cvar_s = getattr(vg, "last_posterior_cvar_", None)
+            cvar_mat[m_idx] = (
+                cvar_s.reindex(assets).to_numpy(dtype=np.float64)
+                if isinstance(cvar_s, pd.Series)
+                else np.maximum(-q_vec + 2.0627 * std_vec, 0.5 * std_vec)
+            )
+            down_s = getattr(vg, "last_posterior_downside_std_", None)
+            down_mat[m_idx] = (
+                down_s.reindex(assets).to_numpy(dtype=np.float64)
+                if isinstance(down_s, pd.Series)
+                else std_vec
+            )
+            skew_s = getattr(vg, "last_posterior_skewness_", None)
+            skew_mat[m_idx] = (
+                skew_s.reindex(assets).to_numpy(dtype=np.float64)
+                if isinstance(skew_s, pd.Series)
+                else np.zeros(n_assets, dtype=np.float64)
+            )
+            idr_s = getattr(vg, "last_interdecile_range_", None)
+            idr_mat[m_idx] = (
+                idr_s.reindex(assets).to_numpy(dtype=np.float64)
+                if isinstance(idr_s, pd.Series)
+                else 2.56 * std_vec
+            )
 
         omega_ens = np.linalg.inv(prec_sum + 1e-8 * np.eye(n_assets))
         omega_ens = 0.5 * (omega_ens + omega_ens.T)
@@ -335,6 +583,20 @@ class EnsembleViewGenerator(BaseViewGenerator):
         weights = diag_precs / np.sum(diag_precs, axis=0, keepdims=True)
         self.last_model_weights_ = pd.DataFrame(
             weights, index=self.model_names, columns=assets
+        )
+        self.last_posterior_cvar_ = pd.Series(
+            np.sum(weights * cvar_mat, axis=0), index=assets, name="posterior_cvar"
+        )
+        self.last_posterior_downside_std_ = pd.Series(
+            np.sum(weights * down_mat, axis=0),
+            index=assets,
+            name="posterior_downside_std",
+        )
+        self.last_posterior_skewness_ = pd.Series(
+            np.sum(weights * skew_mat, axis=0), index=assets, name="posterior_skewness"
+        )
+        self.last_interdecile_range_ = pd.Series(
+            np.sum(weights * idr_mat, axis=0), index=assets, name="interdecile_range"
         )
 
         P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)

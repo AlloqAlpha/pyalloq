@@ -170,7 +170,7 @@ Optimizes portfolio weights against the **worst-case return distribution** \(\ma
 - **`ObjectiveFunction.WASSERSTEIN_KELLY` (Li, 2023)**: Maximizes worst-case expected geometric log-growth \(\inf_{\mathbb{Q}} \mathbb{E}_{\mathbb{Q}}[\ln(1 + \eta r^\top w)]\) with optional fractional Kelly scaling `kelly_fraction`.
 - **`ObjectiveFunction.WASSERSTEIN_CVAR` (Esfahani & Kuhn, 2018)**: Minimizes worst-case Conditional Value-at-Risk (\(\text{CVaR}_\beta\)) over the Wasserstein ball.
 - **`ObjectiveFunction.WASSERSTEIN_MEAN_RISK`**: Maximizes worst-case expected return minus worst-case CVaR.
-- **Geometry-Aware Ground Metrics (`ground_metric`)**: Supports `"mahalanobis"` (dual norm \(\|\Sigma^{1/2}(w - G^\top \lambda)\|_2\)), `"l2"`, and `"l1"`.
+- **Geometry-Aware Ground Metrics (`ground_metric`)**: Supports `"mahalanobis"` (dual norm \(\|\Sigma^{1/2}(w - G^\top \lambda)\|_2\)), `"quantile_mahalanobis"` (Blanchet, Kang & Murthy 2019 anisotropic transport geometry calibrated to the Riemann Bar inter-decile spread \(q_{0.90} - q_{0.10}\) and negative Bowley skewness), `"l2"`, and `"l1"`.
 - **Dynamic Optimal-Transport Radius (`radius_mode="regime_adaptive"`)**: Automatically scales \(\varepsilon_t = \varepsilon + \kappa \cdot W_2(\mathcal{N}_{\text{fast}}, \mathcal{N}_{\text{slow}})\) using `WassersteinRegimeGate`.
 
 ```python

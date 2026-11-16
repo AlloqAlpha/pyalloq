@@ -150,6 +150,10 @@ Let \(\hat{\mathbb{P}} = \sum_{i=1}^M p_i \delta_{r_i}\) denote the empirical (o
 For transport cost \(d(r, \hat{r}) = \|r - \hat{r}\|_{\mathcal{G}}\) and effective exposure vector \(u = w - G^\top \lambda\), Kantorovich duality yields the exact dual norm penalty \(\varepsilon_t \|u\|_{\mathcal{G}^*}\):
 
 - **Mahalanobis (`"mahalanobis"`)**: \(d(r, \hat{r}) = \|\Sigma^{-1/2}(r - \hat{r})\|_2 \implies \|u\|_{\mathcal{G}^*} = \|\Sigma^{1/2} u\|_2\).
+- **Anisotropic Quantile-Mahalanobis (`"quantile_mahalanobis"`, Blanchet, Kang & Murthy, 2019)**: Calibrates an anisotropic transport matrix \(\Sigma_{\text{tail}} = D_{\text{tail}} C_{\text{corr}} D_{\text{tail}}\) from the Riemann Bar inter-decile spread \((q_{0.90, i} - q_{0.10, i})\) and negative Bowley skewness \(\mathcal{S}_{\text{Bowley}, i}\):
+  \[
+  \left(D_{\text{tail}}\right)_{i,i} = \frac{1}{2}\left(\sigma_i + \frac{q_{0.90, i} - q_{0.10, i}}{2.56 \sqrt{252}}\right)\sqrt{1 + \kappa_{\text{tail}} \max(0, -\mathcal{S}_{\text{Bowley}, i})}, \qquad \|u\|_{\mathcal{G}^*} = \left\|\Sigma_{\text{tail}}^{1/2} u\right\|_2
+  \]
 - **Euclidean (`"l2"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_2 \implies \|u\|_{\mathcal{G}^*} = \|u\|_2\).
 - **Manhattan (`"l1"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_1 \implies \|u\|_{\mathcal{G}^*} = \|u\|_\infty\).
 

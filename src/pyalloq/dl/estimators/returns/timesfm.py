@@ -41,6 +41,10 @@ class TimesFM3UnivariateReturnEstimator(BaseReturnEstimator):
         self.covariate_keys = covariate_keys
         self.device = device
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
         self.last_quantiles_: dict[float, pd.Series] = {}
 
     def estimate(self, data: MarketData, **kwargs: Any) -> pd.Series:
@@ -92,6 +96,14 @@ class TimesFM3UnivariateReturnEstimator(BaseReturnEstimator):
                 0.50: pd.Series(r50, index=assets),
                 0.90: pd.Series(r90, index=assets),
             }
+            idr = np.maximum(r90 - r10, 1e-6)
+            skew = ((r90 - r50) - (r50 - r10)) / idr
+            down_std = np.maximum(r50 - r10, 1e-6) / 1.2816
+            cvar_95 = np.maximum(-r50 + 2.0627 * down_std, 0.5 * ret_std)
+            self.last_interdecile_range_ = pd.Series(idr, index=assets)
+            self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+            self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+            self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
 
         return pd.Series(annualized_returns, index=assets, name="expected_returns")
 
@@ -120,6 +132,10 @@ class TimesFM3MultivariateReturnEstimator(BaseReturnEstimator):
         self.covariate_keys = covariate_keys
         self.device = device
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
         self.last_quantiles_: dict[float, pd.Series] = {}
 
     def estimate(self, data: MarketData, **kwargs: Any) -> pd.Series:
@@ -173,5 +189,13 @@ class TimesFM3MultivariateReturnEstimator(BaseReturnEstimator):
                 0.50: pd.Series(r50, index=assets),
                 0.90: pd.Series(r90, index=assets),
             }
+            idr = np.maximum(r90 - r10, 1e-6)
+            skew = ((r90 - r50) - (r50 - r10)) / idr
+            down_std = np.maximum(r50 - r10, 1e-6) / 1.2816
+            cvar_95 = np.maximum(-r50 + 2.0627 * down_std, 0.5 * ret_std)
+            self.last_interdecile_range_ = pd.Series(idr, index=assets)
+            self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+            self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+            self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
 
         return pd.Series(predicted_returns, index=assets, name="expected_returns")

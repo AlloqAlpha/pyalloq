@@ -89,6 +89,10 @@ class TimestralUnivariateReturnEstimator(BaseReturnEstimator):
             model if (model is not None and not isinstance(model, str)) else None
         )
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
         self.last_quantiles_: dict[float, pd.Series] = {}
 
     def _get_forecaster(self) -> Any:
@@ -122,12 +126,22 @@ class TimestralUnivariateReturnEstimator(BaseReturnEstimator):
             ret_std = (
                 np.maximum(p90_p - p10_p, 1e-8) / (2.56 * current_prices)
             ) * std_scale
+            r10 = ((p10_p / current_prices) - 1.0) * scale
+            r90 = ((p90_p / current_prices) - 1.0) * scale
             self.last_posterior_std_ = pd.Series(ret_std, index=assets)
             self.last_quantiles_ = {
-                0.10: pd.Series(((p10_p / current_prices) - 1.0) * scale, index=assets),
+                0.10: pd.Series(r10, index=assets),
                 0.50: pd.Series(predicted_returns, index=assets),
-                0.90: pd.Series(((p90_p / current_prices) - 1.0) * scale, index=assets),
+                0.90: pd.Series(r90, index=assets),
             }
+            idr = np.maximum(r90 - r10, 1e-6)
+            skew = ((r90 - predicted_returns) - (predicted_returns - r10)) / idr
+            down_std = np.maximum(predicted_returns - r10, 1e-6) / 1.2816
+            cvar_95 = np.maximum(-predicted_returns + 2.0627 * down_std, 0.5 * ret_std)
+            self.last_interdecile_range_ = pd.Series(idr, index=assets)
+            self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+            self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+            self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
 
         return pd.Series(predicted_returns, index=assets, name="expected_returns")
 
@@ -158,6 +172,10 @@ class TimestralMultivariateReturnEstimator(BaseReturnEstimator):
             model if (model is not None and not isinstance(model, str)) else None
         )
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
         self.last_quantiles_: dict[float, pd.Series] = {}
 
     def _get_forecaster(self) -> Any:
@@ -207,11 +225,21 @@ class TimestralMultivariateReturnEstimator(BaseReturnEstimator):
             ret_std = (
                 np.maximum(p90_p - p10_p, 1e-8) / (2.56 * current_prices)
             ) * std_scale
+            r10 = ((p10_p / current_prices) - 1.0) * scale
+            r90 = ((p90_p / current_prices) - 1.0) * scale
             self.last_posterior_std_ = pd.Series(ret_std, index=assets)
             self.last_quantiles_ = {
-                0.10: pd.Series(((p10_p / current_prices) - 1.0) * scale, index=assets),
+                0.10: pd.Series(r10, index=assets),
                 0.50: pd.Series(predicted_returns, index=assets),
-                0.90: pd.Series(((p90_p / current_prices) - 1.0) * scale, index=assets),
+                0.90: pd.Series(r90, index=assets),
             }
+            idr = np.maximum(r90 - r10, 1e-6)
+            skew = ((r90 - predicted_returns) - (predicted_returns - r10)) / idr
+            down_std = np.maximum(predicted_returns - r10, 1e-6) / 1.2816
+            cvar_95 = np.maximum(-predicted_returns + 2.0627 * down_std, 0.5 * ret_std)
+            self.last_interdecile_range_ = pd.Series(idr, index=assets)
+            self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+            self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+            self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
 
         return pd.Series(predicted_returns, index=assets, name="expected_returns")

@@ -328,6 +328,33 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 
 ---
 
+### Potapczynski et al. (2026) & Müller et al. (2022) — Time-Aware Prior-Data Fitted Networks (`ApolloPFN`) & Riemann Bar Posteriors {#apollopfn-2026}
+
+> Potapczynski, A., Finzi, M., Goldblum, M., & Wilson, A. G. (2026). Time-Aware Prior-Data Fitted Networks for Time Series Forecasting (`ApolloPFN`). *Transactions on Machine Learning Research (TMLR)*.
+> [https://doi.org/10.48550/arxiv.2603.15802](https://doi.org/10.48550/arxiv.2603.15802)
+>
+> Müller, S., Hollmann, N., Arango, S. P., Grabocka, J., & Hutter, F. (2022). Transformers Can Do Bayesian Inference. *International Conference on Learning Representations (ICLR)*.
+> [https://doi.org/10.48550/arxiv.2112.10510](https://doi.org/10.48550/arxiv.2112.10510)
+
+**Contribution:** Introduced synthetic Structural Causal Model (SCM) prior meta-training via Single Root Node Random Growing Networks (`SRNGNPriorGenerator`, Algorithm 1), factorized cross-variate (`AttnFeat`) and Rotary Position Embedded temporal (`AttnSamp`) attention, and the piecewise-constant **Riemann Bar Posterior Predictive Distribution** with half-normal outer tails—enabling exact closed-form expectations, quantiles, Expected Shortfall (\(\text{CVaR}_\alpha\)), Sortino downside semi-deviation, and Bowley skewness in a single zero-shot forward pass.
+
+**Implemented in:** `SRNGNPriorGenerator`, `ApolloPFNTransformer`, `RiemannBarDistribution`, `ApolloPFNPretrainer`, `ApolloPFNReturnEstimator`, `ApolloPFNViewGenerator`, `EnsembleReturnEstimator`, `EnsembleViewGenerator`
+
+---
+
+### Blanchet, Kang & Murthy (2019) & Patton (2006) — Anisotropic Wasserstein Geometry & Conditional Copula Tail Integration {#blanchet-2019}
+
+> Blanchet, J., Kang, Y., & Murthy, K. (2019). Robust Wasserstein Profile Inference and Applications to Machine Learning. *Journal of Applied Probability*, 56(3), 830–857.
+> [https://doi.org/10.48550/arxiv.1610.05627](https://doi.org/10.48550/arxiv.1610.05627)
+>
+> Patton, A. J. (2006). Modelling Asymmetric Exchange Rate Dependence. *International Economic Review*, 47(2), 527–556.
+
+**Contribution:** Established anisotropic optimal-transport Mahalanobis cost geometries \(c(\xi, \hat{\xi}) = \|\Sigma_{\text{tail}}^{-1/2}(\xi - \hat{\xi})\|_2\) that weight adversarial perturbations according to directional predictive uncertainty, and conditional Student-\(t\) copula factorizations coupling non-Gaussian marginal inverse CDFs \(F_{\text{bar}, i}^{-1}(u_i)\) with forward-looking option-implied correlations.
+
+**Implemented in:** `WassersteinDROAllocator(ground_metric="quantile_mahalanobis")`, `ApolloPFNReturnEstimator(copula_type="student_t" | "stratified_t")`, `ApolloPFNViewGenerator(uncertainty_mode="cvar_tail" | "downside_semivariance")`
+
+---
+
 ## Multi-Strategy Evaluation, Deflated Sharpe Ratio & Performance Attribution
 
 ### Bailey & López de Prado (2014) — The Deflated Sharpe Ratio {#dsr-2014}

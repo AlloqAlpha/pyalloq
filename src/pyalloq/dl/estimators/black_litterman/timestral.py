@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -48,6 +48,10 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         full_covariance_omega: bool = False,
         covariate_mode: CovariateMode = CovariateMode.NONE,
         covariate_keys: Sequence[CovariateKey | str] | None = None,
+        uncertainty_mode: Literal[
+            "posterior_variance", "downside_semivariance", "cvar_tail"
+        ] = "posterior_variance",
+        tail_skew_aversion: float = 0.15,
         device: str | None = None,
     ) -> None:
         self.model = model
@@ -57,6 +61,8 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         self.full_covariance_omega = bool(full_covariance_omega)
         self.covariate_mode = covariate_mode
         self.covariate_keys = covariate_keys
+        self.uncertainty_mode = uncertainty_mode
+        self.tail_skew_aversion = float(max(0.0, tail_skew_aversion))
         self.device = device
         self._q_low, self._q_high, self._z_spread = _validate_confidence_interval(
             confidence_interval
@@ -64,6 +70,10 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         self._forecaster: Any | None = (
             model if (model is not None and not isinstance(model, str)) else None
         )
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
 
     def _get_forecaster(self) -> Any:
         if self._forecaster is None:
@@ -95,14 +105,40 @@ class TimestralUnivariateViewGenerator(BaseViewGenerator):
         ]
 
         view_returns = (p50_prices / current_prices) - 1.0
+        scale = (252.0 / self.horizon) if self.annualize else 1.0
         if self.annualize:
-            view_returns = view_returns * (252.0 / self.horizon)
-        Q = pd.Series(view_returns, index=assets, name="expected_returns")
+            view_returns = view_returns * scale
 
         price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
+        std_scale = float(np.sqrt(252.0 / self.horizon)) if self.annualize else 1.0
         if self.annualize:
-            return_std = return_std * np.sqrt(252.0 / self.horizon)
+            return_std = return_std * std_scale
+
+        r_low = ((q_low_prices / current_prices) - 1.0) * scale
+        r_high = ((q_high_prices / current_prices) - 1.0) * scale
+        idr = np.maximum(r_high - r_low, 1e-6)
+        skew = ((r_high - view_returns) - (view_returns - r_low)) / idr
+        down_std = (
+            np.maximum(p50_prices - q_low_prices, 1e-8)
+            / (max(0.5 * self._z_spread, 1e-4) * current_prices)
+        ) * std_scale
+        cvar_95 = np.maximum(-view_returns + 2.0627 * down_std, 0.5 * return_std)
+
+        self.last_interdecile_range_ = pd.Series(idr, index=assets)
+        self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+        self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+        self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
+
+        if self.uncertainty_mode == "downside_semivariance":
+            return_std = np.maximum(down_std, 1e-6)
+        elif self.uncertainty_mode == "cvar_tail":
+            return_std = np.maximum(cvar_95 / 2.0627, 0.5 * return_std)
+            view_returns = (
+                view_returns
+                - self.tail_skew_aversion * np.maximum(0.0, -skew) * cvar_95
+            )
+        Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
         Omega = pd.DataFrame(np.diag(return_std**2), index=assets, columns=assets)
         P = pd.DataFrame(np.eye(n_assets), index=assets, columns=assets)
@@ -127,6 +163,10 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         full_covariance_omega: bool = False,
         covariate_mode: CovariateMode = CovariateMode.AUTO,
         covariate_keys: Sequence[CovariateKey | str] | None = None,
+        uncertainty_mode: Literal[
+            "posterior_variance", "downside_semivariance", "cvar_tail"
+        ] = "posterior_variance",
+        tail_skew_aversion: float = 0.15,
         device: str | None = None,
     ) -> None:
         self.model = model
@@ -136,6 +176,8 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         self.full_covariance_omega = bool(full_covariance_omega)
         self.covariate_mode = covariate_mode
         self.covariate_keys = covariate_keys
+        self.uncertainty_mode = uncertainty_mode
+        self.tail_skew_aversion = float(max(0.0, tail_skew_aversion))
         self.device = device
         self._q_low, self._q_high, self._z_spread = _validate_confidence_interval(
             confidence_interval
@@ -143,6 +185,10 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         self._forecaster: Any | None = (
             model if (model is not None and not isinstance(model, str)) else None
         )
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
 
     def _get_forecaster(self) -> Any:
         if self._forecaster is None:
@@ -189,14 +235,40 @@ class TimestralMultivariateViewGenerator(BaseViewGenerator):
         ]
 
         view_returns = (p50_prices / current_prices) - 1.0
+        scale = (252.0 / self.horizon) if self.annualize else 1.0
         if self.annualize:
-            view_returns = view_returns * (252.0 / self.horizon)
-        Q = pd.Series(view_returns, index=assets, name="expected_returns")
+            view_returns = view_returns * scale
 
         price_std = np.maximum(q_high_prices - q_low_prices, 1e-8) / self._z_spread
         return_std = price_std / current_prices
+        std_scale = float(np.sqrt(252.0 / self.horizon)) if self.annualize else 1.0
         if self.annualize:
-            return_std = return_std * np.sqrt(252.0 / self.horizon)
+            return_std = return_std * std_scale
+
+        r_low = ((q_low_prices / current_prices) - 1.0) * scale
+        r_high = ((q_high_prices / current_prices) - 1.0) * scale
+        idr = np.maximum(r_high - r_low, 1e-6)
+        skew = ((r_high - view_returns) - (view_returns - r_low)) / idr
+        down_std = (
+            np.maximum(p50_prices - q_low_prices, 1e-8)
+            / (max(0.5 * self._z_spread, 1e-4) * current_prices)
+        ) * std_scale
+        cvar_95 = np.maximum(-view_returns + 2.0627 * down_std, 0.5 * return_std)
+
+        self.last_interdecile_range_ = pd.Series(idr, index=assets)
+        self.last_posterior_skewness_ = pd.Series(skew, index=assets)
+        self.last_posterior_downside_std_ = pd.Series(down_std, index=assets)
+        self.last_posterior_cvar_ = pd.Series(cvar_95, index=assets)
+
+        if self.uncertainty_mode == "downside_semivariance":
+            return_std = np.maximum(down_std, 1e-6)
+        elif self.uncertainty_mode == "cvar_tail":
+            return_std = np.maximum(cvar_95 / 2.0627, 0.5 * return_std)
+            view_returns = (
+                view_returns
+                - self.tail_skew_aversion * np.maximum(0.0, -skew) * cvar_95
+            )
+        Q = pd.Series(view_returns, index=assets, name="expected_returns")
 
         if self.full_covariance_omega and n_assets > 1 and med_full.shape[1] >= 2:
             med_traj = med_full / current_prices[:, None] - 1.0

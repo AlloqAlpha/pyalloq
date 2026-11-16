@@ -252,4 +252,14 @@ Z \leftarrow \operatorname{LN}_3\!\left(Z + \operatorname{MLP}(Z)\right)
 \operatorname{sCRPS}(y, \hat{y}) = \frac{\sum_{t=T+1}^{T+H} \frac{2}{Q} \sum_{j=1}^Q \left[ \alpha_j \left(y_t - \hat{y}_t^{\alpha_j}\right)_+ + (1 - \alpha_j)\left(\hat{y}_t^{\alpha_j} - y_t\right)_+ \right]}{\sum_{t=T+1}^{T+H} |y_t|}
 \]
 
-   In `EnsembleReturnEstimator`, model \(m\)'s weight on asset \(i\) under `weighting_mode="scrps_adaptive"` is proportional to its calibrated precision \(w_{m,i} \propto \left(\sigma_{m,i}^2 \cdot \operatorname{sCRPS}_m\right)^{-1}\).
+   In `EnsembleReturnEstimator`, model \(m\)'s weight on asset \(i\) under `weighting_mode="scrps_adaptive"` is proportional to its calibrated precision \(w_{m,i} \propto \left(\sigma_{m,i}^2 \cdot \operatorname{sCRPS}_m\right)^{-1}\), or under `weighting_mode="cvar_adaptive"` to its inverse squared tail risk \(w_{m,i} \propto \operatorname{CVaR}_{\alpha, m, i}^{-2}\).
+
+4. **Closed-Form Riemann Bar Tail Functionals & Copula-Coupled Scenario Generation (Müller et al., ICLR 2022; Demarta & McNeil, 2005; Patton, 2006):**
+   Given Riemann bin edges \(b_0 < b_1 < \dots < b_B\), widths \(w_k = b_{k+1} - b_k\), probabilities \(p_k\), and cumulative probabilities \(C_k = \sum_{j < k} p_j\), the truncated probability mass in bin \(k\) below tail threshold \(1 - \alpha\) is \(\Delta p_k = \max(0, \min(p_k, 1 - \alpha - C_k))\). With the Müller et al. (2022) half-normal left-tail shift \(\delta_0 = \sqrt{2/\pi} w_0\) on the outermost bucket \(k = 0\), `RiemannBarDistribution` evaluates exact Expected Shortfall (\(\operatorname{CVaR}_\alpha\)), Sortino downside semi-deviation (\(\sigma_{-}\)), and Bowley skewness (\(\mathcal{S}_{\text{Bowley}}\)):
+
+\[
+\operatorname{CVaR}_\alpha(Z) = -\frac{1}{1 - \alpha} \sum_{k=0}^{B-1} \Delta p_k \left(b_k + \frac{\Delta p_k}{2 p_k} w_k - \delta_0 \mathbb{I}_{\{k=0\}}\right), \qquad
+\mathcal{S}_{\text{Bowley}} = \frac{(q_{0.90} - q_{0.50}) - (q_{0.50} - q_{0.10})}{q_{0.90} - q_{0.10}}
+\]
+
+   To synthesize joint \(N\)-asset scenarios (`BaseScenarioEstimator`), correlated uniform variates \(u^{(m, h)} \sim C_{\nu, R_{\text{imp}}}^{\text{t}}\) are drawn from a Student-\(t\) (or stratified LHS-\(t\)) copula parameterized by the Buss & Vilkov (2012) option-implied correlation matrix blended with `AttnFeat` epistemic correlation, and inverted through each asset's exact Riemann Bar marginal CDF: \(\tilde{r}_{i, h}^{(m)} = \mu_{i,\text{ctx}} + \sigma_{i,\text{ctx}} F_{\text{bar}, i, h}^{-1}(u_i^{(m, h)})\).

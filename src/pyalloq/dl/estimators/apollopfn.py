@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -334,6 +334,69 @@ class RiemannBarDistribution(nn.Module):
         return np.asarray(
             -np.sum(p_safe * np.log(p_safe / w), axis=-1), dtype=np.float64
         )
+
+    def cvar(self, probs: np.ndarray | torch.Tensor, alpha: float = 0.95) -> np.ndarray:
+        """
+        Computes exact closed-form Expected Shortfall (`CVaR_alpha(Z)`) of the piecewise-constant
+        Riemann Bar distribution with Müller et al. (ICLR 2022) half-normal left-tail correction
+        (Rockafellar & Uryasev, 2000):
+            CVaR_alpha(Z) = (1 / (1 - alpha)) * int_0^{1 - alpha} (-F_bar^{-1}(u)) du
+        """
+        tail_mass = float(np.clip(1.0 - alpha, 1e-4, 0.999))
+        p = (
+            probs.detach().cpu().numpy()
+            if isinstance(probs, torch.Tensor)
+            else np.asarray(probs, dtype=np.float64)
+        )
+        borders_np = self.borders.detach().cpu().numpy().astype(np.float64)
+        widths_np = self.widths.detach().cpu().numpy().astype(np.float64)
+        orig_shape = p.shape[:-1]
+        flat_p = p.reshape(-1, self.n_bins)
+
+        cdf_right = np.cumsum(flat_p, axis=-1)
+        cdf_left = cdf_right - flat_p
+
+        # Probability mass inside each bin k that falls below `tail_mass = 1 - alpha`
+        dp = np.clip(np.minimum(flat_p, tail_mass - cdf_left), 0.0, None)
+        frac = np.where(flat_p > 1e-12, dp / np.maximum(flat_p, 1e-12), 0.0)
+        # Conditional mean of Z on the truncated sub-interval [b_k, b_k + frac * w_k]
+        sub_center = borders_np[:-1][None, :] + 0.5 * frac * widths_np[None, :]
+        # Müller et al. (2022) half-normal outer-bin tail adjustment on leftmost bucket k=0
+        half_normal_shift = np.sqrt(2.0 / np.pi) * widths_np[0]
+        sub_center[:, 0] -= half_normal_shift
+
+        expected_tail_z = np.sum(dp * sub_center, axis=-1) / tail_mass
+        return np.asarray((-expected_tail_z).reshape(orig_shape), dtype=np.float64)
+
+    def downside_std(self, probs: np.ndarray | torch.Tensor) -> np.ndarray:
+        """
+        Computes exact lower partial moment of order 2 (`sigma_-(Z)`, Sortino & Price, 1994)
+        across the Riemann Bar histogram:
+            sigma_-(Z) = sqrt( E[ max(0, mu - Z)^2 ] )
+        """
+        p = (
+            probs.detach().cpu().numpy()
+            if isinstance(probs, torch.Tensor)
+            else np.asarray(probs, dtype=np.float64)
+        )
+        c = self.centers.detach().cpu().numpy().astype(np.float64)
+        w = self.widths.detach().cpu().numpy().astype(np.float64)
+        mu = np.sum(p * c, axis=-1, keepdims=True)
+        downside_diff = np.maximum(mu - c, 0.0)
+        downside_mask = (c <= mu).astype(np.float64)
+        lpm2 = np.sum(p * (downside_diff**2 + downside_mask * (w**2) / 12.0), axis=-1)
+        return np.sqrt(np.maximum(lpm2, 1e-8))
+
+    def bowley_skewness(self, probs: np.ndarray | torch.Tensor) -> np.ndarray:
+        """
+        Computes non-parametric Bowley decile skewness in `[-1, 1]`:
+            S_Bowley = ((q_0.90 - q_0.50) - (q_0.50 - q_0.10)) / (q_0.90 - q_0.10)
+        """
+        q10 = self.quantile(probs, 0.10)
+        q50 = self.quantile(probs, 0.50)
+        q90 = self.quantile(probs, 0.90)
+        spread = np.maximum(q90 - q10, 1e-8)
+        return np.asarray(((q90 - q50) - (q50 - q10)) / spread, dtype=np.float64)
 
     def s_crps(
         self,
@@ -1012,6 +1075,11 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         covariate_keys: Sequence[CovariateKey | str] | None = None,
         bar_temperature: float = 1.0,
         pair_covariates: bool = False,
+        copula_type: Literal["student_t", "gaussian", "stratified_t"] = "student_t",
+        copula_df: float = 4.0,
+        use_implied_correlation: bool = True,
+        tail_tilt_gamma: float = 0.0,
+        cvar_alpha: float = 0.95,
         device: str | None = None,
         random_state: int = 42,
     ) -> None:
@@ -1022,6 +1090,11 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         self.covariate_keys = covariate_keys
         self.bar_temperature = float(max(1e-2, bar_temperature))
         self.pair_covariates = bool(pair_covariates)
+        self.copula_type = copula_type
+        self.copula_df = float(max(2.1, copula_df))
+        self.use_implied_correlation = bool(use_implied_correlation)
+        self.tail_tilt_gamma = float(max(0.0, tail_tilt_gamma))
+        self.cvar_alpha = float(np.clip(cvar_alpha, 0.50, 0.995))
         self.device = device
         self.random_state = int(random_state)
         self._net: ApolloPFNTransformer | None = None
@@ -1029,6 +1102,11 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         self.is_fitted: bool = False
         self.assets: list[str] = []
         self.last_posterior_std_: pd.Series | None = None
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
+        self.last_scenario_probabilities_: np.ndarray | None = None
         self.last_quantiles_: dict[float, pd.Series] = {}
         self.last_entropy_: pd.Series | None = None
         self.last_covariate_importance_: pd.DataFrame | None = None
@@ -1135,13 +1213,37 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             if n_assets > 1:
                 emp_corr = np.corrcoef(y_hist_z.T)
                 emp_corr = np.nan_to_num(emp_corr, nan=0.0)
-                blend_corr = 0.7 * emp_corr + 0.3 * asset_corr
+                if (
+                    self.use_implied_correlation
+                    and data.features
+                    and "implied_volatility" in data.features
+                    and "market_caps" in data.features
+                ):
+                    try:
+                        from pyalloq.classical.estimators.covariance.implied_covariance import (
+                            ImpliedCovarianceEstimator,
+                        )
+
+                        imp_corr_df = ImpliedCovarianceEstimator().estimate_correlation(
+                            data
+                        )
+                        imp_corr = (
+                            imp_corr_df.reindex(index=assets, columns=assets)
+                            .fillna(0.0)
+                            .to_numpy(dtype=np.float64)
+                        )
+                        base_corr = 0.65 * imp_corr + 0.35 * emp_corr
+                    except (ValueError, KeyError, RuntimeError):
+                        base_corr = emp_corr
+                else:
+                    base_corr = emp_corr
+                blend_corr = 0.75 * base_corr + 0.25 * asset_corr
                 blend_corr = 0.5 * (blend_corr + blend_corr.T)
                 np.fill_diagonal(blend_corr, 1.0)
                 eigvals, eigvecs = np.linalg.eigh(blend_corr)
-                self._last_asset_corr = (
-                    eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
-                )
+                corr_psd = eigvecs @ np.diag(np.maximum(eigvals, 1e-4)) @ eigvecs.T
+                d_inv = 1.0 / np.sqrt(np.maximum(np.diag(corr_psd), 1e-8))
+                self._last_asset_corr = corr_psd * np.outer(d_inv, d_inv)
             else:
                 self._last_asset_corr = np.ones((1, 1), dtype=np.float64)
 
@@ -1215,6 +1317,30 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             np.mean(net.bar_dist.entropy(probs), axis=0), index=assets, name="entropy"
         )
 
+        # Exact Riemann Bar tail functionals: CVaR_alpha, downside semi-deviation, and Bowley skewness
+        step_cvar_z = net.bar_dist.cvar(probs, alpha=self.cvar_alpha)  # (H, N)
+        step_down_z = net.bar_dist.downside_std(probs)  # (H, N)
+        step_skew = net.bar_dist.bowley_skewness(probs)  # (H, N)
+
+        # Excess tail loss relative to posterior mean in z-space, mapped to horizon return scale
+        excess_cvar_z = np.maximum(step_cvar_z + step_means_z, 0.25)
+        ann_cvar = np.maximum(
+            -ann_ret + np.mean(excess_cvar_z, axis=0) * ann_std,
+            0.5 * ann_std,
+        )
+        ann_down_std = np.mean(ret_std[None, :] * step_down_z, axis=0) * std_scale
+        avg_skew = np.mean(step_skew, axis=0)
+
+        self.last_posterior_cvar_ = pd.Series(
+            ann_cvar, index=assets, name="posterior_cvar"
+        )
+        self.last_posterior_downside_std_ = pd.Series(
+            ann_down_std, index=assets, name="posterior_downside_std"
+        )
+        self.last_posterior_skewness_ = pd.Series(
+            avg_skew, index=assets, name="posterior_skewness"
+        )
+
         # Populate cumulative horizon return quantiles (H, N) and annualized quantiles (N,)
         fut_idx = self._build_future_timestamps(h)
         cum_mean_traj = np.cumsum(step_means, axis=0)  # (H, N)
@@ -1232,6 +1358,17 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             ann_q = ann_ret + np.mean(z_offset, axis=0) * ann_std
             self.last_quantiles_[q_lvl] = pd.Series(ann_q, index=assets)
 
+        self.last_interdecile_range_ = pd.Series(
+            np.maximum(
+                (self.last_quantiles_[0.90] - self.last_quantiles_[0.10]).to_numpy(
+                    dtype=np.float64
+                ),
+                1e-6,
+            ),
+            index=assets,
+            name="interdecile_range",
+        )
+
         for pi_label, (q_lo, q_hi) in (
             ("20%", (0.40, 0.60)),
             ("40%", (0.30, 0.70)),
@@ -1248,8 +1385,10 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
     def generate(self, n_paths: int, horizon: int) -> ScenarioMarketData:
         """
         Synthesizes 3D `(n_paths, horizon, n_assets)` non-parametric return & price trajectories
-        by inverse-CDF sampling from the multi-horizon Riemann Bar posterior coupled via the
-        `AttnFeat` cross-asset Gaussian copula.
+        by coupling `ApolloPFN`'s exact marginal Riemann Bar inverse CDFs `F_bar^{-1}(u)` with
+        a Student-t or Gaussian copula parameterized by Buss-Vilkov implied correlation +
+        `AttnFeat` cross-asset epistemic dependence (Sklar, 1959; Demarta & McNeil, 2005;
+        Patton, 2006).
         """
         if (
             not self.is_fitted
@@ -1262,8 +1401,11 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
                 "ApolloPFNReturnEstimator must be fitted or called via .estimate_scenarios(data) first."
             )
 
-        if horizon != len(self._last_step_probs):
-            self._run_in_context_inference(self._last_data, horizon=horizon)
+        if (
+            horizon != len(self._last_step_probs)
+            or self.last_interdecile_range_ is None
+        ):
+            self.estimate(self._last_data, horizon=horizon)
         assert (
             self._last_step_probs is not None
             and self._last_ret_mean is not None
@@ -1271,6 +1413,7 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         )
 
         from scipy.stats import norm
+        from scipy.stats import t as student_t
 
         net = self._get_net()
         rng = np.random.default_rng(self.random_state)
@@ -1284,17 +1427,46 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
 
         R_sim = np.empty((n_paths, horizon, n_assets), dtype=np.float32)
         borders_np = net.bar_dist.borders.detach().cpu().numpy().astype(np.float64)
+        nu = self.copula_df
 
-        for t in range(horizon):
-            z_gauss = rng.standard_normal(size=(n_paths, n_assets)) @ chol.T
-            u_unif = np.clip(norm.cdf(z_gauss), 1e-4, 1.0 - 1e-4)
+        for t_step in range(horizon):
+            z_indep = rng.standard_normal(size=(n_paths, n_assets))
+            if self.copula_type == "stratified_t":
+                # Stratified LHS grid on the first systemic factor for exact tail coverage
+                u_lhs = (
+                    np.arange(n_paths, dtype=np.float64) + rng.uniform(size=n_paths)
+                ) / max(1, n_paths)
+                rng.shuffle(u_lhs)
+                z_indep[:, 0] = norm.ppf(np.clip(u_lhs, 1e-4, 1.0 - 1e-4))
+
+            z_corr = z_indep @ chol.T
+            if self.copula_type in ("student_t", "stratified_t"):
+                # Demarta & McNeil (2005) Student-t copula radial scaling W ~ Chi2(nu) / nu
+                chi2_scale = rng.chisquare(df=nu, size=(n_paths, 1)) / nu
+                t_variates = z_corr / np.sqrt(np.maximum(chi2_scale, 1e-6))
+                u_unif = np.clip(student_t.cdf(t_variates, df=nu), 1e-4, 1.0 - 1e-4)
+            else:
+                u_unif = np.clip(norm.cdf(z_corr), 1e-4, 1.0 - 1e-4)
+
             for i in range(n_assets):
-                p_vec = self._last_step_probs[t, i]
+                p_vec = self._last_step_probs[t_step, i]
                 cdf_vec = np.concatenate([[0.0], np.cumsum(p_vec)])
                 cdf_vec[-1] = 1.0
                 z_quant = np.interp(u_unif[:, i], cdf_vec, borders_np)
                 r_col = self._last_ret_mean[i] + self._last_ret_std[i] * z_quant
-                R_sim[:, t, i] = r_col.astype(np.float32)
+                R_sim[:, t_step, i] = r_col.astype(np.float32)
+
+        # Optional exponential tail-importance tilting p_m propto exp(-gamma * mean(R_m))
+        if self.tail_tilt_gamma > 0.0:
+            path_avg_ret = np.mean(R_sim.astype(np.float64), axis=(1, 2))
+            log_w = -self.tail_tilt_gamma * (path_avg_ret - np.mean(path_avg_ret))
+            log_w = np.clip(log_w - np.max(log_w), -20.0, 0.0)
+            w_raw = np.exp(log_w)
+            self.last_scenario_probabilities_ = w_raw / np.sum(w_raw)
+        else:
+            self.last_scenario_probabilities_ = np.full(
+                n_paths, 1.0 / max(1, n_paths), dtype=np.float64
+            )
 
         init_prices = self._last_data.prices.iloc[-1].to_numpy(dtype=np.float32)
         prices_sim = init_prices * np.cumprod(1.0 + R_sim, axis=1)
@@ -1310,7 +1482,14 @@ class ApolloPFNReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
 class ApolloPFNViewGenerator(BaseViewGenerator):
     """
     Generates Black-Litterman & Fonseca-Junca (2021) Wasserstein DRO views `(P, Q, Omega)`
-    from the Riemann Bar Posterior Predictive Distribution of `ApolloPFNTransformer`.
+    from the Riemann Bar Posterior Predictive Distribution of `ApolloPFNTransformer`
+    (Meucci, 2006, 2008; Potapczynski et al., TMLR 2026).
+
+    Supports three view uncertainty modes (`uncertainty_mode`):
+    - `"posterior_variance"`: Standard inter-quantile variance `Omega_{i,i} = sigma_{i, post}^2`.
+    - `"downside_semivariance"`: Asymmetric Sortino lower-partial-moment variance `Omega_{i,i} = sigma_{i, -}^2`.
+    - `"cvar_tail"`: Tail-risk calibrated uncertainty `Omega_{i,i} = (CVaR_{alpha, i} / 2.063)^2`
+      with optional negative-skewness target adjustment `Q_i <- Q_i - tail_skew_aversion * max(0, -S_Bowley) * CVaR_{alpha, i}`.
 
     Drop-in interchangeable with `TimesFM3MultivariateViewGenerator` and
     `TimestralMultivariateViewGenerator`.
@@ -1326,6 +1505,10 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
         covariate_mode: CovariateMode = CovariateMode.AUTO,
         covariate_keys: Sequence[CovariateKey | str] | None = None,
         bar_temperature: float = 1.0,
+        uncertainty_mode: Literal[
+            "posterior_variance", "downside_semivariance", "cvar_tail"
+        ] = "posterior_variance",
+        tail_skew_aversion: float = 0.15,
         device: str | None = None,
         tfm_model: Any = None,
     ) -> None:
@@ -1336,6 +1519,14 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
             raise ValueError(
                 f"confidence_interval must satisfy 0 < q_low < q_high < 1, got {confidence_interval}."
             )
+        if uncertainty_mode not in (
+            "posterior_variance",
+            "downside_semivariance",
+            "cvar_tail",
+        ):
+            raise ValueError(
+                "`uncertainty_mode` must be 'posterior_variance', 'downside_semivariance', or 'cvar_tail'."
+            )
         self.model = model if model is not None else tfm_model
         self.horizon = max(1, int(horizon))
         self.confidence_interval = confidence_interval
@@ -1344,6 +1535,8 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
         self.covariate_mode = covariate_mode
         self.covariate_keys = covariate_keys
         self.bar_temperature = float(max(1e-2, bar_temperature))
+        self.uncertainty_mode = uncertainty_mode
+        self.tail_skew_aversion = float(max(0.0, tail_skew_aversion))
         self.device = device
         self._q_low = float(q_low)
         self._q_high = float(q_high)
@@ -1361,15 +1554,24 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
             bar_temperature=self.bar_temperature,
             device=self.device,
         )
+        self.last_posterior_cvar_: pd.Series | None = None
+        self.last_posterior_downside_std_: pd.Series | None = None
+        self.last_posterior_skewness_: pd.Series | None = None
+        self.last_interdecile_range_: pd.Series | None = None
 
     def generate(
         self,
         data: MarketData,
         **kwargs: Any,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
-        Q = self._estimator.estimate(data, horizon=self.horizon)
+        Q = self._estimator.estimate(data, horizon=self.horizon).copy()
         assets = list(Q.index)
         n_assets = len(assets)
+
+        self.last_posterior_cvar_ = self._estimator.last_posterior_cvar_
+        self.last_posterior_downside_std_ = self._estimator.last_posterior_downside_std_
+        self.last_posterior_skewness_ = self._estimator.last_posterior_skewness_
+        self.last_interdecile_range_ = self._estimator.last_interdecile_range_
 
         assert (
             self._estimator._last_step_probs is not None
@@ -1387,7 +1589,41 @@ class ApolloPFNViewGenerator(BaseViewGenerator):
             if self.annualize
             else float(np.sqrt(self.horizon))
         )
-        view_std = daily_std * std_scale
+        base_view_std = daily_std * std_scale
+
+        if (
+            self.uncertainty_mode == "downside_semivariance"
+            and self.last_posterior_downside_std_ is not None
+        ):
+            view_std = np.maximum(
+                self.last_posterior_downside_std_.reindex(assets).to_numpy(
+                    dtype=np.float64
+                ),
+                1e-6,
+            )
+        elif (
+            self.uncertainty_mode == "cvar_tail"
+            and self.last_posterior_cvar_ is not None
+            and self.last_posterior_skewness_ is not None
+        ):
+            cvar_vec = self.last_posterior_cvar_.reindex(assets).to_numpy(
+                dtype=np.float64
+            )
+            skew_vec = self.last_posterior_skewness_.reindex(assets).to_numpy(
+                dtype=np.float64
+            )
+            # Gaussian 95% CVaR / sigma ratio is phi(1.645) / 0.05 = 2.0627
+            view_std = np.maximum(cvar_vec / 2.0627, 0.5 * base_view_std)
+            downside_skew_pen = (
+                self.tail_skew_aversion * np.maximum(0.0, -skew_vec) * cvar_vec
+            )
+            Q = pd.Series(
+                Q.to_numpy(dtype=np.float64) - downside_skew_pen,
+                index=assets,
+                name="expected_returns",
+            )
+        else:
+            view_std = base_view_std
 
         if (
             self.full_covariance_omega

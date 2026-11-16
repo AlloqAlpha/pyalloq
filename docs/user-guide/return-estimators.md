@@ -489,14 +489,20 @@ apfn_est = ApolloPFNReturnEstimator(model=None, **shared_kwargs)
 tfm_est  = TimesFM3MultivariateReturnEstimator(model=tfm_model, **shared_kwargs)
 tms_est  = TimestralMultivariateReturnEstimator(model=tms_model, **shared_kwargs)
 
-# Precision-weighted / sCRPS-adaptive Bayesian Model Averaging
+# Precision-weighted / sCRPS-adaptive / CVaR-adaptive Bayesian Model Averaging
 ensemble = EnsembleReturnEstimator(
     estimators=[apfn_est, tfm_est, tms_est],
-    weighting_mode="scrps_adaptive",
+    weighting_mode="scrps_adaptive",  # or "cvar_adaptive", "inverse_uncertainty"
+    copula_type="student_t",
     model_names=["ApolloPFN", "TimesFM-3", "Timestral"],
 )
 mu_ensemble = ensemble.estimate(data)
 print(apfn_est.last_covariate_importance_)  # Zero-shot AttnFeat covariate attribution
+print(ensemble.last_posterior_cvar_)        # Exact Riemann Bar Expected Shortfall (CVaR_95%)
+print(ensemble.last_posterior_skewness_)    # Non-parametric Bowley decile skewness
+
+# Synthesize Copula-Coupled Riemann Bar 3D Scenarios (BaseScenarioEstimator)
+scenarios_3d = ensemble.estimate_scenarios(data, n_paths=100, horizon=21)
 ```
 
 ---
