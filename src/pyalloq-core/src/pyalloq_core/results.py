@@ -106,3 +106,44 @@ class MonteCarloResult:
     returns_matrix: pd.DataFrame
     equity_curves: pd.DataFrame
     metrics_distribution: pd.DataFrame
+
+
+@dataclass
+class RegimeState:
+    """
+    Standardized regime detection output across Statistical, Sparse, and Continuous
+    Jump Models (`SparseJumpModelDetector`, `ContinuousJumpModelDetector`) and
+    Markov regime filters (`WonhamRegimeFilter`).
+    """
+
+    probs: (
+        pd.DataFrame
+    )  # Shape (T, K) posterior/simplex regime probabilities in Delta^K
+    hard_state: pd.Series  # Shape (T,) integer state index in {0, ..., K-1}
+    confidence: (
+        pd.Series
+    )  # Shape (T,) per-timestamp regime assignment confidence in [0, 1]
+    feature_weights: pd.Series | None = None
+    regime_centroids: pd.DataFrame | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def current_probs(self) -> pd.Series:
+        """Latest regime probability vector p_T in Delta^K."""
+        if self.probs.empty:
+            return pd.Series(dtype=float)
+        return self.probs.iloc[-1]
+
+    @property
+    def current_state(self) -> int:
+        """Latest discrete hard regime state s_T in {0, ..., K-1}."""
+        if self.hard_state.empty:
+            return 0
+        return int(self.hard_state.iloc[-1])
+
+    @property
+    def current_confidence(self) -> float:
+        """Latest regime assignment confidence score in [0, 1]."""
+        if self.confidence.empty:
+            return 1.0
+        return float(self.confidence.iloc[-1])

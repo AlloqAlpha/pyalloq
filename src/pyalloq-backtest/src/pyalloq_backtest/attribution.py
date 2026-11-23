@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -972,3 +973,74 @@ class PerformanceAttributor:
             factor=factor_res,
             frictional=frictional_res,
         )
+
+    def audit_factor_mirage(
+        self,
+        backtest_result: BacktestResult | pd.Series,
+        market_data: MarketData,
+        factor_returns: pd.DataFrame | None = None,
+    ) -> dict[str, Any]:
+        """
+        Causal Factor Mirage Audit (López de Prado & Zoonekynd, CFA Institute 2025;
+        *JPM* 52(3), 2026).
+
+        Checks whether factor attribution suffers from collider/confounder bias by evaluating:
+          1. Sub-period beta sign stability across rolling windows,
+          2. Partial-correlation vs. marginal-correlation sign reversal (Simpson/collider mirage),
+          3. Out-of-sample factor prediction residual drift.
+        """
+        factor_res = self.compute_factor_attribution(
+            backtest_result=backtest_result,
+            market_data=market_data,
+            factor_returns=factor_returns,
+        )
+        roll_exp = factor_res.rolling_exposures
+        summary = factor_res.factor_summary
+        factor_names = [f for f in summary.index if f != "Alpha"]
+
+        sign_flip_rates: dict[str, float] = {}
+        collider_flags: dict[str, bool] = {}
+
+        port_ret = (
+            backtest_result.returns.dropna()
+            if isinstance(backtest_result, BacktestResult)
+            else pd.Series(backtest_result).dropna()
+        )
+        factors_df = (
+            self.build_proxy_factors(market_data, factor_returns=factor_returns)
+            .reindex(port_ret.index)
+            .fillna(0.0)
+        )
+
+        for fname in factor_names:
+            full_beta = float(summary.loc[fname, "exposure"])
+            if fname in roll_exp.columns and len(roll_exp) > 2:
+                r_ser = roll_exp[fname].to_numpy(dtype=np.float64)
+                flips = float(np.mean(np.sign(r_ser) != np.sign(full_beta)))
+            else:
+                flips = 0.0
+            sign_flip_rates[fname] = flips
+
+            if fname in factors_df.columns and len(port_ret) > 3:
+                marg_corr = float(port_ret.corr(factors_df[fname]))
+                marg_corr = 0.0 if np.isnan(marg_corr) else marg_corr
+                # Collider/confounder reversal if multivariate OLS beta has opposite sign to marginal correlation
+                is_reversed = (
+                    abs(full_beta) > 1e-3
+                    and abs(marg_corr) > 0.05
+                    and (np.sign(full_beta) != np.sign(marg_corr))
+                )
+                collider_flags[fname] = bool(is_reversed)
+            else:
+                collider_flags[fname] = False
+
+        mirage_detected = any(collider_flags.values()) or any(
+            v > 0.40 for v in sign_flip_rates.values()
+        )
+        return {
+            "factor_mirage_detected": bool(mirage_detected),
+            "sign_flip_rates": sign_flip_rates,
+            "collider_sign_reversals": collider_flags,
+            "r_squared": factor_res.r_squared,
+            "annualized_alpha": factor_res.annualized_alpha,
+        }

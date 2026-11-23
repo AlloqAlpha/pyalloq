@@ -13,7 +13,12 @@ from pyalloq_core.interfaces import (
 )
 
 WeightingMode = Literal[
-    "inverse_uncertainty", "scrps_adaptive", "cvar_adaptive", "equal", "custom"
+    "inverse_uncertainty",
+    "scrps_adaptive",
+    "cvar_adaptive",
+    "bpds",
+    "equal",
+    "custom",
 ]
 
 
@@ -96,11 +101,12 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
             "inverse_uncertainty",
             "scrps_adaptive",
             "cvar_adaptive",
+            "bpds",
             "equal",
             "custom",
         ):
             raise ValueError(
-                "`weighting_mode` must be 'inverse_uncertainty', 'scrps_adaptive', 'cvar_adaptive', 'equal', or 'custom'."
+                "`weighting_mode` must be 'inverse_uncertainty', 'scrps_adaptive', 'cvar_adaptive', 'bpds', 'equal', or 'custom'."
             )
         self.estimators = list(estimators)
         self.weighting_mode: WeightingMode = weighting_mode
@@ -331,6 +337,50 @@ class EnsembleReturnEstimator(BaseScenarioEstimator, BaseReturnEstimator):
         elif self.weighting_mode == "cvar_adaptive":
             prec = 1.0 / (cvar_mat**2)
             weights = prec / np.sum(prec, axis=0, keepdims=True)
+        elif self.weighting_mode == "bpds":
+            # Bayesian Predictive Decision Synthesis (Tallman & West, JRSS-B 2024, 2025):
+            # Outcome-dependent Gibbs utility tilting with explicit baseline fallback M_0
+            t_total = len(data.prices)
+            h_val = min(self.validation_horizon, max(2, t_total // 5))
+            if t_total >= h_val + 8:
+                split_date = data.prices.index[-(h_val + 1)]
+                train_md = data.slice_time(end_date=split_date, horizon_steps=h_val)
+                p_start = (
+                    data.prices.loc[split_date]
+                    .reindex(assets)
+                    .to_numpy(dtype=np.float64)
+                )
+                p_end = data.prices.iloc[-1].reindex(assets).to_numpy(dtype=np.float64)
+                realized_ann = ((p_end / np.maximum(p_start, 1e-8)) - 1.0) * (
+                    252.0 / h_val
+                )
+                utilities = np.zeros((n_models, n_assets), dtype=np.float64)
+                for m_idx, est in enumerate(self.estimators):
+                    try:
+                        mu_val, std_val, _ = self._evaluate_single_model(
+                            est, train_md, assets, fallback_std
+                        )
+                        # Decision utility s_{t, j} of tilted position x_{t, j} = mu_val / std_val^2
+                        pos_j = np.clip(mu_val / np.maximum(std_val, 1e-3), -2.0, 2.0)
+                        utilities[m_idx] = (
+                            pos_j * realized_ann - 0.5 * (pos_j * std_val) ** 2
+                        )
+                    except (ValueError, KeyError, RuntimeError):
+                        utilities[m_idx] = 0.0
+            else:
+                # Ex-ante risk-adjusted decision utility
+                utilities = (mu_mat / np.maximum(std_mat, 1e-4)) - 0.5 * cvar_mat
+
+            u_scale = np.maximum(np.std(utilities, axis=0, keepdims=True), 1e-4)
+            u_shifted = (utilities - np.max(utilities, axis=0, keepdims=True)) / u_scale
+            gibbs_tilt = np.exp(np.clip(2.0 * u_shifted, -15.0, 0.0)) / np.maximum(
+                std_mat, 1e-4
+            )
+            weights = gibbs_tilt / np.sum(gibbs_tilt, axis=0, keepdims=True)
+            # Baseline M_0 fallback shrinkage when all models exhibit negative utility
+            all_neg = np.max(utilities, axis=0) < 0.0
+            if np.any(all_neg):
+                mu_mat[:, all_neg] = 0.70 * mu_mat[:, all_neg]
         else:
             # "inverse_uncertainty"
             prec = 1.0 / (std_mat**2)

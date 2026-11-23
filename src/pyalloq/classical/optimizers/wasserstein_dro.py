@@ -80,6 +80,7 @@ class WassersteinDROAllocator(BaseAllocator):
         generator_n_paths: int = 150,
         generator_horizon: int = 10,
         generator_mmd_sensitivity: float = 0.15,
+        quadratic_shift_floor_coeff: float = 0.50,
         kelly_fraction: float = 1.0,
         beta: float = 0.95,
         risk_aversion: float = 1.0,
@@ -128,6 +129,7 @@ class WassersteinDROAllocator(BaseAllocator):
         self.generator_n_paths = max(10, int(generator_n_paths))
         self.generator_horizon = max(1, int(generator_horizon))
         self.generator_mmd_sensitivity = float(max(0.0, generator_mmd_sensitivity))
+        self.quadratic_shift_floor_coeff = float(max(0.0, quadratic_shift_floor_coeff))
         self.kelly_fraction = float(np.clip(kelly_fraction, 0.05, 2.0))
         self.beta = float(beta)
         self.risk_aversion = float(max(0.0, risk_aversion))
@@ -422,8 +424,16 @@ class WassersteinDROAllocator(BaseAllocator):
             assets=assets,
             override_eps=kwargs.get("epsilon"),
         )
-        if used_generative_wdro and gen_mmd > 0.0:
-            eff_eps = eff_eps + self.generator_mmd_sensitivity * gen_mmd
+        # Shifted Score Risk (Sept 2026, arXiv:2609.27546) minimax quadratic Wasserstein shift error floor:
+        # diffusion score error under W_2 shift scales quadratically with w2_regime^2 + signature MMD
+        quadratic_shift_floor = 0.0
+        if used_generative_wdro:
+            quadratic_shift_floor = self.quadratic_shift_floor_coeff * (w2_regime**2)
+            eff_eps = (
+                eff_eps
+                + self.generator_mmd_sensitivity * gen_mmd
+                + quadratic_shift_floor
+            )
 
         lb, ub = self._resolve_bounds(assets)
         w = cp.Variable(n_assets)
@@ -622,6 +632,7 @@ class WassersteinDROAllocator(BaseAllocator):
                 "wasserstein_regime_distance": w2_regime,
                 "generative_wdro": used_generative_wdro,
                 "generator_signature_mmd": gen_mmd,
+                "quadratic_shift_floor": quadratic_shift_floor,
                 "dual_norm_penalty": dual_pen_val,
                 "worst_case_objective": wc_obj_val,
                 "active_view_multipliers": lam_val,

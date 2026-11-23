@@ -1,3 +1,9 @@
+from .conformal import (
+    ConformalIntervalResult,
+    ConformalMethod,
+    ConformalPIDCalibrator,
+    ConformalRiskController,
+)
 from .data import MarketData, ScenarioMarketData
 from .discrete import DiscreteAllocationResult, DiscreteShareAllocator
 from .engines import ParallelMonteCarloEngine
@@ -11,10 +17,27 @@ from .enums import (
 from .interfaces import (
     BaseAllocator,
     BaseCovarianceEstimator,
+    BaseRegimeDetector,
     BaseReturnEstimator,
     BaseScenarioEstimator,
     BaseScenarioGenerator,
     BaseViewGenerator,
+)
+from .meta import (
+    AdaHedgeStrategy,
+    AdaNormalHedgeStrategy,
+    BaseMetaWeightingStrategy,
+    BPDSEstimator,
+    BPDSMetaStrategy,
+    CADTSBanditStrategy,
+    CBCEStrategy,
+    DualScaledSwitchingCostStrategy,
+    EllipticalShrinkageStrategy,
+    FixedShareStrategy,
+    SwitchingCostOLOStrategy,
+    WeightedFractionalStrategy,
+    compute_optimal_universe_size,
+    estimate_elliptical_kurtosis_kappa,
 )
 from .pipeline import StrategyPipeline
 from .results import (
@@ -22,31 +45,52 @@ from .results import (
     MonteCarloResult,
     MultiPeriodOptimizationResult,
     OptimizationResult,
+    RegimeState,
 )
 from .utils import cov_to_corr, resolve_annualization_factor
 
 __all__ = [
+    "AdaHedgeStrategy",
+    "AdaNormalHedgeStrategy",
+    "BPDSEstimator",
+    "BPDSMetaStrategy",
     "BacktestResult",
     "BaseAllocator",
     "BaseCovarianceEstimator",
+    "BaseMetaWeightingStrategy",
+    "BaseRegimeDetector",
     "BaseReturnEstimator",
     "BaseScenarioEstimator",
     "BaseScenarioGenerator",
     "BaseViewGenerator",
+    "CADTSBanditStrategy",
+    "CBCEStrategy",
+    "ConformalIntervalResult",
+    "ConformalMethod",
+    "ConformalPIDCalibrator",
+    "ConformalRiskController",
     "ConstraintType",
     "CovariateKey",
     "CovariateMode",
     "DataFrequency",
     "DiscreteAllocationResult",
     "DiscreteShareAllocator",
+    "DualScaledSwitchingCostStrategy",
+    "EllipticalShrinkageStrategy",
+    "FixedShareStrategy",
     "MarketData",
     "MonteCarloResult",
     "MultiPeriodOptimizationResult",
     "ObjectiveFunction",
     "OptimizationResult",
     "ParallelMonteCarloEngine",
+    "RegimeState",
     "ScenarioMarketData",
     "StrategyPipeline",
+    "SwitchingCostOLOStrategy",
+    "WeightedFractionalStrategy",
+    "compute_optimal_universe_size",
     "cov_to_corr",
+    "estimate_elliptical_kurtosis_kappa",
     "resolve_annualization_factor",
 ]

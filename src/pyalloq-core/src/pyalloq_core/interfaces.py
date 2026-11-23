@@ -7,12 +7,12 @@ import pandas as pd
 
 from .data import MarketData, ScenarioMarketData
 from .enums import DataFrequency
-from .results import OptimizationResult
+from .results import OptimizationResult, RegimeState
 
 
 class BaseAllocator(ABC):
-    def __init__(self, tickers: list[str]) -> None:
-        self.tickers = tickers
+    def __init__(self, tickers: list[str] | None = None) -> None:
+        self.tickers = list(tickers) if tickers is not None else []
 
     def _resolve_annualization_factor(
         self,
@@ -283,3 +283,24 @@ class BaseScenarioEstimator(BaseScenarioGenerator):
         if refit or not getattr(self, "is_fitted", False):
             self.fit(data)
         return self.generate(n_paths=n_paths, horizon=horizon)
+
+
+class BaseRegimeDetector(ABC):
+    """
+    Standardized contract for persistence-regularized regime detection models
+    (Statistical Jump Models, Sparse Jump Models, Continuous Jump Models, and
+    Markov/Wonham regime filters).
+    """
+
+    @abstractmethod
+    def fit(self, data: MarketData) -> "BaseRegimeDetector":
+        """Fits the regime detector on a `MarketData` instance."""
+        ...
+
+    @abstractmethod
+    def detect(self, data: MarketData, refit: bool = True) -> RegimeState:
+        """
+        Detects latent market regimes across `data` and returns a standardized
+        `RegimeState(probs, hard_state, confidence, feature_weights, metadata)`.
+        """
+        ...

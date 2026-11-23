@@ -1,13 +1,15 @@
 from pyalloq_simulation.core.evaluator import EvaluationMetrics, ScenarioEvaluator
 from pyalloq_simulation.generators import (
     ConditionalDiffusionGenerator,
+    FactorConditionalDiffusionEstimator,
     FHSGenerator,
-    PCAFactorGenerator,
-    GaussianGenerator,
     GARCHEVTCopulaGenerator,
+    GaussianGenerator,
     GMMRegimeGenerator,
     NeuralSDEGenerator,
+    PCAFactorGenerator,
     ReactionDiffusionGenerator,
+    compute_effective_spectral_rank,
 )
 from pyalloq_simulation.utils import FactorBackcastImputer
 from pyalloq_simulation.views import (
@@ -24,6 +26,7 @@ from pyalloq_simulation.views import (
 __all__ = [
     "ConditionalDiffusionGenerator",
     "EvaluationMetrics",
+    "FactorConditionalDiffusionEstimator",
     "ScenarioEvaluator",
     "FHSGenerator",
     "PCAFactorGenerator",
@@ -41,4 +44,5 @@ __all__ = [
     "CovarianceView",
     "ViewType",
     "ViewBuilder",
+    "compute_effective_spectral_rank",
 ]

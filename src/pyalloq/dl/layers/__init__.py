@@ -10,6 +10,7 @@ from pyalloq.dl.layers.neural_jump_rde import (
     NeuralJumpRDE,
     TorchLogSignatureExtractor,
 )
+from pyalloq.dl.layers.relational_graph import RelationalGraphPriorModule
 from pyalloq.dl.layers.set_transformer import (
     ISAB,
     MAB,
@@ -32,6 +33,7 @@ __all__ = [
     "FragilityShrinkageCholeskyLayer",
     "MDFPOptimizationLayer",
     "NeuralJumpRDE",
+    "RelationalGraphPriorModule",
     "ScalableMultiheadAttention",
     "SetTransformerBackbone",
     "TorchLogSignatureExtractor",

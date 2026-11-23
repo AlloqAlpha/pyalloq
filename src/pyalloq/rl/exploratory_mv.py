@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import cvxpy as cp
 import numpy as np
 import pandas as pd
 import scipy.linalg as sla
 from pyalloq_core.data import MarketData
-from pyalloq_core.interfaces import BaseAllocator
+from pyalloq_core.interfaces import BaseAllocator, BaseRegimeDetector
 from pyalloq_core.results import OptimizationResult
 from sklearn.mixture import GaussianMixture
 
@@ -210,6 +210,11 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         hedging_weight: float = 0.5,
         sample_exploratory_action: bool = False,
         weight_bounds: tuple[float, float] = (0.0, 1.0),
+        regime_detector: BaseRegimeDetector | None = None,
+        include_jump_risk: bool = True,
+        jump_threshold_z: float = 2.5,
+        entropy_type: Literal["shannon", "tsallis"] = "shannon",
+        tsallis_q: float = 1.5,
         random_state: int = 42,
     ) -> None:
         super().__init__(tickers or [])
@@ -221,6 +226,11 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         self.hedging_weight = float(np.clip(hedging_weight, 0.0, 2.0))
         self.sample_exploratory_action = bool(sample_exploratory_action)
         self.weight_bounds = weight_bounds
+        self.regime_detector = regime_detector
+        self.include_jump_risk = bool(include_jump_risk)
+        self.jump_threshold_z = float(max(1.5, jump_threshold_z))
+        self.entropy_type: Literal["shannon", "tsallis"] = entropy_type
+        self.tsallis_q = float(np.clip(tsallis_q, 1.01, 3.0))
         self.random_state = int(random_state)
 
         self.regime_filter = WonhamRegimeFilter(
@@ -229,6 +239,7 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         self.last_policy_cov_: pd.DataFrame | None = None
         self.last_policy_entropy_: float = 0.0
         self.last_regime_beliefs_: pd.Series | None = None
+        self.last_jump_intensity_: float = 0.0
 
     def allocate(
         self,
@@ -256,6 +267,15 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         p_t = belief_df.iloc[-1].to_numpy(dtype=np.float64)
         self.last_regime_beliefs_ = belief_df.iloc[-1].copy()
 
+        # Optional ContinuousJumpModelDetector / BaseRegimeDetector belief conditioning
+        if self.regime_detector is not None:
+            reg_state = self.regime_detector.detect(data, refit=True)
+            p_cjm = reg_state.current_probs.to_numpy(dtype=np.float64)
+            if len(p_cjm) == len(p_t):
+                p_t = 0.70 * p_cjm + 0.30 * p_t
+                p_t = p_t / np.sum(p_t)
+                self.last_regime_beliefs_ = pd.Series(p_t, index=belief_df.columns)
+
         assert (
             self.regime_filter.regime_means_ is not None
             and self.regime_filter.regime_covs_ is not None
@@ -277,6 +297,25 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         for k in range(k_reg):
             diff_k = reg_means_ann[k] - mu_myopic
             cov_blended += p_t[k] * (reg_covs_ann[k] + np.outer(diff_k, diff_k))
+
+        # Exploratory Mean-Variance with Jumps (EMVJ, Chen, Li & Saunders, Dec 2025, arXiv:2512.09224):
+        # Add compound Poisson jump-diffusion covariance term lambda_jump * Sigma_jump
+        if self.include_jump_risk and len(returns_df) >= 8:
+            ret_np = returns_df.to_numpy(dtype=np.float64)
+            std_vec = np.maximum(np.std(ret_np, axis=0, ddof=1), 1e-6)
+            z_scores = np.abs(ret_np - np.mean(ret_np, axis=0)) / std_vec
+            jump_mask = np.any(z_scores > self.jump_threshold_z, axis=1)
+            jump_rate = float(np.mean(jump_mask))
+            self.last_jump_intensity_ = jump_rate * scale_factor
+            if np.sum(jump_mask) >= 2:
+                jump_ret = ret_np[jump_mask]
+                jump_cov_ann = ((jump_ret.T @ jump_ret) / float(len(jump_ret))) * (
+                    jump_rate * scale_factor
+                )
+                cov_blended = cov_blended + 0.5 * (jump_cov_ann + jump_cov_ann.T)
+        else:
+            self.last_jump_intensity_ = 0.0
+
         if cov_matrix is not None:
             cov_pass = (
                 cov_matrix.reindex(index=assets, columns=assets)
@@ -299,11 +338,18 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
         hedging_drift = self.hedging_weight * (mu_forward - mu_myopic)
         mu_total = mu_myopic + hedging_drift
 
-        # Analytical entropy-regularized exploratory Gaussian policy covariance Sigma_pi^*
+        # Analytical entropy-regularized exploratory Gaussian/Tsallis policy covariance Sigma_pi^*
         prec_reg = np.linalg.inv(
             cov_psd + (self.turnover_penalty + 1e-4) * np.eye(n_assets)
         )
-        sigma_pi = (self.entropy_temperature / self.risk_aversion) * prec_reg
+        tsallis_scale = (
+            float(2.0 / (1.0 + self.tsallis_q))
+            if self.entropy_type == "tsallis"
+            else 1.0
+        )
+        sigma_pi = (
+            tsallis_scale * (self.entropy_temperature / self.risk_aversion) * prec_reg
+        )
         sigma_pi = 0.5 * (sigma_pi + sigma_pi.T)
         self.last_policy_cov_ = pd.DataFrame(sigma_pi, index=assets, columns=assets)
 
@@ -374,6 +420,9 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
                 "forward_regime_beliefs": p_forward.tolist(),
                 "policy_entropy": self.last_policy_entropy_,
                 "entropy_temperature": self.entropy_temperature,
+                "entropy_type": self.entropy_type,
+                "include_jump_risk": self.include_jump_risk,
+                "annualized_jump_intensity": self.last_jump_intensity_,
                 "exploratory_sampled": bool(do_sample),
             },
         )
@@ -393,3 +442,6 @@ class ExploratoryRegimeMVAllocator(BaseAllocator):
             sample_exploratory_action=True,
         )
         return res.weights
+
+
+ExploratoryRegimeRLAllocator = ExploratoryRegimeMVAllocator
