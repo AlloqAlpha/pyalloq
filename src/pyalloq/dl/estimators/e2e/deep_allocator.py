@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import torch
 from pyalloq_core.data import MarketData
@@ -10,7 +11,8 @@ from torch import nn
 
 class DeepAllocator(BaseAllocator):
     """
-    End-to-End Pytorch DL Allocator mapping raw features directly to portfolio weights.
+    End-to-End PyTorch DL Allocator mapping raw features directly to portfolio weights.
+    Supports ragged tradability masking (``mask``) and optional cash sleeve outputs ``(B, N+1)``.
     """
 
     def __init__(
@@ -25,6 +27,7 @@ class DeepAllocator(BaseAllocator):
         self.model = model.to(self.device)
         self.model.eval()
         self.lookback_window = lookback_window
+        self.last_cash_weight_: float = 0.0
 
     def allocate(
         self,
@@ -37,12 +40,29 @@ class DeepAllocator(BaseAllocator):
             self.tickers = list(data.assets)
         tickers = list(data.prices.columns)
         n_assets = len(tickers)
-        returns_df = data.prices.pct_change().fillna(0.0).iloc[-self.lookback_window :]
+
+        raw_prices_win = data.prices.iloc[-self.lookback_window :]
+        raw_rets_win = data.prices.pct_change(fill_method=None).iloc[
+            -self.lookback_window :
+        ]
+        # Asset is tradable at decision time iff its price and return window are finite
+        active_mask_np = (
+            raw_prices_win.notna().all(axis=0).to_numpy(dtype=bool)
+            & np.isfinite(raw_prices_win.to_numpy(dtype=np.float64)).all(axis=0)
+            & raw_rets_win.notna().all(axis=0).to_numpy(dtype=bool)
+        )
+        if not active_mask_np.any():
+            active_mask_np = np.ones(n_assets, dtype=bool)
+        mask_batch = torch.tensor(
+            active_mask_np, dtype=torch.bool, device=self.device
+        ).unsqueeze(0)
+
+        returns_df = raw_rets_win.fillna(0.0)
         base_tensor = torch.tensor(returns_df.values, dtype=torch.float32).unsqueeze(-1)
         tensor_list = [base_tensor]
 
         if data.features is not None:
-            for feat_name, df_feat in data.features.items():
+            for df_feat in data.features.values():
                 if (
                     df_feat.shape[1] == 1
                     and n_assets > 1
@@ -62,7 +82,6 @@ class DeepAllocator(BaseAllocator):
                     feat_window = (
                         df_feat.reindex(index=returns_df.index, columns=tickers)
                         .ffill()
-                        .bfill()
                         .fillna(0.0)
                     )
                     feat_np = feat_window.to_numpy(dtype="float32")
@@ -70,7 +89,6 @@ class DeepAllocator(BaseAllocator):
                 tensor_list.append(feat_tensor)
 
         x_tensor = torch.cat(tensor_list, dim=-1)
-
         x_batch = x_tensor.unsqueeze(0).to(self.device)
 
         current_weights = kwargs.get("current_weights")
@@ -93,13 +111,31 @@ class DeepAllocator(BaseAllocator):
         with torch.no_grad():
             try:
                 if w_curr_tensor is not None:
-                    weights_tensor = self.model(x_batch, w_current=w_curr_tensor)
+                    weights_tensor = self.model(
+                        x_batch, w_current=w_curr_tensor, mask=mask_batch
+                    )
                 else:
-                    weights_tensor = self.model(x_batch)
+                    weights_tensor = self.model(x_batch, mask=mask_batch)
             except TypeError:
-                weights_tensor = self.model(x_batch)
+                try:
+                    if w_curr_tensor is not None:
+                        weights_tensor = self.model(x_batch, w_current=w_curr_tensor)
+                    else:
+                        weights_tensor = self.model(x_batch)
+                except TypeError:
+                    weights_tensor = self.model(x_batch)
 
         weights_np = weights_tensor.squeeze(0).cpu().numpy()
+        if len(weights_np) == n_assets + 1:
+            self.last_cash_weight_ = float(weights_np[-1])
+            weights_np = weights_np[:n_assets]
+        else:
+            self.last_cash_weight_ = 0.0
+
         weights = pd.Series(weights_np, index=data.prices.columns, name="weights")
 
-        return OptimizationResult(weights=weights, status="OPTIMAL_DL_E2E")
+        return OptimizationResult(
+            weights=weights,
+            status="OPTIMAL_DL_E2E",
+            metadata={"cash_weight": self.last_cash_weight_},
+        )

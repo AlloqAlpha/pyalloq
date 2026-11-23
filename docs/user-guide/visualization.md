@@ -339,6 +339,31 @@ fig_net.show()
 
 ---
 
+## 7. Set Transformer Inducing Factor, Spectral Conditioning & Cardinality Diagnostics
+
+`plot_set_transformer_diagnostics` renders a 3-panel interactive Plotly figure inspecting `SetTransformerCovarianceNet` and `SetTransformerPolicyNet`:
+
+1. **Panel 1 (`ISAB` Inducing Factor Loadings \(B_t \in \mathbb{R}^{N \times m}\))**: Heatmap of learned dynamic latent risk factor exposures across assets.
+2. **Panel 2 (Eigenvalue Spectrum & Conditioning \(\kappa\))**: Log-scale eigenvalue spectrum comparing lower-triangular Cholesky vs. `ISABFactorDiagonalHead` and `RIESpectralHead` cleaning.
+3. **Panel 3 (Cardinality-Shift Concentration Stability)**: Top position weight (\(\max_i w_i\)) across universe sizes \(N \in [10, 1000]\) comparing Standard Softmax dilution against **Scalable-Softmax (`SSMax`)** and `CappedSimplexProjection`.
+
+```python
+from pyalloq.dl import DeepCovarianceEstimator, SetTransformerCovarianceNet
+from pyalloq_viz import plot_set_transformer_diagnostics
+
+set_cov = SetTransformerCovarianceNet(n_features=1, hidden_dim=32, num_inds=4)
+est = DeepCovarianceEstimator(model=set_cov, lookback_window=20, allow_ragged=True)
+factor_loadings_df, _, _ = est.estimate_factors(market_data)
+
+fig_set = plot_set_transformer_diagnostics(
+    factor_loadings=factor_loadings_df,
+    eigenvalue_spectra={"ISAB_Factor_Diag": [2.4, 1.1, 0.7, 0.5, 0.3]},
+)
+fig_set.show()
+```
+
+---
+
 ## Themes & Static Exports
 
 Every plot function and tear sheet supports two built-in institutional themes:

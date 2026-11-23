@@ -134,6 +134,12 @@ This page auto-generates documentation from the `pyalloq-viz` package docstrings
 
 ---
 
+### plot_set_transformer_diagnostics
+
+::: pyalloq_viz.allocation.plot_set_transformer_diagnostics
+
+---
+
 ## 5. Multi-Strategy Comparison & Attribution Plots
 
 ### plot_equity_drawdown_overlay

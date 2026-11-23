@@ -340,6 +340,43 @@ pipeline = StrategyPipeline(
 
 ---
 
+## Size-Invariant Set Transformer End-to-End Policies (`SetTransformerPolicyNet` & `DeepAllocator`)
+
+`SetTransformerPolicyNet` implements PyAlloq's `BasePolicyNetwork` (`forward(x, w_current=None, mask=None, attn_bias=None) -> w_target`) using **Induced Set Attention Blocks (`ISAB`)**, **Pooling by Multihead Attention (`PMA_1`)**, and **Scalable-Softmax (`SSMax`)**. A policy trained on a 500-stock universe with `UniverseSubsampler` transfers zero-shot to a 50-stock inference subset without tensor shape errors or Softmax concentration collapse.
+
+It supports five strictly equivariant, mask-aware mandate output heads:
+
+- **`mandate="capped_simplex"` (`CappedSimplexProjection`)**: Exact vectorized bisection projection onto \(\{w : \sum_i w_i = 1, 0 \le w_i \le w_{\max}\}\) with zero weight on padded/untradable slots.
+- **`mandate="sparsemax"`**: Exact Euclidean simplex projection (\(w_{\max} = 1\)) inducing sparse active holdings.
+- **`mandate="masked_dirichlet"` (`MaskedDirichletCashHead`)**: Simplex concentration parameters over active assets plus an invariant cash logit derived from the `PMA_1` `[REGIME]` token (for `POMDPPortfolioEnv` and `SB3PortfolioAgent(policy_backbone="set_transformer")`).
+- **`mandate="dollar_neutral"` (`DollarNeutralStatArbHead`)**: Strictly zero net exposure (\(\sum_i w_i = 0\)) and exact target gross leverage (\(\sum_i |w_i| = G_{\text{gross}}\)) across any active asset count.
+- **`mandate="vol_targeted"` (`VolTargetedContinuousRiskHead`)**: Directional risk weights scaled by inverse asset volatility \(1 / \hat{\sigma}_{i,t}\).
+
+```python
+from pyalloq import StrategyPipeline
+from pyalloq.dl import DeepAllocator, SetTransformerPolicyNet
+
+policy_net = SetTransformerPolicyNet(
+    n_features=1,
+    hidden_dim=64,
+    num_heads=4,
+    num_inds=16,
+    mandate="capped_simplex",
+    max_weight=0.20,
+    temporal_type="vsn_conv",
+)
+
+pipeline = StrategyPipeline(
+    allocator=DeepAllocator(
+        model=policy_net,
+        lookback_window=30,
+        tickers=data.assets,
+    )
+)
+```
+
+---
+
 ## Choosing an Allocator
 
 | Scenario | Recommended Allocator |

@@ -222,6 +222,60 @@
 
 ---
 
+### SetTransformerBackbone
+
+::: pyalloq.dl.layers.set_transformer.SetTransformerBackbone
+
+---
+
+### SetTransformerCovarianceNet
+
+::: pyalloq.dl.estimators.covariance.models.set_covariance.SetTransformerCovarianceNet
+
+---
+
+### ISABFactorDiagonalHead
+
+::: pyalloq.dl.estimators.covariance.models.set_covariance.ISABFactorDiagonalHead
+
+---
+
+### EquivariantGramCorrHead
+
+::: pyalloq.dl.estimators.covariance.models.set_covariance.EquivariantGramCorrHead
+
+---
+
+### RIESpectralHead
+
+::: pyalloq.dl.estimators.covariance.models.set_covariance.RIESpectralHead
+
+---
+
+### WoodburyGaussianNLLLoss
+
+::: pyalloq.dl.loss_functions.woodbury.WoodburyGaussianNLLLoss
+
+---
+
+### WoodburySteinLoss
+
+::: pyalloq.dl.loss_functions.woodbury.WoodburySteinLoss
+
+---
+
+### MarketJEPA
+
+::: pyalloq.dl.world_models.jepa.MarketJEPA
+
+---
+
+### VICRegLoss
+
+::: pyalloq.dl.world_models.jepa.VICRegLoss
+
+---
+
 ## Black-Litterman
 
 ### BlackLittermanEstimator

@@ -263,3 +263,60 @@ Z \leftarrow \operatorname{LN}_3\!\left(Z + \operatorname{MLP}(Z)\right)
 \]
 
    To synthesize joint \(N\)-asset scenarios (`BaseScenarioEstimator`), correlated uniform variates \(u^{(m, h)} \sim C_{\nu, R_{\text{imp}}}^{\text{t}}\) are drawn from a Student-\(t\) (or stratified LHS-\(t\)) copula parameterized by the Buss & Vilkov (2012) option-implied correlation matrix blended with `AttnFeat` epistemic correlation, and inverted through each asset's exact Riemann Bar marginal CDF: \(\tilde{r}_{i, h}^{(m)} = \mu_{i,\text{ctx}} + \sigma_{i,\text{ctx}} F_{\text{bar}, i, h}^{-1}(u_i^{(m, h)})\).
+
+---
+
+### Permutation-Invariant Set Transformers & Equivariant Deep Covariance (`SetTransformerCovarianceNet`, `SetTransformerPolicyNet`)
+
+1. **Three Portfolio Symmetry Laws:**
+   Let \(X_t \in \mathbb{R}^{N \times d}\) denote the cross-sectional matrix of per-asset temporal embeddings at decision time \(t\), and let \(\Pi \in \{0, 1\}^{N \times N}\) be any permutation matrix reordering tickers:
+   - **Permutation Invariance** (Global `[REGIME]` token \(z_{\text{regime}}\), cash logit \(l_t^{(\text{cash})}\), RL critic \(V_\psi(s_t)\), and latent factor covariance \(\Sigma_{F,t} \in \mathbb{S}_{++}^m\)):
+     \[
+     g(\Pi X_t) = g(X_t) \qquad \forall \Pi \in S_N
+     \]
+   - **1D Permutation Equivariance** (Expected returns \(\hat{\mu}_t\), factor loadings \(B_t \in \mathbb{R}^{N \times m}\), idiosyncratic variances \(d_t \in \mathbb{R}_{++}^N\), and portfolio weights \(w_t \in \mathbb{R}^N\)):
+     \[
+     f(\Pi X_t) = \Pi f(X_t) \qquad \forall \Pi \in S_N
+     \]
+   - **2D Congruence Equivariance** (Cross-asset covariance matrix \(\hat{\Sigma}_t \in \mathbb{S}_{++}^N\)):
+     \[
+     \hat{\Sigma}(\Pi X_t) = \Pi \hat{\Sigma}(X_t) \Pi^\top \qquad \forall \Pi \in S_N
+     \]
+
+2. **Induced Set Attention Blocks (`ISAB`), Pooling by Multihead Attention (`PMA`), and Scalable-Softmax (`SSMax`):**
+   Following Lee et al. (ICML 2019), `ISAB` replaces quadratic \(\mathcal{O}(N^2)\) pairwise self-attention (`SAB`) with \(m \ll N\) learnable inducing points \(I \in \mathbb{R}^{m \times d}\) functioning as dynamic latent risk factors:
+   \[
+   H_{I,t} = \operatorname{MAB}_1(I, X_t) \in \mathbb{R}^{m \times d}, \qquad
+   Z_t = \operatorname{MAB}_2(X_t, H_{I,t}) \in \mathbb{R}^{N \times d}, \qquad
+   z_{\text{regime}, t} = \operatorname{PMA}_1(Z_t) = \operatorname{MAB}(S, \operatorname{rFF}(Z_t))
+   \]
+   To eliminate **Softmax attention fading** when transferring from a 500-stock training universe to a 50-stock inference sleeve, every variable-cardinality attention key axis replaces standard Softmax with **Scalable-Softmax** (Nakanishi, 2025) over active tradable assets \(N_{\text{active}} = \sum_{j=1}^N m_{j,t}\):
+   \[
+   \operatorname{SSMax}(z_i; N_{\text{active}}, s) = \frac{m_{i,t} \exp\!\left((s \ln N_{\text{active}})\, z_i\right)}{\sum_{j=1}^N m_{j,t} \exp\!\left((s \ln N_{\text{active}})\, z_j\right)}
+   \]
+
+3. **Three Strictly Congruence-Equivariant PSD Covariance Heads:**
+   - **ISAB Low-Rank Factor-Plus-Diagonal Head (`ISABFactorDiagonalHead`, `head_type="factor_diag"`):**
+     Reuses both the equivariant asset embeddings \(Z_t\) and the invariant inducing-point factor state \(H_{I,t}\):
+     \[
+     \hat{\Sigma}_t = B_t \Sigma_{F,t} B_t^\top + D_t, \qquad
+     B_t = \phi_B(Z_t) \in \mathbb{R}^{N \times m}, \quad
+     D_t = \operatorname{diag}\!\left(\operatorname{softplus}(\phi_D(Z_t)) + \epsilon_d\right), \quad
+     \Sigma_{F,t} = \frac{1}{d} H_{I,t} H_{I,t}^\top + \epsilon_F I_m
+     \]
+   - **Volatility-Scaled Equivariant Gram Correlation Head (`EquivariantGramCorrHead`, `head_type="gram_corr"`):**
+     Maps each asset to \(\ell_2\)-normalized row vectors \(\tilde{u}_{i,t} = u_{i,t} / (\|u_{i,t}\|_2 + \epsilon)\) blended with learnable `[REGIME]` shrinkage \(\lambda_t \in (0, 1)\):
+     \[
+     \hat{\Gamma}_t = (1 - \lambda_t) \tilde{U}_t \tilde{U}_t^\top + \lambda_t I_N, \qquad
+     \hat{\Sigma}_t = D_{\sigma, t} \hat{\Gamma}_t D_{\sigma, t}
+     \]
+   - **Rotation- and Permutation-Invariant Spectral Cleaning (`RIESpectralHead`, `head_type="rie_spectral"`, Bongiorno et al., 2026):**
+     Decomposes the sample correlation matrix \(C_t = V_t \Lambda_t V_t^\top\), passes the unordered eigenvalue set \(\{(\lambda_{k,t}, q_{\text{in}})\}\) with aspect ratio \(q_{\text{in}} = N_{\text{active}} / L\) through a 1D equivariant Set Attention block to predict cleaned eigenvalues \(\lambda_t^*\), and recombines \(\hat{\Sigma}_t = D_{\sigma, t} (V_t \operatorname{diag}(\lambda_t^*) V_t^\top) D_{\sigma, t}\).
+
+4. **Exact \(\mathcal{O}(N m^2 + m^3)\) Woodbury Inversion & Cardinality-Normalized Losses (`WoodburyGaussianNLLLoss`, `WoodburySteinLoss`):**
+   Via the **Woodbury Matrix Identity** and **Matrix Determinant Lemma** with capacitance matrix \(M_t = \Sigma_{F,t}^{-1} + B_t^\top D_t^{-1} B_t \in \mathbb{S}_{++}^m\):
+   \[
+   \hat{\Sigma}_t^{-1} v = D_t^{-1} v - D_t^{-1} B_t M_t^{-1} B_t^\top D_t^{-1} v, \qquad
+   \ln |\hat{\Sigma}_t| = \sum_{i \in \text{active}} \ln d_{i,t} + \ln |\Sigma_{F,t}| + \ln |M_t|
+   \]
+   Normalizing Gaussian NLL and James-Stein loss by \(N_{\text{active}}\) holds loss magnitudes and gradient norms invariant across mixed-cardinality batches.

@@ -4,6 +4,7 @@ from pyalloq_viz.allocation import (
     plot_hierarchical_composition,
     plot_multi_universe_frontier,
     plot_risk_contributions,
+    plot_set_transformer_diagnostics,
     plot_weight_drift_turnover,
 )
 from pyalloq_viz.comparison import (
@@ -101,6 +102,7 @@ __all__ = [
     "plot_pbo_distribution",
     "plot_regime_transitions",
     "plot_risk_contributions",
+    "plot_set_transformer_diagnostics",
     "plot_spectral_contagion_network",
     "plot_terminal_wealth_ruin",
     "plot_thermodynamic_regime_gate",
