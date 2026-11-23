@@ -82,17 +82,36 @@ data = LiftedHestonRoughVolTransformer(n_factors=5, estimation_window=30).transf
 # Populates: "lifted_heston_vol", "hurst_exponent"
 ```
 
+### Statistical Jump Models (`SparseJumpModelDetector` & `ContinuousJumpModelDetector`)
+
+Both jump-model detectors inherit from `BaseRegimeDetector` **and** `BaseFeatureTransformer`, so they can run inside `FeaturePipeline` (attaching `"regime_probs"` and `"regime_state"` to `data.features`) or directly inside `RegimeSwitchingAllocator`:
+
+```python
+from pyalloq_features.regimes.jump_models import (
+    SparseJumpModelDetector,
+    ContinuousJumpModelDetector,
+)
+
+# Discrete Bellman-DP Sparse Jump Model with L1/L2 feature selection (supports ftic / abic / ts_cv)
+sjm = SparseJumpModelDetector(n_regimes=3, jump_penalty=15.0, sparsity_kappa=2.0)
+data = sjm.transform(data)
+
+# Continuous simplex-trajectory Jump Model with smooth probability transitions
+cjm = ContinuousJumpModelDetector(n_regimes=3, jump_penalty=20.0, mode_loss_weight=0.35)
+regime_state = cjm.detect(data)
+```
+
 ---
 
 ## Scalers
 
-Normalize features before feeding them to ML estimators or deep learning models.
+Normalize features causally before feeding them to ML estimators or deep learning models using `RollingZScoreScaler`:
 
 ```python
-from pyalloq_features.scalers import StandardFeatureScaler
+from pyalloq_features.scalers.rolling import RollingZScoreScaler
 
-scaler = StandardFeatureScaler()
-scaled_features = scaler.fit_transform(features)
+scaler = RollingZScoreScaler(window=60)
+scaled_data = scaler.transform(data)
 ```
 
 ---

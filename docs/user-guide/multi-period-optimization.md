@@ -9,7 +9,7 @@ PyAlloq provides a complete, modular suite of **Multi-Period Portfolio Optimizat
 In multi-period optimization, the optimal trade at date \(t\) depends on your **current drifted holdings** \(w_{t^-}\) immediately prior to rebalancing.
 
 - `WalkForwardEngine` automatically tracks intra-period asset price drift and passes `current_weights=w_{t^-}` into `StrategyPipeline.generate_weights(..., current_weights=current_w_series)` on every rebalance date.
-- Single-period allocators ignore `current_weights`, while multi-period allocators use `current_weights` to penalize turnover, model market impact, and return a [`MultiPeriodOptimizationResult`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq-core/src/pyalloq_core/results.py) containing both the immediate trade execution `result.weights` and the planned \(H\)-stage trajectory `result.weights_trajectory`.
+- Single-period allocators ignore `current_weights`, while multi-period allocators use `current_weights` to penalize turnover, model market impact, and return a `MultiPeriodOptimizationResult` containing both the immediate trade execution `result.weights` and the planned \(H\)-stage trajectory `result.weights_trajectory`.
 
 ---
 
@@ -17,7 +17,7 @@ In multi-period optimization, the optimal trade at date \(t\) depends on your **
 
 ### 1. Multi-Horizon Alpha Decay + Boyd/Gârleanu-Pedersen MPC
 
-Combine [`AlphaDecayReturnEstimator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/classical/estimators/returns/multi_horizon.py) with [`MultiPeriodMPCAllocator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/classical/optimizers/multi_period.py):
+Combine `AlphaDecayReturnEstimator` with `MultiPeriodMPCAllocator`:
 
 ```python
 from pyalloq.classical.estimators.covariance.ledoit_wolf import LedoitWolfCovariance
@@ -108,7 +108,7 @@ stoch_res = stoch_mpc.allocate(scenarios)
 
 ## Pillar 2: Decision-Focused Learning (DFL) & IPMO
 
-Use [`MultiHorizonPredictorNet`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/estimators/e2e/ipmo_allocator.py), [`MDFPOptimizationLayer`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/layers/mdfp.py), [`HybridDFLLoss`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/loss_functions/dfl.py), and [`IPMOAllocator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/estimators/e2e/ipmo_allocator.py) to train neural predictors end-to-end through the multi-period fixed-point optimization layer:
+Use `MultiHorizonPredictorNet`, `MDFPOptimizationLayer`, `HybridDFLLoss`, and `IPMOAllocator` to train neural predictors end-to-end through the multi-period fixed-point optimization layer:
 
 ```python
 import torch
@@ -181,7 +181,7 @@ rl_allocator = RLAllocator(
 
 ## Visualizing Multi-Period Optimization with `pyalloq-viz`
 
-[`pyalloq-viz`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq-viz/src/pyalloq_viz/__init__.py) provides dedicated interactive Plotly charts and [`MultiPeriodTearSheet`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq-viz/src/pyalloq_viz/tearsheets/multi_period_ts.py) for multi-period trajectories, alpha decay surfaces, thermodynamic regime gates, and cross-pillar net-of-cost comparisons:
+`pyalloq-viz` provides dedicated interactive Plotly charts and `MultiPeriodTearSheet` for multi-period trajectories, alpha decay surfaces, thermodynamic regime gates, and cross-pillar net-of-cost comparisons:
 
 ```python
 from pyalloq_viz import (

@@ -120,9 +120,9 @@ In multi-period trading under alpha decay and convex market impact (Ma & Smith, 
    \[
    C_t^{\text{spread}} = \sum_{i=1}^M c_{\text{spread}, i} |\Delta w_{i,t}|
    \]
-4. **Square-Root Market Impact Drag (\(C_t^{\text{impact}}\)):** Non-linear Almgren-Chriss price impact:
+4. **Square-Root Market Impact Drag (\(C_t^{\text{impact}}\)):** Non-linear Almgren-Chriss price impact (with scalar impact parameter \(\gamma\) in `AlmgrenChrissCostModel`):
    \[
-   C_t^{\text{impact}} = \sum_{i=1}^M \gamma_i \sqrt{\frac{\text{AUM} \cdot |\Delta w_{i,t}|}{V_{i,t}}} |\Delta w_{i,t}|
+   C_t^{\text{impact}} = \sum_{i=1}^M \gamma \sqrt{\frac{\text{AUM} \cdot |\Delta w_{i,t}|}{V_{i,t}}} |\Delta w_{i,t}|
    \]
 5. **Short Borrow Drag (\(C_t^{\text{borrow}}\)):** Financing cost on short exposure \(\sum_i \max(0, -w_{i,t}^{\text{held}})\).
 

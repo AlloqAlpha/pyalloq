@@ -106,6 +106,11 @@ nav:
   - Getting Started:
       - getting-started/installation.md
       - getting-started/quickstart.md
+  - Architecture:
+      - architecture/system-overview.md
+      - architecture/data-and-execution-flows.md
+      - architecture/component-composition.md
+      - architecture/extending-pyalloq.md
   - Concepts:
       - concepts/building-blocks.md
       - concepts/market-data.md
@@ -116,6 +121,7 @@ nav:
       - user-guide/covariance-estimators.md
       - user-guide/allocators.md
       - user-guide/multi-period-optimization.md
+      - user-guide/deep-learning.md
       - user-guide/reinforcement-learning.md
       - user-guide/strategy-pipeline.md
       - user-guide/backtesting.md
@@ -123,11 +129,15 @@ nav:
       - user-guide/monte-carlo-simulation.md
       - user-guide/visualization.md
   - Mathematics:
+      - mathematics/notation-glossary.md
       - mathematics/portfolio-theory.md
       - mathematics/estimators.md
       - mathematics/graph-allocators.md
       - mathematics/monte-carlo-and-views.md
       - mathematics/multi-period-optimization.md
+      - mathematics/deep-learning.md
+      - mathematics/reinforcement-learning.md
+      - mathematics/robust-and-regime-optimization.md
       - mathematics/attribution-and-dsr.md
   - References:
       - references/papers.md
@@ -135,6 +145,8 @@ nav:
       - api/core.md
       - api/optimizers.md
       - api/estimators.md
+      - api/dl.md
+      - api/rl.md
       - api/backtest.md
       - api/data-connector.md
       - api/features.md

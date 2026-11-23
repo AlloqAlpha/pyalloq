@@ -17,7 +17,7 @@ This design lets you answer questions like:
 ```mermaid
 flowchart TB
     subgraph INPUT["📡 Input"]
-        DC["Data Connector\nBaseDataConnector"]
+        DC["Data Connector\nBaseDataClient"]
     end
 
     subgraph DATA["📦 Data Layer"]
@@ -126,7 +126,7 @@ Produces an NxN covariance matrix. The choice of estimator significantly affects
 |-----------|-------------|
 | `EmpiricalCovariance` | Large T/N ratio, stable markets |
 | `EWMACovariance` | Recent volatility clusters matter |
-| `LedoitWolfEstimator` | Small sample, high-dimensional portfolios |
+| `LedoitWolfShrinkage` | Small sample, high-dimensional portfolios |
 | `RandomMatrixTheoryEstimator` | Remove noise eigenvalues, detect true factors |
 | `SemiCovariance` | Focus on downside risk only |
 

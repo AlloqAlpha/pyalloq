@@ -57,15 +57,16 @@ flowchart LR
 
 | Block | Interface | What it does |
 |-------|-----------|--------------|
-| **Data Connector** | `BaseDataConnector` | Fetches & normalizes market data from any vendor |
+| **Data Connector** | `BaseDataClient` | Fetches & normalizes market data from any vendor |
 | **MarketData / ScenarioMarketData** | `@dataclass` | Single source of truth — 2D historical data and 3D \((M, T, N)\) synthetic scenario tensors |
-| **Return Estimator** | `BaseReturnEstimator` | Estimates expected returns for each asset |
-| **Covariance Estimator** | `BaseCovarianceEstimator` | Estimates the NxN covariance matrix |
-| **Allocator** | `BaseAllocator` | Solves for optimal portfolio weights |
-| **Scenario Generator** | `BaseScenarioGenerator` | Simulates multi-path synthetic futures (Gaussian, PCA, FHS, GARCH-EVT-Copula, GMM Regimes) |
+| **Feature & Regime Pipeline** | `BaseFeatureTransformer` / `BaseRegimeDetector` | Point-in-Time technicals, options MFIV, rough signatures, and statistical jump models |
+| **Return Estimator** | `BaseReturnEstimator` | Estimates expected returns for each asset (classical, BL, foundation models, neural SDE) |
+| **Covariance Estimator** | `BaseCovarianceEstimator` | Estimates the \(N \times N\) covariance matrix (shrinkage, RMT, implied, reaction-diffusion, SetTransformer) |
+| **Allocator** | `BaseAllocator` | Solves for optimal portfolio weights (classical, graph ML, DRO, conformal, meta-ensemble, DL, RL) |
+| **Scenario Generator** | `BaseScenarioGenerator` | Simulates multi-path synthetic futures (Gaussian, PCA, FHS, GARCH-EVT-Copula, GMM Regimes, Diffusion, Neural SDE) |
 | **StrategyPipeline** | — | Wires estimators + allocator together |
 | **WalkForwardEngine / ParallelMonteCarloEngine** | — | Zero-lookahead historical and parallel multi-path Monte Carlo backtesting |
-| **Visualization & Tear Sheets** | `BaseTearSheet` | Interactive Plotly figures & HTML dashboards (`Simulation`, `Robustness`, `MacroRegime`, `Allocation`) |
+| **Visualization & Tear Sheets** | `BaseTearSheet` | Interactive Plotly figures & HTML dashboards (`SimulationTearSheet`, `RobustnessTearSheet`, `MacroRegimeTearSheet`, `AllocationTearSheet`, `MultiPeriodTearSheet`, `ComparisonTearSheet`) |
 
 ---
 
@@ -79,8 +80,10 @@ flowchart LR
 - 🎲 **8 Monte Carlo & generative scenario engines**: Gaussian, PCA Factor, Filtered Historical Simulation (FHS), GARCH-EVT-Student-\(t\) Copula, GMM Markov Regimes, Graph **`ReactionDiffusionGenerator`**, Factor-Based **`ConditionalDiffusionGenerator`** (DDIM), and Arbitrage-Free **`NeuralSDEGenerator`**
 - 🔭 **Meucci Entropy Pooling**: First- and second-moment views (`AbsoluteView`, `RelativeView`, `VolatilityView`, `CovarianceView`) with path-dependent CVaR, View-Adjusted MDD, and Probability of Ruin
 - 🔁 **4 backtest splitters & validation engines**: Rolling Window, Expanding Window, Purged K-Fold, plus Combinatorial Purged CV (`CPCVSplitter`) and Probability of Backtest Overfitting (`PBOEvaluator`)
-- 🎨 **5 interactive visualization Tear Sheets (`pyalloq-viz`)**: Multiverse & Simulation, Robustness & Overfitting (PBO/CPCV), Macro Regime & Entropy, Allocation Mechanics & Risk, and Multi-Period Trajectories
-- 💸 **4 transaction cost models**: Flat Bps, Proportional Spread, Almgren-Chriss market impact, and Composite Cost Models
+- 🛡️ **Conformal Risk, Online Meta-Ensembling & Statistical Jump Regimes**: Distribution-free `ConformalPIDCalibrator` (`pid`/`dtaci`/`nexcp`), `ConformalRiskController`, `CPPSAllocator`, `ConformalKellyOverlay`, `ConformalSafetyGateAllocator` (Gated-CSRC), `EnsembleAllocator` with 8 online meta-weighting strategies (`pyalloq_core.meta`), and `SparseJumpModelDetector` / `ContinuousJumpModelDetector` + `RegimeSwitchingAllocator`
+- 🧠 **Deep Learning & Multiverse RL (`pyalloq.dl` & `pyalloq.rl`)**: Size-equivariant `SetTransformerCovarianceNet` & `SetTransformerPolicyNet` (with Woodbury \(O(Nm^2+m^3)\) losses & 5 institutional mandates), `CRISPSparseSTGAT`, `MarketJEPA` world model, `IPMOAllocator` (`MDFPOptimizationLayer`), `POMDPPortfolioEnv`, Masked-Dirichlet PPO, `ExploratoryRegimeMVAllocator`, and `DeepHedgingTrajectoryTrainer`
+- 🎨 **6 interactive visualization Tear Sheets (`pyalloq-viz`)**: `SimulationTearSheet`, `RobustnessTearSheet`, `MacroRegimeTearSheet`, `AllocationTearSheet`, `MultiPeriodTearSheet`, and `ComparisonTearSheet`
+- 💸 **4 transaction cost models**: Flat Bps, Proportional Spread, Almgren-Chriss market impact, and Composite Cost Models (shared across backtesting and PyTorch via `TorchCostAdapter`)
 - 🔬 **Zero-lookahead guarantee** via `MarketData.validate_alignment()` and `slice_time()`
 
 ---
@@ -91,13 +94,13 @@ PyAlloq is organized as a multi-package `uv` workspace:
 
 | Package | Description |
 |---------|-------------|
-| [`pyalloq-core`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core) | Interfaces, `MarketData`, `ScenarioMarketData`, `StrategyPipeline`, `ParallelMonteCarloEngine` |
+| [`pyalloq-core`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-core) | Interfaces, `MarketData`, `ScenarioMarketData`, `StrategyPipeline`, `ParallelMonteCarloEngine`, Conformal & Meta-Weighting, `DiscreteShareAllocator` |
 | [`pyalloq-data-connector`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-data-connector) | Data adapters: Yahoo Finance, Alpha Vantage, Finnhub, EOD |
-| [`pyalloq-backtest`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest) | `WalkForwardEngine`, splitters, `CPCVSplitter`, `PBOEvaluator`, cost models, metrics |
-| [`pyalloq-features`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features) | Feature engineering: technical, cross-sectional, scalers |
-| [`pyalloq-simulation`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation) | Monte Carlo generators, `FactorBackcastImputer`, Meucci `EntropyPooler`, `ScenarioEvaluator` |
-| [`pyalloq-viz`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-viz) | Interactive Plotly charts & HTML Tear Sheets (`Simulation`, `Robustness`, `MacroRegime`, `Allocation`) |
-| `pyalloq` | Classical + ML optimizers, estimators, deep learning models |
+| [`pyalloq-backtest`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-backtest) | `WalkForwardEngine`, splitters, `CPCVSplitter`, `PBOEvaluator`, cost models, attribution, DSR & `MultiStrategyComparator` |
+| [`pyalloq-features`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-features) | Feature engineering: technical, cross-sectional, PIT options MFIV, rough signatures, jump models, rolling scalers |
+| [`pyalloq-simulation`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-simulation) | 8 Monte Carlo & generative engines, `FactorBackcastImputer`, Meucci `EntropyPooler`, `ScenarioEvaluator` |
+| [`pyalloq-viz`](https://github.com/AlloqAlpha/pyalloq/tree/main/src/pyalloq-viz) | Interactive Plotly charts & 6 HTML Tear Sheets (`SimulationTearSheet`, `RobustnessTearSheet`, `MacroRegimeTearSheet`, `AllocationTearSheet`, `MultiPeriodTearSheet`, `ComparisonTearSheet`) |
+| `pyalloq` | Classical + ML optimizers, estimators, deep learning (`pyalloq.dl`), and reinforcement learning (`pyalloq.rl`) |
 
 ---
 
@@ -107,7 +110,9 @@ PyAlloq is organized as a multi-package `uv` workspace:
 
 - :material-download: **[Installation](getting-started/installation.md)** — Get up and running in minutes
 - :material-rocket-launch: **[Quickstart](getting-started/quickstart.md)** — Build your first portfolio strategy
-- :material-puzzle: **[Building Blocks](concepts/building-blocks.md)** — Understand the modular architecture
-- :material-swap-horizontal: **[Swapping Components](concepts/swapping-components.md)** — Experiment with different strategies
+- :material-sitemap: **[System Architecture](architecture/system-overview.md)** — Monorepo DAG, contracts, and invariants
+- :material-connection: **[Component Composition Recipes](architecture/component-composition.md)** — 7 end-to-end multi-paradigm wiring patterns
+- :material-brain: **[Deep Learning Guide](user-guide/deep-learning.md)** — SetTransformer, Foundation Models, JEPA, and Differentiable KKT
+- :material-sigma: **[Notation & Math Glossary](mathematics/notation-glossary.md)** — Verified formulas and unified symbol reference
 
 </div>

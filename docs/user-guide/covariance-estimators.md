@@ -270,6 +270,15 @@ factor_loadings_df, sigma_f_np, idio_var_ser = cov_est.estimate_factors(data)
 | Downside risk focus | `SemiCovariance` |
 | Forward-looking option-implied risk & correlation | `ImpliedCovarianceEstimator` |
 | Cross-asset network volatility spillover & contagion | `ReactionDiffusionCovarianceEstimator` |
+| State-conditioned historical similarity (Mahalanobis relevance) | `RelevanceConditionedCovarianceEstimator` |
+| Spectral graph fragility & Wiener-Hopf Hawkes jump contagion | `SpectralGraphFragility`, `WienerHopfHawkesSolver` |
+
+---
+
+## Relevance-Conditioned & Spectral Hawkes Diagnostics
+
+- **`RelevanceConditionedCovarianceEstimator`** (`pyalloq.classical.estimators.relevance`): Computes Czasonis-Kritzman-Turkington Mahalanobis relevance weights over historical market state vectors, censors low-relevance observations below the \((1-\phi)\) quantile, and blends relevance-weighted scatter with a Ledoit-Wolf prior weighted by `adjusted_fit`.
+- **`SpectralGraphFragility` & `WienerHopfHawkesSolver`** (`pyalloq.classical.estimators.covariance.hawkes_spectral`): Extracts the Graph Laplacian Fiedler value \(\lambda_2\), mixing time \(\tau_{\text{mix}} = 1/\lambda_2\), and non-parametric Wiener-Hopf Hawkes jump branching matrix \(G\) (with spectral radius \(\rho(G)\)) via `compute_spectral_hawkes_diagnostics(returns, laplacian)`.
 
 ---
 

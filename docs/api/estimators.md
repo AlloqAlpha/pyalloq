@@ -329,3 +329,23 @@
 ### EnsembleViewGenerator
 
 ::: pyalloq.dl.estimators.ensemble.EnsembleViewGenerator
+
+---
+
+### AssetSpecificJumpViewGenerator
+
+::: pyalloq.classical.estimators.black_litterman.jump_views.AssetSpecificJumpViewGenerator
+
+---
+
+## Relevance-Conditioned & Spectral Hawkes Estimators
+
+::: pyalloq.classical.estimators.relevance.RelevanceConditionedReturnEstimator
+
+::: pyalloq.classical.estimators.relevance.RelevanceConditionedCovarianceEstimator
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.SpectralGraphFragility
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.WienerHopfHawkesSolver
+
+::: pyalloq.classical.estimators.covariance.hawkes_spectral.compute_spectral_hawkes_diagnostics

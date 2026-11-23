@@ -205,3 +205,21 @@
 ### WonhamRegimeFilter
 
 ::: pyalloq.rl.exploratory_mv.WonhamRegimeFilter
+
+---
+
+## Conformal, Meta-Ensemble & Regime-Switching Allocators
+
+::: pyalloq.classical.optimizers.conformal.RiskCertificate
+
+::: pyalloq.classical.optimizers.conformal.CPPSAllocator
+
+::: pyalloq.classical.optimizers.conformal.ConformalKellyOverlay
+
+::: pyalloq.classical.optimizers.conformal.ConformalSafetyGateAllocator
+
+::: pyalloq.classical.optimizers.ensemble.EnsembleAllocator
+
+::: pyalloq.classical.optimizers.regime_switching.RollingGaussianHMMDetector
+
+::: pyalloq.classical.optimizers.regime_switching.RegimeSwitchingAllocator

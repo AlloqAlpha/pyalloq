@@ -71,7 +71,7 @@ The **total risk contribution** of asset \(i\) is:
 ERC requires \(\text{TRC}_i = \text{TRC}_j\) for all \(i, j\). This is achieved by solving the equivalent convex problem:
 
 \[
-\min_{y \geq 0} \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} \ln y_i
+\min_{y > 0} \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} \ln y_i
 \]
 
 Then normalize: \(w_i = y_i / \sum_j y_j\)
@@ -83,7 +83,7 @@ Then normalize: \(w_i = y_i / \sum_j y_j\)
 Generalizes ERC by assigning target risk budgets \(b_i \geq 0\) (with \(\sum b_i = 1\)) to each asset:
 
 \[
-\min_{y \geq 0} \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} b_i \ln y_i
+\min_{y > 0} \; \frac{1}{2} y^\top \Sigma y - \sum_{i=1}^{N} b_i \ln y_i
 \]
 
 When \(b_i = 1/N\) for all \(i\), this reduces to Risk Parity. Pass budgets via `MarketData.features["risk_budgets"]`.
@@ -134,7 +134,7 @@ Let \(C_t(w) = \sum_{\tau=1}^t r_\tau^\top w\) denote the cumulative uncompounde
 \min_{w, M, d \ge 0, \alpha, u \ge 0} \; \alpha + \frac{1}{(1 - \beta) T} \sum_{t=1}^T u_t
 \]
 
-subject to linear path-monotonicity constraints \(M_t \ge C_t(w)\), \(M_t \ge M_{t-1}\), \(d_t \ge M_t - C_t(w)\), and \(u_t \ge d_t - \alpha\).
+subject to linear path-monotonicity and budget constraints \(M_1 \ge 0\), \(M_t \ge C_t(w)\), \(M_t \ge M_{t-1}\), \(d_t \ge M_t - C_t(w)\), \(u_t \ge d_t - \alpha\), \(\mathbf{1}^\top w = 1\), and \(l \le w \le b\).
 
 ---
 
@@ -150,9 +150,9 @@ Let \(\hat{\mathbb{P}} = \sum_{i=1}^M p_i \delta_{r_i}\) denote the empirical (o
 For transport cost \(d(r, \hat{r}) = \|r - \hat{r}\|_{\mathcal{G}}\) and effective exposure vector \(u = w - G^\top \lambda\), Kantorovich duality yields the exact dual norm penalty \(\varepsilon_t \|u\|_{\mathcal{G}^*}\):
 
 - **Mahalanobis (`"mahalanobis"`)**: \(d(r, \hat{r}) = \|\Sigma^{-1/2}(r - \hat{r})\|_2 \implies \|u\|_{\mathcal{G}^*} = \|\Sigma^{1/2} u\|_2\).
-- **Anisotropic Quantile-Mahalanobis (`"quantile_mahalanobis"`, Blanchet, Kang & Murthy, 2019)**: Calibrates an anisotropic transport matrix \(\Sigma_{\text{tail}} = D_{\text{tail}} C_{\text{corr}} D_{\text{tail}}\) from the Riemann Bar inter-decile spread \((q_{0.90, i} - q_{0.10, i})\) and negative Bowley skewness \(\mathcal{S}_{\text{Bowley}, i}\):
+- **Anisotropic Quantile-Mahalanobis (`"quantile_mahalanobis"`, Blanchet, Kang & Murthy, 2019)**: Calibrates an anisotropic daily transport matrix \(\Sigma_{\text{tail}} = D_{\text{tail}} C_{\text{corr}} D_{\text{tail}}\) from daily volatility \(\sigma_i\), the inter-decile spread \((q_{0.90, i} - q_{0.10, i})\) (divided by \(\sqrt{A}\) when annualized with \(A = 252\), or without \(\sqrt{A}\) for daily empirical atoms), and negative Bowley skewness \(\mathcal{S}_{\text{Bowley}, i}\):
   \[
-  \left(D_{\text{tail}}\right)_{i,i} = \frac{1}{2}\left(\sigma_i + \frac{q_{0.90, i} - q_{0.10, i}}{2.56 \sqrt{252}}\right)\sqrt{1 + \kappa_{\text{tail}} \max(0, -\mathcal{S}_{\text{Bowley}, i})}, \qquad \|u\|_{\mathcal{G}^*} = \left\|\Sigma_{\text{tail}}^{1/2} u\right\|_2
+  \left(D_{\text{tail}}\right)_{i,i} = \frac{1}{2}\left(\sigma_i + \frac{q_{0.90, i} - q_{0.10, i}}{2.56 \sqrt{A}}\right)\sqrt{1 + \kappa_{\text{tail}} \max(0, -\mathcal{S}_{\text{Bowley}, i})}, \qquad \|u\|_{\mathcal{G}^*} = \left\|\Sigma_{\text{tail}}^{1/2} u\right\|_2
   \]
 - **Euclidean (`"l2"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_2 \implies \|u\|_{\mathcal{G}^*} = \|u\|_2\).
 - **Manhattan (`"l1"`)**: \(d(r, \hat{r}) = \|r - \hat{r}\|_1 \implies \|u\|_{\mathcal{G}^*} = \|u\|_\infty\).
@@ -165,7 +165,7 @@ When `radius_mode="regime_adaptive"`, the ambiguity radius \(\varepsilon_t\) sca
 \]
 
 ### 3. Wasserstein-Kelly Log-Growth Formulation (Li, 2023) & Fonseca-Junca Views (2021)
-Given view-projected atoms \(\tilde{r}_i = r_i + \Sigma G^\top (G \Sigma G^\top)^{-1}(q - G \hat{\mu})\) and fractional Kelly parameter \(\eta \in (0, 1]\), the worst-case expected geometric log-growth program is solved as a single convex exponential-cone program over \((w, \lambda)\):
+Given view-projected atoms \(\tilde{r}_i = r_i + \Sigma G^\top (G \Sigma G^\top + \rho_{\text{view}} \Omega + 10^{-8} I)^{-1}(q - G \hat{\mu})\) and fractional Kelly parameter \(\eta \in [0.05, 2.0]\) (standard fractional Kelly \(\eta \in (0, 1]\)), the worst-case expected geometric log-growth program is solved as a single convex exponential-cone program over \((w, \lambda)\):
 
 \[
 \max_{w \in \mathcal{W}, \, \lambda \in \mathbb{R}^K} \; \sum_{i=1}^M p_i \ln\!\left(1 + \eta \, \tilde{r}_i^\top w\right) - \varepsilon_t \, \eta \, \|w - G^\top \lambda\|_{\mathcal{G}^*} - \rho_{\text{view}} \|\lambda\|_2^2
@@ -188,7 +188,7 @@ For **`WASSERSTEIN_CVAR`**, the worst-case Expected Shortfall at confidence \(\b
 | Inverse Volatility | \(w_i = (1/\sigma_i) / \sum_j (1/\sigma_j)\) | No |
 | Market Cap Weight | \(w_i = \text{MCap}_i / \sum_j \text{MCap}_j\) | No |
 | Min Volatility | \(\min w^\top \Sigma w\) | No |
-| Max Sharpe | \(\min y^\top \Sigma y \text{ s.t. } (\mu-r_f)^\top y=1\) | Yes |
+| Max Sharpe | \(\min y^\top \Sigma y \text{ s.t. } (\mu-r_f\mathbf{1})^\top y=1\) | Yes |
 | Max Utility | \(\max \mu^\top w - \lambda w^\top \Sigma w\) | Yes |
 | Efficient Return | \(\min w^\top \Sigma w \text{ s.t. } \mu^\top w \ge r_{\text{target}}\) | Yes |
 | Efficient Risk | \(\max \mu^\top w \text{ s.t. } w^\top \Sigma w \le \sigma_{\text{target}}^2\) | Yes |

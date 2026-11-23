@@ -364,6 +364,25 @@ fig_set.show()
 
 ---
 
+## 8. Multi-Strategy Comparison Tear Sheet (`ComparisonTearSheet`)
+
+`ComparisonTearSheet` consumes either a `ComparisonResult` (from `MultiStrategyComparator`) or a `dict[str, BacktestResult]` and builds a 2x2 executive dashboard combining:
+
+1. `plot_equity_drawdown_overlay` — Normalized equity curves, benchmark overlay, and shock-window drawdown shading.
+2. `plot_multi_strategy_fan_chart` — Scenario or CPCV-scrambled wealth fan charts with terminal wealth KDE.
+3. `plot_multi_turnover_drift` — Intra-rebalance L1 weight drift sawtooth + two-way rebalance turnover bars.
+4. `plot_attribution_waterfall` — Brinson-Fachler allocation/selection/interaction + Ma & Smith (2025) gross-to-net frictional drag waterfall.
+
+```python
+from pyalloq_viz.tearsheets.comparison_ts import ComparisonTearSheet
+
+comp_ts = ComparisonTearSheet(comparison_result, market_data=market_data)
+print(comp_ts.get_kpis())  # Strategies Evaluated, Trials (N), Top Net Sharpe, Top DSR, Shallowest DD, Top Factor Alpha
+comp_ts.to_html("multi_strategy_comparison.html", theme="alloq_dark")
+```
+
+---
+
 ## Themes & Static Exports
 
 Every plot function and tear sheet supports two built-in institutional themes:

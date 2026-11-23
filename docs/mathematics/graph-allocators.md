@@ -54,13 +54,13 @@ and \(\tilde{\sigma}^2_C\) is the variance of the **inverse-variance portfolio**
 
 ### Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
 
-Instead of single-linkage agglomerative clustering, **Spectral Graph Laplacian HRP** recursively partitions any induced subgraph \(S \subseteq V\) using the **Fiedler vector** \(v_2(\mathcal{L}_S)\) (the eigenvector corresponding to the second smallest eigenvalue \(\lambda_2(\mathcal{L}_S)\) of \(\mathcal{L}_S = I - D_S^{-1/2} W_S D_S^{-1/2}\)):
+Instead of single-linkage agglomerative clustering on pairwise correlation distances (which is vulnerable to "chaining" noise), **Spectral Graph Laplacian HRP** constructs a non-negative precision/partial-correlation adjacency matrix \(W_S\) on any induced subgraph \(S \subseteq V\) and computes the normalized Graph Laplacian \(\mathcal{L}_S = I_{|S|} - D_S^{-1/2} W_S D_S^{-1/2}\). Using the **Fiedler vector** \(v_2(\mathcal{L}_S)\) (the eigenvector of the second smallest eigenvalue \(\lambda_2(\mathcal{L}_S)\)):
 
 1. **Cheeger Conductance Sweep Cut:** Sort nodes \(i \in S\) by their Fiedler coordinate \(v_{2,i}(\mathcal{L}_S)\) and select the split index \(s^*\) minimizing the regularized Cheeger normalized cut conductance \(\phi(S_L, S_R)\).
-2. **Fragility-Tilted Recursive Bisection:** Modify each sub-cluster's effective variance by its internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S_c})\):
+2. **Fragility-Tilted Recursive Bisection:** Modify each sub-cluster's effective IVP variance by its internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S_c})\):
 
 \[
-\tilde{V}_{S_c} = \tilde{\sigma}^2_{S_c} \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha = 1 - \frac{\tilde{V}_{S_L}}{\tilde{V}_{S_L} + \tilde{V}_{S_R}}
+\tilde{V}_{S_c} = \tilde{\sigma}^2_{S_c} \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha_L = 1 - \frac{\tilde{V}_{S_L}}{\tilde{V}_{S_L} + \tilde{V}_{S_R}}
 \]
 
 ---
@@ -88,7 +88,7 @@ HERC extends HRP by replacing the inverse-variance cluster weights at each bisec
 At each cluster node, the intra-cluster weights are the ERC solution:
 
 \[
-\min_{y_C \geq 0} \; \frac{1}{2} y_C^\top \Sigma_C y_C - \sum_{i \in C} \ln y_{C,i}
+\min_{y_C > 0} \; \frac{1}{2} y_C^\top \Sigma_C y_C - \sum_{i \in C} \ln y_{C,i}
 \]
 
 The inter-cluster allocation still follows the same recursive bisection as HRP, but using the ERC cluster variance instead of the IVP cluster variance.
@@ -101,24 +101,24 @@ López de Prado (2019). NCO applies two-level Markowitz optimization:
 
 ### Step 1: Cluster Detection
 
-Apply k-means clustering to the correlation matrix (using the first \(k\) principal components as cluster features) to partition assets into \(K\) clusters.
+Apply k-means clustering directly to the correlation distance matrix \(d_{ij} = \sqrt{\frac{1}{2}(1 - \rho_{ij})}\) to partition assets into \(K\) clusters.
 
 ### Step 2: Intra-Cluster Optimization
 
-Run a **within-cluster** Markowitz optimization for each cluster \(C_k\) independently:
+Run a **within-cluster** minimum-variance optimization for each cluster \(C_k\) independently:
 
 \[
-w^{intra}_{C_k} = \arg\min_{w \geq 0} w^\top \Sigma_{C_k} w
+w^{\text{intra}}_{C_k} = \arg\min_{w \ge 0,\; \mathbf{1}^\top w = 1} w^\top \Sigma_{C_k} w
 \]
 
-This produces one synthetic "cluster portfolio" per cluster.
+This produces one synthetic "cluster portfolio" per cluster with variance \(\sigma_{C_k}^2 = (w^{\text{intra}}_{C_k})^\top \Sigma_{C_k} w^{\text{intra}}_{C_k}\).
 
 ### Step 3: Inter-Cluster Optimization
 
-Build a reduced \(K \times K\) covariance matrix from the cluster portfolio returns, and run a second Markowitz optimization across cluster representatives:
+Construct the reduced \(K \times K\) cluster covariance matrix (`NCOAllocator` uses the diagonalized cluster variance matrix \(\Sigma^{\text{cluster}} = \operatorname{diag}(\sigma_{C_1}^2, \dots, \sigma_{C_K}^2)\)) and run a second minimum-variance optimization across cluster representatives:
 
 \[
-w^{inter} = \arg\min_{u \geq 0} u^\top \Sigma^{cluster} u
+w^{\text{inter}} = \arg\min_{u \ge 0,\; \mathbf{1}^\top u = 1} u^\top \Sigma^{\text{cluster}} u
 \]
 
 ### Step 4: Combine
@@ -126,7 +126,7 @@ w^{inter} = \arg\min_{u \geq 0} u^\top \Sigma^{cluster} u
 The final weight for asset \(i\) in cluster \(C_k\) is:
 
 \[
-w_i = w^{intra}_{i \in C_k} \times w^{inter}_{C_k}
+w_i = w^{\text{intra}}_{i \in C_k} \times w^{\text{inter}}_{C_k}
 \]
 
 ---
@@ -140,22 +140,6 @@ w_i = w^{intra}_{i \in C_k} \times w^{inter}_{C_k}
 | Cluster method | Hierarchical linkage | Hierarchical linkage | K-Means |
 | Complexity | Low | Medium | Higher |
 | Large universe (100+) | ✅ | ✅ | ✅ |
-
----
-
-## 4. Spectral Graph Laplacian HRP (`SpectralLaplacianHRPAllocator`)
-
-Instead of single-linkage agglomerative clustering on pairwise correlation distances (which is vulnerable to "chaining" noise), `SpectralLaplacianHRPAllocator` constructs a non-negative precision/partial-correlation adjacency matrix \(W_S\) on each induced subgraph \(S \subseteq \{1, \dots, N\}\) and computes the normalized Graph Laplacian:
-
-\[
-\mathcal{L}_S = I_{|S|} - D_S^{-1/2} W_S D_S^{-1/2}
-\]
-
-The second smallest eigenvector \(v_2(\mathcal{L}_S)\) (**Fiedler vector**) provides a 1D spectral embedding along which a Cheeger sweep cut partitions \(S \to (S_L, S_R)\) to minimize normalized cut conductance. During recursive bisection, cluster variances are penalized by internal algebraic connectivity \(\lambda_2(\mathcal{L}_{S})\):
-
-\[
-\tilde{V}(S_c) = V_{\text{IVP}}(S_c) \cdot \left(1 + \eta_{\text{frag}} \, \lambda_2(\mathcal{L}_{S_c})\right), \qquad \alpha_L = 1 - \frac{\tilde{V}(S_L)}{\tilde{V}(S_L) + \tilde{V}(S_R)}
-\]
 
 ---
 
