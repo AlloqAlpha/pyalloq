@@ -391,6 +391,60 @@ pipeline = StrategyPipeline(
 | Large universe (50+ assets), covariance unstable | `HRPAllocator`, `NCOAllocator`, or `BayesianHRPAllocator` |
 | Maximize portfolio diversification | `MaxDiversificationAllocator` |
 | Assign specific risk budgets per asset | `RiskBudgetingAllocator` |
+| Finite-sample distribution-free risk certificates & safety projection | `ConformalSafetyGateAllocator`, `CPPSAllocator`, `ConformalKellyOverlay` |
+| Online meta-ensembling across multiple child strategies | `EnsembleAllocator` (`pyalloq_core.meta` strategies) |
+| Regime-adaptive soft blending across market states | `RegimeSwitchingAllocator` + `ContinuousJumpModelDetector` |
+
+---
+
+## Higher-Order Wrappers: Conformal, Meta-Ensembling & Regime Switching
+
+Because these allocators implement `BaseAllocator` while wrapping one or more child `BaseAllocator` instances, they can be nested arbitrarily and dropped directly into `StrategyPipeline`.
+
+### 1. Conformal Risk & Safety-Gated Allocators
+
+Built on `ConformalPIDCalibrator` (`"pid"`, `"dtaci"`, `"nexcp"`) and `ConformalRiskController` in `pyalloq_core.conformal`:
+
+- **`CPPSAllocator`**: Two-stage Conformal Predictive Portfolio Selection (Kato 2025) — generates candidate portfolios, retains top defensive portfolios by conformal lower bound \(L_T^{w,\alpha}\), and selects the maximum upper bound \(U_T^{w,\alpha}\).
+- **`ConformalKellyOverlay`**: Replaces Gaussian variance in fractional Kelly sizing with the distribution-free conformal interval width \(W_{t,i}^2 = (U_{t,i} - L_{t,i})^2\), shrinking exposure into cash when intervals widen.
+- **`ConformalSafetyGateAllocator` (Gated-CSRC)**: Projects any base allocator's weights \(\hat{w}_t\) onto a convex `RiskCertificate` feasible set (tail loss, annual volatility, turnover, gross leverage, box/sector/restricted caps) with finite-sample conformal guarantees.
+
+```python
+from pyalloq.classical.optimizers.conformal import ConformalSafetyGateAllocator, RiskCertificate
+from pyalloq.classical.optimizers.risk_parity import RiskParityAllocator
+
+cert = RiskCertificate(
+    max_tail_loss=0.04,
+    max_annual_volatility=0.20,
+    max_turnover=0.30,
+    max_asset_weight=0.35,
+)
+safe_alloc = ConformalSafetyGateAllocator(
+    base_allocator=RiskParityAllocator(tickers=data.assets),
+    certificate=cert,
+    alpha=0.15,
+    method="pid",
+)
+```
+
+### 2. Online Meta-Ensembling (`EnsembleAllocator`)
+
+`EnsembleAllocator` dynamically blends \(K\) child allocators with pre-TCA internal trade crossing and optional \(1/N\) anchor shrinkage using any `BaseMetaWeightingStrategy` from `pyalloq_core.meta`:
+
+| `meta_strategy` Key / Class | Algorithm |
+|-----------------------------|-----------|
+| `"dual_scaled_olo"` (`DualScaledSwitchingCostStrategy`) | Minimax switching-cost online linear optimization (default) |
+| `"fixed_share"` (`FixedShareStrategy`) | Multiplicative weights with fixed-share regime-switching pool |
+| `"cbce"` (`CBCEStrategy`) | Coin Betting for Changing Environments over dyadic horizons |
+| `"adanormalhedge"` (`AdaNormalHedgeStrategy`) | Parameter-free normal-potential regret minimization |
+| `"adahedge"` (`AdaHedgeStrategy`) | Mixability-gap adaptive Hedge baseline |
+| `"bpds"` (`BPDSMetaStrategy`) | Bayesian Predictive Decision Synthesis with Gibbs utility tilting |
+| `"elliptical_shrinkage"` (`EllipticalShrinkageStrategy`) | Elliptical-kurtosis \(\kappa\) optimal shrinkage toward \(1/N\) |
+| `"cadts"` (`CADTSBanditStrategy`) | Pessimistic discounted + sliding-window Thompson Sampling |
+
+### 3. Regime-Switching Allocation (`RegimeSwitchingAllocator`)
+
+`RegimeSwitchingAllocator` pairs a `BaseRegimeDetector` (defaulting to `ContinuousJumpModelDetector`) with a list of regime-specific child allocators, smoothly blending \(w_t = \sum_k p_{t,k} w_t^{(k)}\) (`mode="probability_blend"`) without sample starvation.
 
 ---
 

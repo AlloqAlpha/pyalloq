@@ -12,7 +12,7 @@ When asset \(j\) has missing historical observations (e.g., a recent IPO missing
 2. Estimate ridge-stabilized factor loadings for asset \(j\) on its observed window \(\mathcal{O}_j\):
 
 \[
-\hat{\beta}_j = \left(X_{\mathcal{O}_j}^\top X_{\mathcal{O}_j} + \lambda I\right)^{-1} X_{\mathcal{O}_j}^\top r_{j, \mathcal{O}_j}, \quad X_t = [1, F_t]
+\hat{\beta}_j = \left(X_{\mathcal{O}_j}^\top X_{\mathcal{O}_j} + \Lambda\right)^{-1} X_{\mathcal{O}_j}^\top r_{j, \mathcal{O}_j}, \quad X_t = [1, F_t], \quad \Lambda = \operatorname{diag}(0, \lambda, \dots, \lambda)
 \]
 
 3. Impute missing returns for \(t \in \mathcal{M}_j\) with matched idiosyncratic residual variance \(\hat{\sigma}_{\epsilon, j}^2\):
@@ -63,7 +63,7 @@ q_U + (1 - q_U) G_{\xi_{U,i}, \beta_{U,i}}(z - u_U) & z > u_U
 \end{cases}
 \]
 
-where the GPD cumulative distribution function is:
+where the GPD cumulative distribution function is (for \(\xi \neq 0\), with exponential limit \(1 - e^{-y/\beta}\) as \(\xi \to 0\)):
 
 \[
 G_{\xi, \beta}(y) = 1 - \left(1 + \frac{\xi y}{\beta}\right)^{-1/\xi}
@@ -120,7 +120,7 @@ F_t = Z_t V_K \in \mathbb{R}^K, \qquad E_t = Z_t - F_t V_K^\top \in \mathbb{R}^N
 Under a cosine variance schedule \(\bar{\alpha}_\tau \in (0, 1)\) (Nichol & Dhariwal, 2021), forward diffusion corrupts factor vectors via \(x_\tau = \sqrt{\bar{\alpha}_\tau} F_t + \sqrt{1 - \bar{\alpha}_\tau} \varepsilon\) (\(\varepsilon \sim \mathcal{N}(0, I_K)\)). A conditional score network \(\hat{\varepsilon}_\theta(x_\tau, \tau, c_{t-1})\) is calibrated conditioned on:
 1. Trailing factor mean and volatility over `condition_window`,
 2. Point-in-Time `implied_vol` ratio and cross-sectional dispersion,
-3. Depth-2 Rough Log-Signature invariants \((\Delta F, \mathcal{A}_{\text{Lévy}})\).
+3. Depth-2 Rough Log-Signature invariants \((\Delta F, \mathcal{A}_{\text{L\acute{e}vy}})\).
 
 Forward paths are generated via **accelerated DDIM reverse sampling** across a subsequence \(\tau_S > \tau_{S-1} > \dots > 0\):
 
@@ -180,7 +180,7 @@ A x \le b, \quad C x = d, \quad \mathbf{1}^\top x = 1, \quad x \ge 0
 Rather than solving an \(M\)-dimensional primal problem (\(M \sim 10,000\)), `EntropyPooler` solves the low-dimensional Lagrange dual over the \(V\) view multipliers \(\gamma = (\lambda, \nu)\) where \(\nu \ge 0\):
 
 \[
-\min_{\lambda, \nu \ge 0} \; \ln\!\left(\sum_{m=1}^M p_m \exp\!\left(-[G^\top \gamma]_m\right)\right) + \gamma^\top \text{targets}, \quad G = \begin{bmatrix} C \\ A \end{bmatrix}
+\min_{\lambda, \nu \ge 0} \; \ln\!\left(\sum_{m=1}^M p_m \exp\!\left(-[G^\top \gamma]_m\right)\right) + \gamma^\top h, \quad G = \begin{bmatrix} C \\ A \end{bmatrix}, \quad h = \begin{bmatrix} d \\ b \end{bmatrix}
 \]
 
 The posterior scenario weights are recovered analytically via the log-sum-exp stabilized Boltzmann-Gibbs distribution:
@@ -191,30 +191,30 @@ x^*_m = \frac{p_m \exp\!\left(-[G^\top \gamma^*]_m\right)}{\sum_{k=1}^M p_k \exp
 
 ### First- and Second-Moment View Linearization
 
-Because expectation under the scenario measure is a linear inner product \(\mathbb{E}_x[g(R)] = \sum_{m=1}^M x_m g(R_m)\), both first- and second-moment views are **linear** in the probability vector \(x\):
+Because expectation under the scenario measure is a linear inner product \(\mathbb{E}_x[g(R)] = \sum_{m=1}^M x_m g(R_m)\), both first- and second-moment views are **linear** in the probability vector \(x\). Letting \(\bowtie \, \in \{\le, =, \ge\}\) denote the chosen view operator:
 
 **Absolute Return View (`AbsoluteView`):**
 
 \[
-\sum_{m=1}^M x_m R_{m, i} \;\in\; \{\le, =, \ge\}\; \mu_i^{\text{target}}
+\sum_{m=1}^M x_m R_{m, i} \;\bowtie\; \mu_i^{\text{target}}
 \]
 
 **Relative Return View (`RelativeView`):**
 
 \[
-\sum_{m=1}^M x_m (R_{m, i} - R_{m, j}) \;\in\; \{\le, =, \ge\}\; \delta_{ij}^{\text{target}}
+\sum_{m=1}^M x_m (R_{m, i} - R_{m, j}) \;\bowtie\; \delta_{ij}^{\text{target}}
 \]
 
 **Volatility View (`VolatilityView`)** — centered around the reference mean \(\bar{\mu}_i\):
 
 \[
-\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)^2 \;\in\; \{\le, =, \ge\}\; \left(\sigma_i^{\text{target}}\right)^2
+\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)^2 \;\bowtie\; \left(\sigma_i^{\text{target}}\right)^2
 \]
 
 **Covariance / Correlation View (`CovarianceView`):**
 
 \[
-\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)(R_{m, j} - \bar{\mu}_j) \;\in\; \{\le, =, \ge\}\; \rho_{ij}^{\text{target}} \bar{\sigma}_i \bar{\sigma}_j
+\sum_{m=1}^M x_m (R_{m, i} - \bar{\mu}_i)(R_{m, j} - \bar{\mu}_j) \;\bowtie\; \rho_{ij}^{\text{target}} \bar{\sigma}_i \bar{\sigma}_j
 \]
 
 ---

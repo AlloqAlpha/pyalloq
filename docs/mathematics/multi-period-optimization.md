@@ -21,9 +21,9 @@ At the beginning of period \(t\):
   \[
   w_t = w_{t^-} + z_t, \qquad \mathbf{1}^\top z_t + \phi_{\text{trade}}(z_t) = 0 \quad (\text{or } \mathbf{1}^\top w_t = 1 \text{ under self-financing rescale}).
   \]
-- Over period \([t, t+1]\), market returns cause the post-trade weights \(w_t\) to drift nonlinearly to the next pre-trade state \(w_{(t+1)^-}\):
+- Over period \([t, t+1]\), market returns cause the post-trade weights \(w_t\) to drift nonlinearly to the next pre-trade state \(w_{(t+1)^-}\) (normalizing by the gross return \(1 + w_t^\top r_{t+1}\) so \(\mathbf{1}^\top w_{(t+1)^-} = 1\)):
   \[
-  w_{(t+1)^-} = \frac{w_t \circ (\mathbf{1} + r_{t+1})}{1 + r_{p, t+1}^{\text{net}}}, \qquad
+  w_{(t+1)^-} = \frac{w_t \circ (\mathbf{1} + r_{t+1})}{1 + w_t^\top r_{t+1}}, \qquad
   r_{p, t+1}^{\text{net}} = (1 - \phi_{\text{trade}}(z_t))(1 + w_t^\top r_{t+1}) - 1.
   \]
 
@@ -45,9 +45,9 @@ At each planning stage \(\tau\), rebalancing trades \(z_\tau = w_\tau - w_{\tau-
 \]
 
 ### 2.1 Proportional Bid-Ask Spread (\(p=1\)) & the No-Trade Zone
-The \(\ell_1\) penalty \(\kappa_{\text{spread}}^\top |w_\tau - w_{\tau-1}|\) is non-differentiable at \(z_{\tau,i} = 0\). By first-order subdifferential KKT conditions:
+The \(\ell_1\) penalty \(\kappa_{\text{spread}}^\top |w_\tau - w_{\tau-1}|\) is non-differentiable at \(z_{\tau,i} = 0\). By first-order subdifferential KKT conditions (for objective \(\hat{\mu}_\tau^\top w_\tau - \gamma w_\tau^\top \Sigma_\tau w_\tau\)):
 \[
-\hat{\mu}_{\tau,i} - \gamma (\Sigma_\tau w_\tau)_i - \nu_\tau \in [-\kappa_{\text{spread},i}, +\kappa_{\text{spread},i}] \implies z_{\tau,i}^* = 0.
+\hat{\mu}_{\tau,i} - 2 \gamma (\Sigma_\tau w_\tau)_i - \nu_\tau \in [-\kappa_{\text{spread},i}, +\kappa_{\text{spread},i}] \implies z_{\tau,i}^* = 0.
 \]
 Thus, proportional costs create a rigorous **polyhedral no-trade region** around \(w_{t^-}\): the optimizer holds existing positions untouched unless the marginal risk-adjusted alpha exceeds the half-spread threshold \(\kappa_{\text{spread},i}\).
 
@@ -59,46 +59,48 @@ Following Almgren & Chriss (2001) and Boyd et al. (2017), executing a fraction o
 In `CVXPY`, `cp.power(cp.abs(z_tau), 1.5)` is canonicalized into **3D power cones / second-order cones (SOCP)** solvable in polynomial interior-point iterations.
 
 ### 2.3 Gârleanu-Pedersen (2013) Permanent Price Impact & Aim Portfolios
-When large institutional trades move the equilibrium market price permanently, an intertemporal price-distortion state \(q_\tau \in \mathbb{R}^N\) evolves with resilience rate \(\rho_{\text{perm}} \in (0, 1]\):
+When large institutional trades move the equilibrium market price permanently, an intertemporal price-distortion state \(q_\tau \in \mathbb{R}^N\) evolves with decay rate \(\phi \in [0, 1]\) (`alpha_decay`):
 \[
-q_\tau = (1 - \rho_{\text{perm}}) q_{\tau-1} + \eta_{\text{perm}} z_\tau, \qquad q_{t-1} = \mathbf{0},
+q_\tau = (1 - \phi) q_{\tau-1} + z_\tau, \qquad q_{t-1} = \mathbf{0},
 \]
-imposing an additional stage execution drag \(\frac{1}{2} q_\tau^\top q_\tau\). Under quadratic costs and exponential alpha decay, Gârleanu & Pedersen (2013) prove that the optimal multi-period policy trades partially at constant speed toward an **Aim Portfolio** \(w_t^{\text{aim}}\), which itself is a discounted convex combination of future single-period Markowitz portfolios.
+imposing an additional stage execution drag \(\frac{1}{2} \eta_{\text{perm}} \, q_\tau^\top \operatorname{diag}(b) \, q_\tau\) (weighted by `permanent_impact_coeff` \(\eta_{\text{perm}}\) and per-asset impact scale \(b\)). Under quadratic costs and geometric alpha decay, Gârleanu & Pedersen (2013) prove that the optimal multi-period policy trades partially at constant speed toward an **Aim Portfolio** \(w_t^{\text{aim}}\), which itself is a discounted convex combination of future single-period Markowitz portfolios.
 
 ---
 
 ## 3. Multi-Horizon Alpha Decay & Term Structure
 
-Alpha signals decay at heterogeneous rates across horizons \(h = 1, \dots, H\). Let \(K\) signal families (e.g., short-term reversal, medium-term momentum, slow value/carry) have half-lives \(H_{1/2}^{(k)}\) and decay rates \(\lambda_k = \frac{\ln 2}{H_{1/2}^{(k)}}\).
+Given a single-period base expected return forecast \(\mu_0 \in \mathbb{R}^N\) and a geometric decay rate \(\phi = \text{alpha\_decay} \in [0, 1]\), `AlphaDecayReturnEstimator` decays the alpha signal geometrically toward an equilibrium prior \(\mu_{\text{eq}}\) (selected via `equilibrium_mode` in `{"zero", "grand_mean", "historical_mean"}`) across horizon steps \(\tau = 0, \dots, H-1\):
 
-The expected return forecast at horizon step \(h \in \{0, \dots, H-1\}\) is:
 \[
-\hat{\mu}_{t+h|t} = \sum_{k=1}^K \exp(-\lambda_k h) \, s_{t}^{(k)}.
+\hat{\mu}_{t+\tau|t} = (1 - \phi)^\tau \mu_0 + \left(1 - (1 - \phi)^\tau\right) \mu_{\text{eq}}.
 \]
-Implemented in [`AlphaDecayReturnEstimator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/classical/estimators/returns/multi_horizon.py), this prevents fast-decaying signals from triggering high-turnover trades that cannot amortize round-trip execution costs.
+
+This prevents fast-decaying signals from triggering high-turnover trades that cannot amortize round-trip execution costs.
 
 ---
 
 ## 4. Pillar 1: Classical Convex MPC & ADMM Operator Splitting
 
 ### 4.1 Deterministic Receding-Horizon MPC Formulation
-At each rebalance date \(t\), [`MultiPeriodMPCAllocator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/classical/optimizers/multi_period.py) solves the \(H\)-stage convex optimization problem:
+At each rebalance date \(t\), `MultiPeriodMPCAllocator` solves the \(H\)-stage convex optimization problem:
 
 \[
 \begin{aligned}
 \max_{\{w_\tau, z_\tau\}_{\tau=t}^{t+H-1}} \quad & \sum_{\tau=t}^{t+H-1} \beta^{\tau-t} \left[
 \hat{\mu}_{\tau|t}^\top w_\tau
-- \frac{\gamma}{2} w_\tau^\top \hat{\Sigma}_{\tau|t} w_\tau
+- \gamma \, w_\tau^\top \hat{\Sigma}_{\tau|t} w_\tau
+- \frac{\gamma_{\text{ref}}}{2} \|w_\tau - w_{\text{ref}}\|_2^2
 - \phi_{\text{trade}}(z_\tau)
 - \phi_{\text{hold}}(w_\tau)
-\right]
-- \frac{\gamma_{\text{term}}}{2} (w_{t+H-1} - w_{\text{bench}})^\top \hat{\Sigma}_{t+H-1|t} (w_{t+H-1} - w_{\text{bench}}) \\
+\right] \\
 \text{subject to} \quad
 & w_\tau = w_{\tau-1} + z_\tau, \qquad w_{t-1} = w_{t^-}, \\
 & \mathbf{1}^\top w_\tau = 1, \qquad w_{\min} \le w_\tau \le w_{\max}, \\
-& \|z_\tau\|_1 \le \tau_{\max} \quad \forall \tau \in \{t, \dots, t+H-1\}.
+& \|z_\tau\|_1 \le \tau_{\max} \quad \forall \tau \in \{t, \dots, t+H-1\},
 \end{aligned}
 \]
+
+with optional terminal equality constraint \(w_{t+H-1} = w_{\text{term}}\) when `terminal_weights` is supplied.
 
 By the **Receding-Horizon Principle**, only the immediate stage decision \(w_t^*\) is executed in the market; at \(t+1\), the horizon rolls forward with updated pre-trade weights \(w_{(t+1)^-}\).
 
@@ -115,9 +117,9 @@ For large universes or high-frequency backtests where interior-point solvers bec
 4. **Capped Simplex Projection (\(v\)-update):** Projects each \(v_\tau\) onto \(\{w \in \mathbb{R}^N : \mathbf{1}^\top w = 1, \, w_{\min} \le w \le w_{\max}\}\) in \(O(N \log N)\) time.
 
 ### 4.3 Scenario-Tree Stochastic MPC with CVaR Tail Control
-When `ScenarioMarketData` provides \(M\) Monte Carlo paths \(R^{(m)} \in \mathbb{R}^{H \times N}\) with probabilities \(p_m\) (e.g., from `GARCHEVTCopulaGenerator` or `EntropyPooler`), [`StochasticScenarioMPCAllocator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/classical/optimizers/stochastic_mpc.py) enforces **non-anticipativity** at \(t=0\) and optimizes expected multi-stage return minus Rockafellar-Uryasev **Conditional Value-at-Risk (\(\text{CVaR}_\alpha\))** of cumulative path loss \(L_m\):
+When `ScenarioMarketData` provides \(M\) Monte Carlo paths \(R^{(m)} \in \mathbb{R}^{H \times N}\) with probabilities \(p_m\) (e.g., from `GARCHEVTCopulaGenerator` or `EntropyPooler`), `StochasticScenarioMPCAllocator` enforces **non-anticipativity** at \(t=0\) and optimizes expected multi-stage return minus Rockafellar-Uryasev **Conditional Value-at-Risk** of cumulative path loss \(L_m\) at lower-tail probability \(\alpha = \text{cvar\_alpha} \in (0, 1)\) (default \(\alpha = 0.05\), corresponding to confidence level \(1 - \alpha = 0.95\)):
 \[
-\text{CVaR}_\alpha(L) = \min_{\zeta \in \mathbb{R}, \, u_m \ge 0} \left\{ \zeta + \frac{1}{1 - \alpha} \sum_{m=1}^M p_m u_m \;\middle|\; u_m \ge L_m - \zeta \right\}.
+\text{CVaR}_{\alpha}(L) = \min_{\zeta \in \mathbb{R}, \, u_m \ge 0} \left\{ \zeta + \frac{1}{\alpha} \sum_{m=1}^M p_m u_m \;\middle|\; u_m \ge L_m - \zeta \right\}.
 \]
 
 ---
@@ -131,7 +133,7 @@ Training a neural network exclusively on Mean Squared Error \(\mathcal{L}_{\text
 - Small sign errors on assets near the simplex boundary or with low covariance can trigger massive, costly turnover cascades across stages \(t, \dots, t+H-1\).
 
 ### 5.2 Entropic Mirror-Descent Fixed-Point (MDFP) Optimization Layer
-To embed multi-period optimization directly inside PyTorch computation graphs without expensive CPU-bound conic solvers, [`MDFPOptimizationLayer`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/layers/mdfp.py) solves the coupled \(H\)-stage simplex problem using **Entropic Mirror Descent** (Exponentiated Gradient) under the Kullback-Leibler Bregman divergence \(D_{\text{KL}}(z \| z')\):
+To embed multi-period optimization directly inside PyTorch computation graphs without expensive CPU-bound conic solvers, `MDFPOptimizationLayer` (`pyalloq.dl.layers.mdfp`) solves the coupled \(H\)-stage simplex problem using **Entropic Mirror Descent** (Exponentiated Gradient) under the Kullback-Leibler Bregman divergence \(D_{\text{KL}}(z \| z')\):
 
 \[
 z_{s,i}^{(m+1)} = \frac{z_{s,i}^{(m)} \exp\!\left(-\eta \, g_{s,i}^{(m)}\right)}{\sum_{j=1}^N z_{s,j}^{(m)} \exp\!\left(-\eta \, g_{s,j}^{(m)}\right)} \equiv \mathcal{F}_{s,i}\!\left(z^{(m)}, \theta\right),
@@ -151,13 +153,13 @@ u^\top = v^\top \left(I - \lambda \frac{\partial \mathcal{F}}{\partial z^*}\righ
 \]
 
 ### 5.4 SPO+ Surrogate & Hybrid DFL Losses
-PyAlloq provides two decision-focused training objectives in [`dfl.py`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/loss_functions/dfl.py):
+PyAlloq provides two decision-focused training objectives in `pyalloq.dl.loss_functions.dfl`:
 
-1. **Multi-Period SPO+ Convex Surrogate Loss** ([`SPOPlusLoss`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/loss_functions/dfl.py)):
+1. **Multi-Period SPO+ Convex Surrogate Loss** (`SPOPlusLoss`, floored at zero via \(\max(0, \cdot)\) where \(J_{\text{lin}}\) evaluates linear return minus \(\ell_1\) turnover):
    \[
-   \mathcal{L}_{\text{SPO}+}(\hat{\mu}, y) = J\!\left(z^*(2\hat{\mu} - y); \, 2\hat{\mu} - y\right) + 2 \langle \hat{\mu}, \, z^*(y) - z^*(2\hat{\mu} - y) \rangle - J(z^*(y); y).
+   \mathcal{L}_{\text{SPO}+}(\hat{\mu}, y) = \max\!\left(0,\; J_{\text{lin}}\!\left(z^*(2\hat{\mu} - y); \, 2\hat{\mu} - y\right) + 2 \langle \hat{\mu}, \, z^*(y) - z^*(2\hat{\mu} - y) \rangle - J_{\text{lin}}(z^*(y); y)\right).
    \]
-2. **Hybrid Decision-Focused Loss** ([`HybridDFLLoss`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/dl/loss_functions/dfl.py)):
+2. **Hybrid Decision-Focused Loss** (`HybridDFLLoss`):
    \[
    \mathcal{L}_{\text{Hybrid}} = \alpha \, \mathcal{L}_{\text{MPO}}\!\left(z^*(\hat{\mu}), y\right) + (1 - \alpha) \, \|\hat{\mu} - y\|_2^2, \qquad \alpha \in [0, 1],
    \]
@@ -168,7 +170,7 @@ PyAlloq provides two decision-focused training objectives in [`dfl.py`](file:///
 ## 6. Pillar 3: FinRL DRL, RL-BHRP, Deep Hedging & Thermodynamic Gates
 
 ### 6.1 FinRL Markov Decision Process (MDP) & Turbulence Circuit Breaker
-In [`PortfolioGymEnv`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/rl/envs/portfolio_env.py), multi-period portfolio management is cast as a continuous-control MDP \((\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)\):
+In `PortfolioGymEnv` (`pyalloq.rl.envs.portfolio_env`), multi-period portfolio management is cast as a continuous-control MDP \((\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)\):
 
 - **State \(s_t\):** Concatenation of pre-trade drifted weights \(w_{t^-}\), lookback return tensor \(R_{t-L+1:t}\), rolling volatilities \(\sigma_t\), Mahalanobis **Turbulence Index** \(d_t\), and Bures-Wasserstein regime distance \(W_2\):
   \[
@@ -180,7 +182,7 @@ In [`PortfolioGymEnv`](file:///Users/siddesh/Downloads/experiments/public-reposi
   \]
 
 ### 6.2 Two-Level Bayesian Hierarchical Risk Parity (RL-BHRP)
-[`BayesianHRPAllocator`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/ml/optimizers/bhrp.py) resolves the return-insensitivity of classical HRP without inverting ill-conditioned \(N \times N\) covariance matrices:
+`BayesianHRPAllocator` (`pyalloq.ml.optimizers.bhrp`) resolves the return-insensitivity of classical HRP without inverting ill-conditioned \(N \times N\) covariance matrices:
 
 1. **Intra-Cluster Level:** Hierarchical clustering partitions the \(N\) assets into \(K\) correlation clusters, and recursive bisection computes risk-parity intra-cluster weights \(W_{\text{intra}} \in \mathbb{R}^{N \times K}\).
 2. **Inter-Cluster Bayesian Level:** Cluster-level equilibrium implied returns \(\pi_C = \Sigma_C b_{\text{hrp}}\) are blended with sample/predicted cluster views \(\mu_C^{\text{view}}\):
@@ -190,13 +192,13 @@ In [`PortfolioGymEnv`](file:///Users/siddesh/Downloads/experiments/public-reposi
    and cluster budgets are tilted toward high-posterior-Sharpe clusters while damping cluster turnover against \(w_{t^-}\).
 
 ### 6.3 Deep Hedging Pathwise Trajectory Optimization
-Rather than relying on noisy TD(0) Bellman bootstrapping, [`DeepHedgingTrajectoryTrainer`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/rl/trajectory.py) unrolls [`TrajectoryPolicyNet`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/rl/trajectory.py) \(\pi_\theta(R_{t-L+1:t}, w_{t^-})\) along \(H\)-step sample paths \(\omega_j\) and minimizes the **Entropic Risk Measure** of cumulative net wealth via direct pathwise backpropagation:
+Rather than relying on noisy TD(0) Bellman bootstrapping, `DeepHedgingTrajectoryTrainer` unrolls `TrajectoryPolicyNet` (or any `BasePolicyNetwork`) \(\pi_\theta(R_{t-L+1:t}, w_{t^-})\) along \(H\)-step sample paths \(\omega_j\) and minimizes the **Entropic Risk Measure** of cumulative net wealth plus an additive path-variance regularizer via direct pathwise backpropagation:
 \[
-\mathcal{L}_{\text{DH}}(\theta) = \frac{1}{\gamma} \ln \left( \frac{1}{M} \sum_{j=1}^M \exp\!\left( -\gamma \sum_{s=0}^{H-1} r_{p, t+s}^{\text{net}}(\omega_j; \theta) \right) \right).
+\mathcal{L}_{\text{DH}}(\theta) = \frac{1}{\gamma} \ln \left( \frac{1}{M} \sum_{j=1}^M \exp\!\left( -\gamma \sum_{s=0}^{H-1} r_{p, t+s}^{\text{net}}(\omega_j; \theta) \right) \right) + \frac{\gamma}{2 M} \sum_{j=1}^M \operatorname{Var}_s\!\left(r_{p, t+s}^{\text{net}}(\omega_j; \theta)\right).
 \]
 
 ### 6.4 Thermodynamic & Bures-Wasserstein Regime Gate (Moroke et al., 2026)
-[`WassersteinRegimeGate`](file:///Users/siddesh/Downloads/experiments/public-repositories/pyalloq/src/pyalloq/rl/thermodynamics.py) models the portfolio rebalancing cycle as a non-equilibrium stochastic heat engine coupled to a fast market bath \(\mathcal{N}(\mu_{\text{fast}}, \Sigma_{\text{fast}})\) at temperature \(T_{\text{fast}} = \frac{1}{N}\operatorname{Tr}(\Sigma_{\text{fast}})\) and a slow structural bath \(\mathcal{N}(\mu_{\text{slow}}, \Sigma_{\text{slow}})\) at temperature \(T_{\text{slow}} = \frac{1}{N}\operatorname{Tr}(\Sigma_{\text{slow}})\):
+`WassersteinRegimeGate` (`pyalloq.rl.thermodynamics`) models the portfolio rebalancing cycle as a non-equilibrium stochastic heat engine coupled to a fast market bath \(\mathcal{N}(\mu_{\text{fast}}, \Sigma_{\text{fast}})\) at temperature \(T_{\text{fast}} = \frac{1}{N}\operatorname{Tr}(\Sigma_{\text{fast}})\) and a slow structural bath \(\mathcal{N}(\mu_{\text{slow}}, \Sigma_{\text{slow}})\) at temperature \(T_{\text{slow}} = \frac{1}{N}\operatorname{Tr}(\Sigma_{\text{slow}})\):
 
 1. **Bures-Wasserstein 2-Distance:**
    \[

@@ -22,6 +22,8 @@ This page auto-generates documentation from the `pyalloq-core` package docstring
 
 ::: pyalloq_core.results.MonteCarloResult
 
+::: pyalloq_core.results.RegimeState
+
 ---
 
 ## Discrete Share Allocation
@@ -67,6 +69,40 @@ This page auto-generates documentation from the `pyalloq-core` package docstring
 ### BaseScenarioEstimator
 
 ::: pyalloq_core.interfaces.BaseScenarioEstimator
+
+### BaseRegimeDetector
+
+::: pyalloq_core.interfaces.BaseRegimeDetector
+
+---
+
+## Conformal Risk & Calibration
+
+::: pyalloq_core.conformal.ConformalPIDCalibrator
+
+::: pyalloq_core.conformal.ConformalRiskController
+
+---
+
+## Online Meta-Weighting Strategies
+
+::: pyalloq_core.meta.BaseMetaWeightingStrategy
+
+::: pyalloq_core.meta.AdaHedgeStrategy
+
+::: pyalloq_core.meta.FixedShareStrategy
+
+::: pyalloq_core.meta.CBCEStrategy
+
+::: pyalloq_core.meta.AdaNormalHedgeStrategy
+
+::: pyalloq_core.meta.DualScaledSwitchingCostStrategy
+
+::: pyalloq_core.meta.CADTSBanditStrategy
+
+::: pyalloq_core.meta.BPDSMetaStrategy
+
+::: pyalloq_core.meta.EllipticalShrinkageStrategy
 
 ---
 

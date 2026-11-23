@@ -450,3 +450,63 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Introduced Vectorized Variable Selection Networks (`V-VSN`), the Directed Delay (\(t-1\)) causal sieve for asynchronous global market closes, differentiable `SoftMinEVaRLoss`, ragged binary tradability masking without price imputation, Masked Dirichlet + Cash PPO Actor-Critic policies, and Graphormer structural attention biases.
 
 **Implemented in:** `VectorizedVariableSelectionNetwork`, `SetTransformerBackbone(directed_delay=True)`, `SoftMinEVaRLoss`, `MaskedDirichletCashHead`, `DollarNeutralStatArbHead`, `VolTargetedContinuousRiskHead`, `SetTransformerPolicyNet`, `MarketDataset(return_mask=True)`, `SB3PortfolioAgent(policy_backbone="set_transformer")`
+
+---
+
+## Conformal Risk, Online Meta-Weighting, Jump Regimes & Relevance
+
+### Angelopoulos et al. (2023–2024), Kato (2025) & Zarei et al. (2026) — Conformal PID Control & Safety-Gated Portfolios {#conformal-risk-2026}
+
+> Angelopoulos, A. N., Candès, E. J., & Tibshirani, R. J. (2023). Conformal PID Control for Time Series Prediction. *Advances in Neural Information Processing Systems (NeurIPS)*.
+>
+> Angelopoulos, A. N., Bates, S., Fisch, A., Lei, L., & Schuster, T. (2024). Conformal Risk Control. *International Conference on Learning Representations (ICLR)*.
+>
+> Kato, M. (2025). Conformal Predictive Portfolio Selection (`CPPS`). *arXiv:2410.16333*.
+>
+> Zarei, M., et al. (2026). Gated Conformal Safety Risk Certificates for Portfolio Control (`Gated-CSRC`). *arXiv:2611.14699*.
+
+**Contribution:** Distribution-free finite-sample coverage and expected risk bounds for non-exchangeable financial time series, enabling conformal Kelly sizing, two-stage HR-LR portfolio selection, and convex Euclidean projection onto certified tail-loss sets.
+
+**Implemented in:** `ConformalPIDCalibrator`, `ConformalRiskController`, `CPPSAllocator`, `ConformalKellyOverlay`, `ConformalSafetyGateAllocator`, `RiskCertificate`
+
+---
+
+### Online Meta-Weighting, BPDS & Elliptical Shrinkage {#meta-weighting-2025}
+
+> de Rooij, S., van Erven, T., Grünwald, P. D., & Koolen, W. M. (2014). Follow the Leader if You Can, Hedge if You Must (`AdaHedge`). *JMLR*, 15(37), 1281–1316.
+>
+> Luo, H., & Schapire, R. E. (2015). Achieving All with No Parameters: `AdaNormalHedge`. *COLT*.
+>
+> Jun, K.-S., Orabona, F., Wright, S., & Willett, R. (2017). Improved Strongly Adaptive Online Learning using Coin Betting (`CBCE`). *AISTATS*.
+>
+> Tallman, E., & West, M. (2024). Bayesian Predictive Decision Synthesis (`BPDS`). *Journal of the Royal Statistical Society Series B*.
+>
+> Kan, R., & Lassance, N. (2025). Optimal Portfolio Shrinkage under Elliptical Distributions. *Journal of Financial and Quantitative Analysis (JFQA)*.
+
+**Contribution:** Adaptive no-regret and Bayesian utility-tilted meta-combination rules for blending multiple portfolio allocators with switching-cost control and elliptical kurtosis \(\kappa\) shrinkage toward \(1/N\).
+
+**Implemented in:** `AdaHedgeStrategy`, `FixedShareStrategy`, `CBCEStrategy`, `AdaNormalHedgeStrategy`, `DualScaledSwitchingCostStrategy`, `CADTSBanditStrategy`, `BPDSMetaStrategy`, `EllipticalShrinkageStrategy`, `EnsembleAllocator`
+
+---
+
+### Nystrup et al. (2021), Aydınhan et al. (2024) & Shu, Yu & Mulvey (2025) — Statistical Jump Models {#jump-models-2025}
+
+> Nystrup, P., Lindström, E., Pinson, P., & Madsen, H. (2021). Temporal Regularization in Regime-Switching Models (`Sparse Jump Model`). *Quantitative Finance*.
+>
+> Aydınhan, A. O., Kolm, P. N., Mulvey, J. M., & Shu, Y. (2024). Identifying Patterns in Financial Markets: Extending the Statistical Jump Model for Regime Identification (`Continuous Jump Model`). *Annals of Operations Research*.
+>
+> Shu, Y., Yu, C., & Mulvey, J. M. (2025). Dynamic Asset Allocation with Asset-Specific Regime Forecasts. *Journal of Portfolio Management*.
+
+**Contribution:** Exact Bellman dynamic programming and continuous simplex-trajectory jump models with \(\ell_1/\ell_2\) feature sparsity that eliminate HMM switch churn and sample starvation.
+
+**Implemented in:** `SparseJumpModelDetector`, `ContinuousJumpModelDetector`, `AssetSpecificJumpViewGenerator`, `RegimeSwitchingAllocator`
+
+---
+
+### Czasonis, Kritzman & Turkington (2023–2026) — Relevance-Based Prediction {#relevance-2026}
+
+> Czasonis, M., Kritzman, M., & Turkington, D. (2023). *Prediction Revisited: The Importance of Observation*. Wiley.
+
+**Contribution:** Replaces arbitrary rolling windows with Mahalanobis similarity and informativeness weights (`relevance`) plus an analytical `adjusted_fit` shrinkage factor.
+
+**Implemented in:** `compute_mahalanobis_relevance_weights`, `RelevanceConditionedReturnEstimator`, `RelevanceConditionedCovarianceEstimator`

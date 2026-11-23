@@ -210,3 +210,49 @@ trainer.fit_on_market_data(data, epochs=10)
 sig_gate = SignatureMMDRegimeGate(subpath_window=8, fast_window=20, slow_window=60)
 diag = sig_gate.evaluate(data.prices.pct_change().dropna())
 ```
+
+---
+
+## 8. Continuous-Time Exploratory Mean-Variance (`WonhamRegimeFilter` & `ExploratoryRegimeMVAllocator`)
+
+For analytical entropy-regularized stochastic control without model-free sample inefficiency, `ExploratoryRegimeMVAllocator` pairs a causal `WonhamRegimeFilter` (continuous-time Markov generator \(Q\)) with law-of-total-covariance + jump-risk estimation, intertemporal Markov hedging demand \(p_{\text{fwd}} = p_T^\top \exp(Q \cdot H/252)\), and analytical Shannon or Tsallis exploratory Gaussian covariance \(\Sigma_\pi^*\):
+
+```python
+from pyalloq.rl.exploratory_mv import ExploratoryRegimeMVAllocator
+from pyalloq_core.pipeline import StrategyPipeline
+
+emv_alloc = ExploratoryRegimeMVAllocator(
+    tickers=data.assets,
+    n_regimes=2,
+    risk_aversion=2.0,
+    entropy_temperature=0.05,
+    entropy_type="shannon",   # or "tsallis"
+    include_jump_risk=True,
+)
+pipeline = StrategyPipeline(allocator=emv_alloc)
+```
+
+---
+
+## 9. Masked-Dirichlet SetTransformer PPO (`SB3PortfolioAgent`)
+
+When `policy_backbone="set_transformer"` is passed to `SB3PortfolioAgent`, PyAlloq trains `SetTransformerPolicyNet` natively over structured `POMDPPortfolioEnv` `Dict` observations using **Masked Dirichlet PPO** (preserving permutation equivariance, Point-in-Time tradability masks, and cash-sleeve allocation without flattening observations):
+
+```python
+from pyalloq.dl.estimators.e2e.models.set_policy import SetTransformerPolicyNet
+from pyalloq.rl.agents.sb3_wrapper import SB3PortfolioAgent
+
+policy_net = SetTransformerPolicyNet(
+    n_features=1,
+    hidden_dim=64,
+    mandate="masked_dirichlet",
+    include_cash=True,
+)
+agent = SB3PortfolioAgent(
+    env=pomdp_env,
+    algorithm="PPO",
+    policy_backbone="set_transformer",
+    set_policy_net=policy_net,
+)
+agent.fit(total_timesteps=4096)
+```

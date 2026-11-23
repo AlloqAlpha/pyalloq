@@ -8,13 +8,13 @@ This page covers the mathematical foundations of the return and covariance estim
 
 ### Exponentially Weighted Mean (EWMA)
 
-Weights observations exponentially so that recent returns matter more:
+Weights observations exponentially via the recursive `adjust=False` EWMA filter (initialized at \(\hat{\mu}_{i,1} = r_{i,1}\)) and annualizes by `annualization_factor` \(A\) (default \(A = 252\)):
 
 \[
-\hat{\mu}^{EWMA}_i = \frac{\sum_{t=1}^{T} \lambda^{T-t} r_{i,t}}{\sum_{t=1}^{T} \lambda^{T-t}}
+\hat{\mu}_{i,t} = (1 - \lambda) r_{i,t} + \lambda \hat{\mu}_{i,t-1}, \qquad \hat{\mu}_i^{\text{EWMA}} = A \cdot \hat{\mu}_{i,T}
 \]
 
-where the decay factor \(\lambda = 1 - \frac{2}{\text{span}+1}\).
+where the decay factor is \(\lambda = 1 - \frac{2}{\text{span}+1}\).
 
 ---
 
@@ -75,19 +75,19 @@ where \(\tau\) is a scalar controlling the uncertainty in the prior (typically 0
 
 ### Ledoit-Wolf Shrinkage
 
-Shrinks the sample covariance \(\hat{\Sigma}\) towards a structured target \(T\) (e.g., diagonal matrix):
+Shrinks the sample covariance \(\hat{\Sigma}\) towards the scaled identity target \(\hat{\mu}_{\text{cov}} I = \frac{\operatorname{Tr}(\hat{\Sigma})}{N} I\) and annualizes by \(A = 252\) (`LedoitWolfShrinkage` via `sklearn.covariance.LedoitWolf`):
 
 \[
-\hat{\Sigma}^{LW} = (1 - \alpha^*) \hat{\Sigma} + \alpha^* \hat{\mu}_{cov} I
+\hat{\Sigma}^{\text{LW}} = A \cdot \left[(1 - \alpha^*) \hat{\Sigma} + \alpha^* \hat{\mu}_{\text{cov}} I\right]
 \]
 
-The optimal shrinkage intensity \(\alpha^*\) is derived analytically by minimizing the Frobenius norm of the estimation error:
+The optimal shrinkage intensity \(\alpha^*\) minimizes expected Frobenius-norm estimation error (Ledoit & Wolf, 2004):
 
 \[
-\alpha^* = \frac{\delta^2}{\gamma^2}
+\alpha^* = \min\!\left(1,\; \frac{\beta^2}{\delta^2}\right)
 \]
 
-where \(\delta^2\) and \(\gamma^2\) are data-dependent scaling constants derived from the Oracle Approximating Shrinkage (OAS) method.
+where \(\delta^2 = \|\hat{\Sigma} - \hat{\mu}_{\text{cov}} I\|_F^2\) is the squared Frobenius distance to the target and \(\beta^2 = \min(\bar{\beta}^2, \delta^2)\) estimates the sample covariance estimation variance \(\frac{1}{T^2} \sum_{t=1}^T \|r_t r_t^\top - \hat{\Sigma}\|_F^2\).
 
 See: [Ledoit & Wolf (2004)](../references/papers.md#ledoit-wolf-2004)
 
@@ -95,19 +95,23 @@ See: [Ledoit & Wolf (2004)](../references/papers.md#ledoit-wolf-2004)
 
 ### Random Matrix Theory (Marchenko-Pastur)
 
-For a random matrix \(X \in \mathbb{R}^{T \times N}\) with i.i.d. entries, the eigenvalue distribution of \(\hat{\Sigma} = \frac{1}{T} X^\top X\) converges to the Marchenko-Pastur distribution with upper bound:
+`RandomMatrixTheoryEstimator` denoises the sample **correlation matrix** \(C = D^{-1} \hat{\Sigma} D^{-1}\) (where \(D = \operatorname{diag}(\sigma_1, \dots, \sigma_N)\) holds annualized volatilities). For a random matrix with unit-variance (\(\sigma^2 = 1\)) i.i.d. entries, the empirical correlation eigenvalues converge to the Marchenko-Pastur law with upper noise edge:
 
 \[
-\lambda_+ = \sigma^2 \left(1 + \sqrt{\frac{N}{T}}\right)^2
+\lambda_+ = \left(1 + \sqrt{\frac{N}{T}}\right)^2
 \]
 
-Any empirical eigenvalue \(\lambda_i < \lambda_+\) is attributable to noise, not signal. The denoising step replaces these with the average noise eigenvalue:
+Any empirical eigenvalue \(\lambda_i \le \lambda_+\) is attributable to finite-sample noise and is replaced by the average noise eigenvalue:
 
 \[
-\bar{\lambda}_{noise} = \frac{\sum_{i: \lambda_i < \lambda_+} \lambda_i}{|\{i: \lambda_i < \lambda_+\}|}
+\bar{\lambda}_{\text{noise}} = \frac{\sum_{i:\, \lambda_i \le \lambda_+} \lambda_i}{|\{i:\, \lambda_i \le \lambda_+\}|}
 \]
 
-Then the clean covariance is reconstructed: \(\hat{\Sigma}^{RMT} = V \Lambda_{clean} V^\top\)
+The cleaned correlation matrix \(C_{\text{clean}} = V \Lambda_{\text{clean}} V^\top\) is rescaled to restore unit diagonal (\(\operatorname{diag}(C_{\text{clean}}) = \mathbf{1}\)), and the annualized covariance is reconstructed as:
+
+\[
+\hat{\Sigma}^{\text{RMT}} = D \, C_{\text{clean}} \, D
+\]
 
 The optional **detoning** step removes the largest eigenvalue (corresponding to the market-wide factor) from the correlation matrix before reconstruction, isolating sector-level correlations.
 
@@ -115,25 +119,23 @@ The optional **detoning** step removes the largest eigenvalue (corresponding to 
 
 ### Semi-Covariance
 
-Uses only negative return periods to estimate covariance, focusing on downside co-movement:
+Uses downside-truncated return deviations below a per-period benchmark \(b = b_{\text{ann}} / A\) (default \(b = 0\)) to form a symmetric, positive semi-definite downside covariance matrix annualized by \(A = 252\):
 
 \[
-\hat{\Sigma}^{semi}_{ij} = \frac{1}{T^-} \sum_{t: r_{i,t} < 0} r_{i,t} \cdot r_{j,t}
+\hat{\Sigma}^{\text{semi}}_{ij} = \frac{A}{T} \sum_{t=1}^{T} \min(r_{i,t} - b,\, 0) \cdot \min(r_{j,t} - b,\, 0)
 \]
-
-where \(T^-\) is the count of periods where asset \(i\) had a negative return.
 
 ---
 
 ### EWMA Covariance
 
-Uses exponential weighting to capture time-varying covariance:
+Uses exponential weighting over mean-centered returns (via pandas `returns.ewm(span=span).cov()` with finite-sample bias correction) and annualizes by \(A = 252\):
 
 \[
-\hat{\Sigma}_t = (1 - \lambda) r_t r_t^\top + \lambda \hat{\Sigma}_{t-1}
+\hat{\Sigma}_t = A \cdot \operatorname{Cov}_{\text{EWMA}}(r_t - \hat{\mu}_t; \, \lambda), \qquad \lambda = 1 - \frac{2}{\text{span}+1}
 \]
 
-where \(\lambda = 1 - \frac{2}{\text{span}+1}\) is the decay factor. This models volatility clustering observed in financial time series (similar to the RiskMetrics model).
+In the large-sample limit this reduces to the RiskMetrics recursion \(\hat{\Sigma}_t = (1 - \lambda)(r_t - \hat{\mu}_t)(r_t - \hat{\mu}_t)^\top + \lambda \hat{\Sigma}_{t-1}\), capturing volatility clustering in financial time series.
 
 ---
 
@@ -209,13 +211,13 @@ C_{ij}(\tau) = \Lambda_j \Phi_{ij}(\tau) + \sum_{k=1}^N \int_0^\infty \Phi_{ik}(
 \]
 
 2. **Abi Jaber (2019) \(K\)-Factor Markovian Lifted Heston Kernel:**
-   Approximates the singular fractional power-law kernel \(K(t) = t^{H - 1/2} / \Gamma(H + 1/2)\) via a finite superposition of \(K\) Markovian Ornstein-Uhlenbeck volatility factors \(U_{t,k}\) with geometric mean-reversion speeds \(x_k = r^{k - K/2}\) and analytic weights \(c_k(H_{\text{eff}})\), where \(H_{\text{eff}} \in (0.05, 0.50]\) blends the realized variogram Hurst \(H_{\text{RV}}\) and implied surface Hurst \(H_{\text{IV}}\).
+   Approximates the singular fractional power-law kernel \(K(t) = t^{H - 1/2} / \Gamma(H + 1/2)\) via a finite superposition of \(K\) Markovian Ornstein-Uhlenbeck volatility factors \(U_{t,k}\) with symmetrically centered geometric mean-reversion speeds \(x_k = r^{k - (K+1)/2}\) (\(k = 1, \dots, K\)) and analytic weights \(c_k(H_{\text{eff}})\), where \(H_{\text{eff}} \in (0.05, 0.50]\) blends the realized variogram Hurst \(H_{\text{RV}}\) and implied surface Hurst \(H_{\text{IV}}\).
 
 3. **Bakshi-Kapadia-Madan (2003) Risk-Neutral Moments & Cornish-Fisher Tail Expansion:**
-   From out-of-the-money (OTM) option prices \(Q(K_i)\), the quadratic (\(V\)), cubic (\(W\)), and quartic (\(X\)) model-free contracts determine risk-neutral skewness (\(\text{MFIS}_t\)) and excess kurtosis (\(\text{MFIK}_t\)). When `use_cornish_fisher_tail=True`, `ImpliedCovarianceEstimator` scales each asset's implied volatility by the Cornish-Fisher quantile ratio at confidence \(z_\alpha\):
+   From out-of-the-money (OTM) option prices \(Q(K_i)\), the quadratic (\(V\)), cubic (\(W\)), and quartic (\(X\)) model-free contracts determine risk-neutral skewness (\(\text{MFIS}_t\)) and excess kurtosis (\(\text{MFIK}_t\)). When `use_cornish_fisher_tail=True`, `ImpliedCovarianceEstimator` scales each asset's implied volatility by the left-tail Cornish-Fisher quantile ratio at confidence \(z_\alpha\) (so negative return skewness \(S < 0\) increases the downside tail multiplier \(m_{\text{CF}} > 1\)):
 
 \[
-m_{\text{CF}}(S, K_{\text{ex}}) = \frac{z_{\text{CF}}}{z_\alpha}, \qquad z_{\text{CF}} = z_\alpha + \frac{z_\alpha^2 - 1}{6} S + \frac{z_\alpha^3 - 3 z_\alpha}{24} K_{\text{ex}} - \frac{2 z_\alpha^3 - 5 z_\alpha}{36} S^2
+m_{\text{CF}}(S, K_{\text{ex}}) = \frac{z_{\text{CF}}}{z_\alpha} = 1 - \frac{z_\alpha^2 - 1}{6 z_\alpha} S + \frac{z_\alpha^2 - 3}{24} K_{\text{ex}} - \frac{2 z_\alpha^2 - 5}{36} S^2
 \]
 
 4. **Von Neumann Covariance Entropy (`compute_von_neumann_entropy`):**

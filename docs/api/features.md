@@ -34,6 +34,24 @@
 
 ---
 
+## Core Pipeline
+
+::: pyalloq_features.core.base.BaseFeatureTransformer
+
+::: pyalloq_features.core.pipeline.FeaturePipeline
+
+---
+
+## Regime Detection (Jump Models)
+
+::: pyalloq_features.regimes.jump_models.SparseJumpModelDetector
+
+::: pyalloq_features.regimes.jump_models.ContinuousJumpModelDetector
+
+::: pyalloq_features.regimes.jump_models.extract_jump_regime_features
+
+---
+
 ## Scalers
 
-::: pyalloq_features.scalers
+::: pyalloq_features.scalers.rolling.RollingZScoreScaler
