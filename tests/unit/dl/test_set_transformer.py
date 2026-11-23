@@ -673,6 +673,32 @@ def test_ragged_cvxpy_classical_allocators_and_masked_rie_spectral() -> None:
         rie_active_diff < 1e-11
     ), f"RIESpectralHead contaminated by padded eigenvalues: {rie_active_diff}"
 
+    # 3. High-dimensional N_active > L (rank-deficient active correlation with 0.0 eigenvalues)
+    L_short = (
+        4  # N_act = 8 > L_short = 4 -> active correlation has 5 exact 0.0 eigenvalues
+    )
+    x_act_hd = torch.randn(B, L_short, N_act, F, dtype=torch.float64)
+    x_pad_hd = torch.full((B, L_short, N_pad, F), 1e6, dtype=torch.float64)
+    x_full_hd = torch.cat([x_act_hd, x_pad_hd], dim=2)
+    with torch.no_grad():
+        cov_hd_unpadded = rie_net(x_act_hd)
+        cov_hd_padded = rie_net(x_full_hd[:, :, perm, :], mask=mask_full[:, perm])
+    cov_hd_unperm = cov_hd_padded[:, inv_perm, :][:, :, inv_perm]
+    hd_diff = float(
+        torch.max(torch.abs(cov_hd_unperm[:, :N_act, :N_act] - cov_hd_unpadded)).item()
+    )
+    assert (
+        hd_diff < 1e-11
+    ), f"High-dim (N_active > L) RIESpectralHead null-space mixing: {hd_diff}"
+
+    # 4. Pandas DataFrame.attrs stripped (e.g., via cov * 1.0) and data=None passed to HRPAllocator
+    stripped_cov = ragged_cov * 1.0
+    stripped_cov.attrs.clear()
+    res_hrp_no_attrs = hrp.allocate(data=None, cov_matrix=stripped_cov)
+    assert float(res_hrp_no_attrs.weights["PRE_IPO"]) == 0.0
+    assert float(res_hrp_no_attrs.weights["DELISTED"]) == 0.0
+    assert abs(float(res_hrp_no_attrs.weights.sum()) - 1.0) < 1e-6
+
 
 def test_market_jepa_and_conv_transformer_allocator_invariance() -> None:
     """

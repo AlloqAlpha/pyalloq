@@ -144,16 +144,20 @@ class MarkowitzAllocator(BaseAllocator):
         **kwargs: Any,
     ) -> OptimizationResult:
         all_assets = list(cov_matrix.columns)
+        diag_vals = np.diag(np.asarray(cov_matrix.values, dtype=np.float64))
+        not_sentinel = (diag_vals > 0.0) & (diag_vals < 1e4)
         tradable_attr = cov_matrix.attrs.get("tradability_mask")
         if tradable_attr is not None:
-            active_mask = np.asarray(tradable_attr, dtype=bool)
+            active_mask = np.asarray(tradable_attr, dtype=bool) & not_sentinel
         elif data is not None and len(data.prices) > 0:
             latest_p = data.prices.reindex(columns=all_assets).iloc[-1]
-            active_mask = latest_p.notna().to_numpy(dtype=bool) & np.isfinite(
-                latest_p.to_numpy(dtype=np.float64)
+            active_mask = (
+                latest_p.notna().to_numpy(dtype=bool)
+                & np.isfinite(latest_p.to_numpy(dtype=np.float64))
+                & not_sentinel
             )
         else:
-            active_mask = np.ones(len(all_assets), dtype=bool)
+            active_mask = not_sentinel
 
         if not np.all(active_mask) and np.any(active_mask):
             active_assets = [a for a, is_act in zip(all_assets, active_mask) if is_act]

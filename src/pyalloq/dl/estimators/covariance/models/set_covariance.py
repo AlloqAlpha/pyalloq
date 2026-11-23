@@ -472,27 +472,26 @@ class RIESpectralHead(nn.Module):
         sample_corr = sample_cov / (std.unsqueeze(-1) * std.unsqueeze(-2) + 1e-8)
 
         if m_bool is not None and not bool(torch.all(m_bool).item()):
-            # Zero out masked rows and columns (including diagonal) so padded slots have
-            # exact 0.0 eigenvalues and orthogonal unit eigenvectors, preventing spurious
-            # 1.0 padded eigenvalues from contaminating the active correlation spectrum
+            # Shift active diagonal by +2.0 while keeping masked rows/columns/diagonals at 0.0.
+            # Even when N_active > L (where the active correlation block has 0.0 eigenvalues),
+            # active eigenvalues are shifted to >= 2.0 while masked eigenvalues stay at 0.0,
+            # completely preventing degenerate 0.0 null-space mixing between active and masked slots.
             pair_mask = m_f.unsqueeze(-1) * m_f.unsqueeze(-2)
             active_diag = torch.diag_embed(m_f)
-            sample_corr = sample_corr * pair_mask * (1.0 - eye) + active_diag
+            sample_corr = sample_corr * pair_mask * (1.0 - eye) + 3.0 * active_diag
 
             corr_f64 = 0.5 * (sample_corr + sample_corr.transpose(1, 2)).to(
                 torch.float64
             )
             eigvals_f64, eigvecs_f64 = torch.linalg.eigh(corr_f64)
-            eigvals = eigvals_f64.clamp(min=0.0).to(dtype=dtype)
-            eigvecs = eigvecs_f64.to(dtype=dtype)
-
-            # Identify the N_active eigenvalues belonging to the active subspace:
-            # padded eigenvectors have support on inactive indices where m_f == 0
-            active_support = torch.bmm(m_f.unsqueeze(1), eigvecs.pow(2)).squeeze(
-                1
-            )  # (B, N) in [0, 1]
-            eig_mask = active_support > 0.5
+            eig_mask = eigvals_f64 > 1.0
             eig_mask_f = eig_mask.to(dtype=dtype)
+            eigvals = torch.where(
+                eig_mask,
+                (eigvals_f64 - 2.0).clamp(min=0.0),
+                torch.zeros_like(eigvals_f64),
+            ).to(dtype=dtype)
+            eigvecs = eigvecs_f64.to(dtype=dtype)
         else:
             sample_corr = sample_corr * (1.0 - eye) + eye
             sample_corr = 0.5 * (sample_corr + sample_corr.transpose(1, 2))
