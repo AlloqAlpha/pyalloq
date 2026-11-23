@@ -143,7 +143,51 @@ class MarkowitzAllocator(BaseAllocator):
         current_weights: pd.Series | None = None,
         **kwargs: Any,
     ) -> OptimizationResult:
-        assets = list(cov_matrix.columns)
+        all_assets = list(cov_matrix.columns)
+        tradable_attr = cov_matrix.attrs.get("tradability_mask")
+        if tradable_attr is not None:
+            active_mask = np.asarray(tradable_attr, dtype=bool)
+        elif data is not None and len(data.prices) > 0:
+            latest_p = data.prices.reindex(columns=all_assets).iloc[-1]
+            active_mask = latest_p.notna().to_numpy(dtype=bool) & np.isfinite(
+                latest_p.to_numpy(dtype=np.float64)
+            )
+        else:
+            active_mask = np.ones(len(all_assets), dtype=bool)
+
+        if not np.all(active_mask) and np.any(active_mask):
+            active_assets = [a for a, is_act in zip(all_assets, active_mask) if is_act]
+            sub_cov = cov_matrix.loc[active_assets, active_assets].copy()
+            sub_cov.attrs["tradability_mask"] = [True] * len(active_assets)
+            sub_mu = (
+                expected_returns.reindex(active_assets)
+                if expected_returns is not None
+                else None
+            )
+            sub_curr = (
+                current_weights.reindex(active_assets)
+                if current_weights is not None
+                else None
+            )
+            sub_res = self.allocate(
+                data=data,
+                cov_matrix=sub_cov,
+                expected_returns=sub_mu,
+                current_weights=sub_curr,
+                **kwargs,
+            )
+            full_w = sub_res.weights.reindex(all_assets, fill_value=0.0)
+            return OptimizationResult(
+                name=sub_res.name,
+                weights=full_w,
+                status=sub_res.status,
+                expected_return=sub_res.expected_return,
+                volatility=sub_res.volatility,
+                sharpe_ratio=sub_res.sharpe_ratio,
+                metadata=sub_res.metadata,
+            )
+
+        assets = all_assets
         n_assets = len(assets)
 
         sigma_vals_np = np.asarray(cov_matrix.values, dtype=float)
@@ -416,7 +460,7 @@ class MarkowitzAllocator(BaseAllocator):
             else float(np.min(mu_vals))
         )
 
-        lb, ub = self._resolve_bounds(assets)
+        _lb, _ub = self._resolve_bounds(assets)
         w_max = cp.Variable(len(assets))
         c_max = self._build_standard_constraints(w_max, assets, data)
         prob_max = cp.Problem(cp.Maximize(mu_vals @ w_max), c_max)

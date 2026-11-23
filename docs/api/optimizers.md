@@ -184,6 +184,12 @@
 
 ---
 
+### ConvTransformerAllocator
+
+::: pyalloq.dl.estimators.e2e.models.c_stan.ConvTransformerAllocator
+
+---
+
 ### SignatureMMDRegimeGate
 
 ::: pyalloq.rl.thermodynamics.SignatureMMDRegimeGate

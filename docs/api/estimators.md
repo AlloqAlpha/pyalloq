@@ -264,6 +264,18 @@
 
 ---
 
+### MarketJEPA
+
+::: pyalloq.dl.world_models.jepa.MarketJEPA
+
+---
+
+### VICRegLoss
+
+::: pyalloq.dl.world_models.jepa.VICRegLoss
+
+---
+
 ## Black-Litterman
 
 ### BlackLittermanEstimator

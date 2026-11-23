@@ -237,6 +237,35 @@ class HRPAllocator(BaseAllocator):
         if cov_matrix is None:
             raise ValueError("HRPAllocator requires cov_matrix")
 
+        all_assets = list(cov_matrix.columns)
+        tradable_attr = cov_matrix.attrs.get("tradability_mask")
+        if tradable_attr is not None:
+            active_mask = np.asarray(tradable_attr, dtype=bool)
+        elif data is not None and len(data.prices) > 0:
+            latest_p = data.prices.reindex(columns=all_assets).iloc[-1]
+            active_mask = latest_p.notna().to_numpy(dtype=bool) & np.isfinite(
+                latest_p.to_numpy(dtype=np.float64)
+            )
+        else:
+            active_mask = np.ones(len(all_assets), dtype=bool)
+
+        if not np.all(active_mask) and np.any(active_mask):
+            active_assets = [a for a, is_act in zip(all_assets, active_mask) if is_act]
+            sub_cov = cov_matrix.loc[active_assets, active_assets].copy()
+            sub_cov.attrs["tradability_mask"] = [True] * len(active_assets)
+            sub_res = self.allocate(
+                data=data,
+                cov_matrix=sub_cov,
+                expected_returns=expected_returns,
+                **kwargs,
+            )
+            full_w = sub_res.weights.reindex(all_assets, fill_value=0.0)
+            return OptimizationResult(
+                weights=full_w,
+                status=sub_res.status,
+                metadata=sub_res.metadata,
+            )
+
         mode: ClusteringMode = kwargs.get("clustering_mode", self.clustering_mode)
         cov_np = cov_matrix.to_numpy(dtype=np.float64)
 

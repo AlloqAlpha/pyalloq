@@ -470,31 +470,53 @@ class RIESpectralHead(nn.Module):
         )
         std = torch.sqrt(torch.diagonal(sample_cov, dim1=-2, dim2=-1).clamp(min=1e-8))
         sample_corr = sample_cov / (std.unsqueeze(-1) * std.unsqueeze(-2) + 1e-8)
-        if m_bool is not None:
-            pair_mask = m_f.unsqueeze(-1) * m_f.unsqueeze(-2)
-            sample_corr = sample_corr * pair_mask
-        sample_corr = sample_corr * (1.0 - eye) + eye
-        sample_corr = 0.5 * (sample_corr + sample_corr.transpose(1, 2))
 
-        # Perform symmetric eigendecomposition in float64 for numerical stability and exact
-        # permutation/rotation symmetry even under near-degenerate sample eigenvalues
-        corr_f64 = sample_corr.to(torch.float64)
-        eigvals_f64, eigvecs_f64 = torch.linalg.eigh(corr_f64)
-        eigvals = eigvals_f64.clamp(min=0.0).to(dtype=dtype)
-        eigvecs = eigvecs_f64.to(dtype=dtype)
+        if m_bool is not None and not bool(torch.all(m_bool).item()):
+            # Zero out masked rows and columns (including diagonal) so padded slots have
+            # exact 0.0 eigenvalues and orthogonal unit eigenvectors, preventing spurious
+            # 1.0 padded eigenvalues from contaminating the active correlation spectrum
+            pair_mask = m_f.unsqueeze(-1) * m_f.unsqueeze(-2)
+            active_diag = torch.diag_embed(m_f)
+            sample_corr = sample_corr * pair_mask * (1.0 - eye) + active_diag
+
+            corr_f64 = 0.5 * (sample_corr + sample_corr.transpose(1, 2)).to(
+                torch.float64
+            )
+            eigvals_f64, eigvecs_f64 = torch.linalg.eigh(corr_f64)
+            eigvals = eigvals_f64.clamp(min=0.0).to(dtype=dtype)
+            eigvecs = eigvecs_f64.to(dtype=dtype)
+
+            # Identify the N_active eigenvalues belonging to the active subspace:
+            # padded eigenvectors have support on inactive indices where m_f == 0
+            active_support = torch.bmm(m_f.unsqueeze(1), eigvecs.pow(2)).squeeze(
+                1
+            )  # (B, N) in [0, 1]
+            eig_mask = active_support > 0.5
+            eig_mask_f = eig_mask.to(dtype=dtype)
+        else:
+            sample_corr = sample_corr * (1.0 - eye) + eye
+            sample_corr = 0.5 * (sample_corr + sample_corr.transpose(1, 2))
+            corr_f64 = sample_corr.to(torch.float64)
+            eigvals_f64, eigvecs_f64 = torch.linalg.eigh(corr_f64)
+            eigvals = eigvals_f64.clamp(min=0.0).to(dtype=dtype)
+            eigvecs = eigvecs_f64.to(dtype=dtype)
+            eig_mask = None
+            eig_mask_f = torch.ones((B, N), device=device, dtype=dtype)
 
         # Aspect ratio q_in = N_active / L
         q_in = (n_active / float(max(1, L))).unsqueeze(-1).expand(B, N, 1)
         eig_tokens = torch.cat([eigvals.unsqueeze(-1), q_in], dim=-1)  # (B, N, 2)
+        if eig_mask is not None:
+            eig_tokens = eig_tokens * eig_mask_f.unsqueeze(-1)
         eig_emb = self.eig_in_proj(eig_tokens)
-        eig_attended = self.eig_sab(eig_emb, mask=None)
+        eig_attended = self.eig_sab(eig_emb, mask=eig_mask)
         lam_clean = (
             torch.nn.functional.softplus(self.eig_out_proj(eig_attended).squeeze(-1))
             + self.eps_eig
-        )
-        # Normalize cleaned trace to N
+        ) * eig_mask_f
+        # Normalize cleaned trace strictly to N_active over active eigenvalues
         lam_clean = lam_clean * (
-            float(N) / lam_clean.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+            n_active / lam_clean.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         )
 
         with torch.no_grad():
@@ -505,7 +527,10 @@ class RIESpectralHead(nn.Module):
         v_scaled = eigvecs * lam_clean.unsqueeze(1)
         corr_clean = torch.bmm(v_scaled, eigvecs.transpose(1, 2))
         corr_clean = 0.5 * (corr_clean + corr_clean.transpose(1, 2))
-        # Rescale to exact unit diagonal
+        if m_bool is not None:
+            pair_mask = m_f.unsqueeze(-1) * m_f.unsqueeze(-2)
+            corr_clean = corr_clean * pair_mask + eye * (1.0 - pair_mask)
+        # Rescale active entries to exact unit diagonal
         diag_c = torch.diagonal(corr_clean, dim1=-2, dim2=-1).clamp(min=1e-8)
         inv_sqrt_c = torch.rsqrt(diag_c)
         corr_clean = corr_clean * (inv_sqrt_c.unsqueeze(-1) * inv_sqrt_c.unsqueeze(-2))

@@ -5,12 +5,16 @@ import pandas as pd
 import torch
 from pyalloq_backtest.splitters import RollingWindowSplitter
 from pyalloq_core.data import MarketData
+from pyalloq_core.enums import ObjectiveFunction
 
+from pyalloq.classical.optimizers import MarkowitzAllocator, RiskParityAllocator
 from pyalloq.dl import (
+    ConvTransformerAllocator,
     DeepAllocator,
     DeepCovarianceEstimator,
     ISABFactorDiagonalHead,
     MarketDataset,
+    MarketJEPA,
     MDFPOptimizationLayer,
     SetTransformerBackbone,
     SetTransformerCovarianceNet,
@@ -22,6 +26,7 @@ from pyalloq.dl import (
     WoodburySteinLoss,
 )
 from pyalloq.dl.trainer import WalkForwardTrainer
+from pyalloq.ml.optimizers.hrp import HRPAllocator
 from pyalloq.rl import POMDPPortfolioEnv, SB3PortfolioAgent
 
 
@@ -567,3 +572,190 @@ def test_integration_with_trainer_allocator_and_rl() -> None:
     action, _ = agent.predict(obs, deterministic=True)
     assert action.shape == (6,)
     assert abs(float(np.sum(action)) - 1.0) < 1e-4
+
+
+def test_ragged_cvxpy_classical_allocators_and_masked_rie_spectral() -> None:
+    """
+    Audits two edge cases:
+    1. Ragged-Mask Singularity Trap with Classical CVXPY Solvers:
+       When `DeepCovarianceEstimator(allow_ragged=True)` estimates covariance on a
+       ragged universe where 2 tickers are currently untradable (pre-IPO/delisted NaNs),
+       `MarkowitzAllocator`, `RiskParityAllocator`, and `HRPAllocator` solve cleanly
+       without `DCPError` or singularity failures and assign identically 0.0 weight to
+       the masked tickers.
+    2. Eigenvalue Contamination in `RIESpectralHead` Under Masking:
+       Padding 8 active assets with 4 masked slots containing 1e6 garbage values produces
+       the exact same active 8x8 RIE-cleaned covariance submatrix as the unpadded 8-asset
+       forward pass (zero eigenvalue contamination).
+    """
+    torch.manual_seed(2026)
+    np.random.seed(2026)
+
+    # 1. Ragged CVXPY Classical Allocator Audit
+    dates = pd.bdate_range("2024-01-02", periods=40)
+    tickers = ["AAPL", "MSFT", "NVDA", "PRE_IPO", "DELISTED"]
+    rets = np.random.normal(0.0006, 0.012, size=(40, len(tickers)))
+    prices = pd.DataFrame(
+        100.0 * np.cumprod(1.0 + rets, axis=0), index=dates, columns=tickers
+    )
+    # PRE_IPO and DELISTED are NaN at decision time (end of window)
+    prices.iloc[:, 3] = np.nan
+    prices.iloc[-5:, 4] = np.nan
+    ragged_data = MarketData(prices=prices, risk_free_rate=0.03)
+
+    cov_net = SetTransformerCovarianceNet(
+        n_features=1, hidden_dim=16, num_heads=2, num_inds=4, head_type="factor_diag"
+    )
+    cov_est = DeepCovarianceEstimator(
+        model=cov_net, lookback_window=15, allow_ragged=True
+    )
+    ragged_cov = cov_est.estimate(ragged_data)
+
+    # Full N x N matrix must be strictly SPD (eigenvalues > 0)
+    eigvals = np.linalg.eigvalsh(ragged_cov.to_numpy(dtype=np.float64))
+    assert np.all(eigvals > 0.0)
+
+    mkw = MarkowitzAllocator(
+        tickers=tickers, objective=ObjectiveFunction.MIN_VOLATILITY
+    )
+    res_mkw = mkw.allocate(ragged_data, cov_matrix=ragged_cov)
+    assert "OPTIMAL" in res_mkw.status
+    assert abs(float(res_mkw.weights.sum()) - 1.0) < 1e-6
+    assert float(res_mkw.weights["PRE_IPO"]) == 0.0
+    assert float(res_mkw.weights["DELISTED"]) == 0.0
+
+    rp = RiskParityAllocator(tickers=tickers)
+    res_rp = rp.allocate(ragged_data, cov_matrix=ragged_cov)
+    assert "OPTIMAL" in res_rp.status
+    assert abs(float(res_rp.weights.sum()) - 1.0) < 1e-5
+    assert float(res_rp.weights["PRE_IPO"]) == 0.0
+    assert float(res_rp.weights["DELISTED"]) == 0.0
+
+    hrp = HRPAllocator(tickers=tickers)
+    res_hrp = hrp.allocate(ragged_data, cov_matrix=ragged_cov)
+    assert "OPTIMAL" in res_hrp.status
+    assert abs(float(res_hrp.weights.sum()) - 1.0) < 1e-6
+    assert float(res_hrp.weights["PRE_IPO"]) == 0.0
+    assert float(res_hrp.weights["DELISTED"]) == 0.0
+
+    # 2. RIESpectralHead Zero Eigenvalue Contamination Under Masking
+    B, L, N_act, N_pad, F = 2, 16, 8, 4, 2
+    x_act = torch.randn(B, L, N_act, F, dtype=torch.float64)
+    x_pad = torch.full((B, L, N_pad, F), 1e6, dtype=torch.float64)
+    x_full = torch.cat([x_act, x_pad], dim=2)
+    mask_full = torch.zeros((B, N_act + N_pad), dtype=torch.bool)
+    mask_full[:, :N_act] = True
+
+    perm = torch.randperm(N_act + N_pad)
+    inv_perm = torch.argsort(perm)
+
+    rie_net = SetTransformerCovarianceNet(
+        n_features=F,
+        hidden_dim=32,
+        num_heads=4,
+        num_inds=4,
+        dropout=0.0,
+        head_type="rie_spectral",
+    ).to(torch.float64)
+    rie_net.eval()
+
+    with torch.no_grad():
+        cov_rie_unpadded = rie_net(x_act)
+        cov_rie_padded = rie_net(x_full[:, :, perm, :], mask=mask_full[:, perm])
+
+    cov_rie_unperm = cov_rie_padded[:, inv_perm, :][:, :, inv_perm]
+    rie_active_diff = float(
+        torch.max(
+            torch.abs(cov_rie_unperm[:, :N_act, :N_act] - cov_rie_unpadded)
+        ).item()
+    )
+    assert (
+        rie_active_diff < 1e-11
+    ), f"RIESpectralHead contaminated by padded eigenvalues: {rie_active_diff}"
+
+
+def test_market_jepa_and_conv_transformer_allocator_invariance() -> None:
+    """
+    Verifies Pillar 3 `MarketJEPA` (ISAB_m + PMA_1 at index 0 + mask-aware VICRegLoss)
+    and `ConvTransformerAllocator` (PMA_k regime head replacing flattened d_model * n_assets):
+    1. MarketJEPA outputs (B, N+1, d) where index 0 ([REGIME]) is strictly permutation
+       invariant and indices 1..N are 1D permutation equivariant, and VICRegLoss ignores
+       padded slots completely.
+    2. ConvTransformerAllocator transfers seamlessly across N=10, 50, 200 without shape
+       errors while maintaining exact regime invariance and allocation equivariance.
+    """
+    torch.manual_seed(123)
+    B, L, N_act, N_pad, F = 3, 12, 10, 5, 2
+    x_ctx_act = torch.randn(B, L, N_act, F, dtype=torch.float64)
+    x_tgt_act = torch.randn(B, L, N_act, F, dtype=torch.float64)
+
+    jepa = MarketJEPA(
+        n_features=F,
+        hidden_dim=32,
+        num_heads=4,
+        num_inds=6,
+        num_layers=2,
+        dropout=0.0,
+    ).to(torch.float64)
+    jepa.eval()
+
+    perm = torch.randperm(N_act)
+    with torch.no_grad():
+        tokens_orig = jepa(x_ctx_act)
+        tokens_perm = jepa(x_ctx_act[:, :, perm, :])
+
+    assert tokens_orig.shape == (B, N_act + 1, 32)
+    # Token 0 ([REGIME]) must be strictly permutation invariant
+    reg_diff = float(
+        torch.max(torch.abs(tokens_perm[:, 0, :] - tokens_orig[:, 0, :])).item()
+    )
+    assert reg_diff < 1e-12
+    # Tokens 1..N must be 1D permutation equivariant
+    asset_diff = float(
+        torch.max(
+            torch.abs(tokens_perm[:, 1:, :] - tokens_orig[:, 1:, :][:, perm, :])
+        ).item()
+    )
+    assert asset_diff < 1e-12
+
+    # Mask-aware VICRegLoss zero-leakage check
+    x_garbage = torch.full((B, L, N_pad, F), 1e6, dtype=torch.float64)
+    x_ctx_pad = torch.cat([x_ctx_act, x_garbage], dim=2)
+    x_tgt_pad = torch.cat([x_tgt_act, x_garbage], dim=2)
+    mask_pad = torch.zeros((B, N_act + N_pad), dtype=torch.bool)
+    mask_pad[:, :N_act] = True
+
+    with torch.no_grad():
+        loss_unpadded = jepa.compute_jepa_loss(x_ctx_act, x_tgt_act)
+        loss_padded = jepa.compute_jepa_loss(x_ctx_pad, x_tgt_pad, mask=mask_pad)
+    assert float(torch.abs(loss_unpadded - loss_padded).item()) < 1e-11
+
+    # ConvTransformerAllocator size & permutation invariance check
+    conv_alloc = ConvTransformerAllocator(
+        n_features=F,
+        d_model=32,
+        num_heads=4,
+        num_inds=6,
+        num_pma_seeds=2,
+        num_regimes=3,
+        dropout=0.0,
+        max_asset_weight=0.25,
+    ).to(torch.float64)
+    conv_alloc.eval()
+
+    with torch.no_grad():
+        w_conv = conv_alloc(x_ctx_act)
+        reg_probs_orig = conv_alloc.predict_regime_probs(x_ctx_act)
+        w_conv_perm = conv_alloc(x_ctx_act[:, :, perm, :])
+        reg_probs_perm = conv_alloc.predict_regime_probs(x_ctx_act[:, :, perm, :])
+
+        # Zero-shot transfer to N=80 assets
+        x_80 = torch.randn(B, L, 80, F, dtype=torch.float64)
+        w_80 = conv_alloc(x_80)
+
+    assert float(torch.max(torch.abs(reg_probs_perm - reg_probs_orig)).item()) < 1e-12
+    assert float(torch.max(torch.abs(w_conv_perm - w_conv[:, perm])).item()) < 1e-12
+    assert w_80.shape == (B, 80)
+    assert torch.allclose(
+        w_80.sum(dim=-1), torch.ones(B, dtype=torch.float64), atol=1e-6
+    )

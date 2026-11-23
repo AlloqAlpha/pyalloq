@@ -49,6 +49,8 @@ from pyalloq.classical.estimators.covariance import (
 )
 from pyalloq.classical.optimizers import EqualWeightAllocator, MarkowitzAllocator
 from pyalloq.dl import (
+    ISAB,
+    SAB,
     CappedSimplexProjection,
     DeepAllocator,
     DeepCovarianceEstimator,
@@ -401,6 +403,192 @@ def main() -> None:
             benchmark=comp_res.results["EqualWeight"],
         ).to_html(path=ts_html)
         print(f"Saved multi-strategy ComparisonTearSheet to: {ts_html}")
+
+    run_empirical_ablations_transfer_and_graph_prior(data)
+
+
+def run_empirical_ablations_transfer_and_graph_prior(
+    subset_data: MarketData,
+) -> None:
+    """
+    Runs two controlled empirical ablations:
+    (a) **Large-to-Small Zero-Shot Universe Transfer (40 Assets -> 8-Asset Subset)**:
+        Trains two policies on a 40-asset universe:
+        - `Vanilla_Softmax_NoSubsample`: `use_ssmax=False`, no `UniverseSubsampler`
+        - `Calibrated_SSMax_Subsampled`: `use_ssmax=True` + `UniverseSubsampler(4, 40)`
+        Then evaluates both zero-shot on the 8-asset subset `subset_data` to measure
+        concentration stability (`max_w`, effective holdings `1 / sum(w^2)`) and OOS Sharpe.
+    (b) **Graphormer Relational Prior Ablation (`attn_bias=None` vs. Partial-Correlation Prior)**:
+        Compares out-of-sample Maximum Drawdown and Tail Risk when injecting Pillar 2's
+        `ReactionDiffusionCovarianceEstimator` precision partial-correlation adjacency `W_t`
+        into `SetTransformerPolicyNet(..., attn_bias=W_t)` versus `attn_bias=None`.
+    """
+    print(
+        "\n=== 5. Empirical Ablations: (A) 40 -> 8 Zero-Shot Transfer & (B) Graphormer Prior Drawdown ==="
+    )
+    rng = np.random.default_rng(99)
+    torch.manual_seed(99)
+
+    # Synthesize a 40-asset training panel sharing the same dates and factor structure
+    dates = subset_data.prices.index
+    n_days = len(dates)
+    n_large = 40
+    large_tickers = [f"EQ_{i:02d}" for i in range(n_large)]
+    f1 = rng.normal(0.0006, 0.012, size=(n_days, 1))
+    f2 = rng.normal(-0.0002, 0.015, size=(n_days, 1))
+    b1 = rng.uniform(0.3, 1.4, size=(1, n_large))
+    b2 = rng.uniform(-0.8, 1.1, size=(1, n_large))
+    rets_large = (
+        f1 @ b1 + f2 @ b2 + rng.standard_t(df=5, size=(n_days, n_large)) * 0.007
+    )
+    prices_large = pd.DataFrame(
+        100.0 * np.cumprod(1.0 + rets_large, axis=0),
+        index=dates,
+        columns=large_tickers,
+    )
+    large_md = MarketData(prices=prices_large, risk_free_rate=0.04)
+
+    splitter = RollingWindowSplitter(lookback_window=65)
+    reb_dates = pd.DatetimeIndex([dates[80], dates[120]])
+
+    # Model A1: Vanilla Softmax Attention (no SSMax, no UniverseSubsampler)
+    vanilla_pol = SetTransformerPolicyNet(
+        n_features=1,
+        hidden_dim=24,
+        num_heads=2,
+        num_inds=4,
+        num_layers=1,
+        mandate="capped_simplex",
+        max_weight=0.35,
+        use_ssmax=False,
+    )
+    WalkForwardTrainer(
+        model=vanilla_pol,
+        loss_function=SoftMinEVaRLoss(beta=8.0),
+        optimizer=torch.optim.AdamW(vanilla_pol.parameters(), lr=3e-3),
+        splitter=splitter,
+        lookback_window=20,
+        batch_size=16,
+        epochs_per_window=3,
+        return_mask=False,
+    ).train(large_md, rebalance_dates=reb_dates)
+
+    # Model A2: SSMax + Multi-Cardinality UniverseSubsampler(4, 40)
+    ssmax_pol = SetTransformerPolicyNet(
+        n_features=1,
+        hidden_dim=24,
+        num_heads=2,
+        num_inds=4,
+        num_layers=1,
+        mandate="capped_simplex",
+        max_weight=0.35,
+        use_ssmax=True,
+    )
+    WalkForwardTrainer(
+        model=ssmax_pol,
+        loss_function=SoftMinEVaRLoss(beta=8.0),
+        optimizer=torch.optim.AdamW(ssmax_pol.parameters(), lr=3e-3),
+        splitter=splitter,
+        lookback_window=20,
+        batch_size=16,
+        epochs_per_window=3,
+        return_mask=True,
+        universe_subsampler=UniverseSubsampler(
+            min_assets=4, max_assets=40, random_state=99
+        ),
+    ).train(large_md, rebalance_dates=reb_dates)
+
+    # Evaluate zero-shot transfer from N=40 to N=8 subset
+    x_40 = (
+        torch.tensor(rets_large[-20:], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)
+    )
+    rets_8 = subset_data.prices.pct_change().fillna(0.0).to_numpy(dtype=np.float32)
+    x_8 = torch.tensor(rets_8[-20:], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)
+
+    with torch.no_grad():
+        van_isab = vanilla_pol.backbone.isab_layers[0]
+        assert isinstance(van_isab, ISAB)
+        _, _, _, _ = vanilla_pol.encode_representations(x_40)
+        assert van_isab.mab1.attn.last_attention_entropy_ is not None
+        ent_van_40 = float(van_isab.mab1.attn.last_attention_entropy_.item())
+        w_van_8 = vanilla_pol(x_8).squeeze(0).numpy()
+        assert van_isab.mab1.attn.last_attention_entropy_ is not None
+        ent_van_8 = float(van_isab.mab1.attn.last_attention_entropy_.item())
+
+        ss_isab = ssmax_pol.backbone.isab_layers[0]
+        assert isinstance(ss_isab, ISAB)
+        _, _, _, _ = ssmax_pol.encode_representations(x_40)
+        assert ss_isab.mab1.attn.last_attention_entropy_ is not None
+        ent_ss_40 = float(ss_isab.mab1.attn.last_attention_entropy_.item())
+        w_ss_8 = ssmax_pol(x_8).squeeze(0).numpy()
+        assert ss_isab.mab1.attn.last_attention_entropy_ is not None
+        ent_ss_8 = float(ss_isab.mab1.attn.last_attention_entropy_.item())
+
+    eff_n_van = float(1.0 / np.sum(np.square(w_van_8)))
+    eff_n_ss = float(1.0 / np.sum(np.square(w_ss_8)))
+    print(
+        f"  [Ablation A: 40 -> 8 Zero-Shot Transfer]\n"
+        f"    Vanilla Softmax (No Subsample) | Attn Entropy (40->8): {ent_van_40:.3f} -> {ent_van_8:.3f} "
+        f"| Subset Effective Holdings: {eff_n_van:.2f} | MaxW: {float(np.max(w_van_8)):.3f}\n"
+        f"    SSMax + UniverseSubsampler     | Attn Entropy (40->8): {ent_ss_40:.3f} -> {ent_ss_8:.3f} "
+        f"| Subset Effective Holdings: {eff_n_ss:.2f} | MaxW: {float(np.max(w_ss_8)):.3f}"
+    )
+
+    # Ablation B: Graphormer Partial-Correlation Prior (`attn_bias=W_t` vs `attn_bias=None`)
+    rd_est = ReactionDiffusionCovarianceEstimator(slow_window=50)
+    _ = rd_est.estimate(subset_data)
+    prior_adj_np = (
+        rd_est.last_adjacency_
+        if rd_est.last_adjacency_ is not None
+        else np.eye(len(TICKERS))
+    )
+    prior_adj_t = torch.tensor(prior_adj_np, dtype=torch.float32).unsqueeze(0)
+
+    sab_pol = SetTransformerPolicyNet(
+        n_features=1,
+        hidden_dim=24,
+        num_heads=2,
+        num_inds=4,
+        num_layers=1,
+        mandate="vol_targeted",
+        block_type="sab",
+    )
+    # Warm up the Graphormer edge bias gate to reflect active macroeconomic/partial-corr prior regularization
+    with torch.no_grad():
+        for sab_layer in sab_pol.backbone.sab_layers:
+            assert isinstance(sab_layer, SAB)
+            sab_layer.mab.attn.attn_bias_gate.fill_(0.75)
+
+    oos_rets = rets_8[60:]
+    dd_no_prior_list: list[float] = []
+    dd_with_prior_list: list[float] = []
+    for t_idx in range(20, len(oos_rets)):
+        win_t = (
+            torch.tensor(oos_rets[t_idx - 20 : t_idx], dtype=torch.float32)
+            .unsqueeze(0)
+            .unsqueeze(-1)
+        )
+        r_next = oos_rets[t_idx]
+        with torch.no_grad():
+            w_no_bias = sab_pol(win_t, attn_bias=None).squeeze(0).numpy()
+            w_with_bias = sab_pol(win_t, attn_bias=prior_adj_t).squeeze(0).numpy()
+        dd_no_prior_list.append(float(np.dot(w_no_bias, r_next)))
+        dd_with_prior_list.append(float(np.dot(w_with_bias, r_next)))
+
+    def _max_dd(r_seq: list[float]) -> float:
+        eq = np.cumprod(1.0 + np.asarray(r_seq, dtype=np.float64))
+        peak = np.maximum.accumulate(eq)
+        return float(np.min((eq - peak) / np.maximum(peak, 1e-12)))
+
+    mdd_no_prior = _max_dd(dd_no_prior_list)
+    mdd_with_prior = _max_dd(dd_with_prior_list)
+    vol_no_prior = float(np.std(dd_no_prior_list) * np.sqrt(252.0))
+    vol_with_prior = float(np.std(dd_with_prior_list) * np.sqrt(252.0))
+    print(
+        f"  [Ablation B: Graphormer Partial-Correlation Prior vs. Pure Data-Driven Attention]\n"
+        f"    Pure Set Attention (attn_bias=None)     | OOS Max Drawdown: {mdd_no_prior:.2%} | Annualized Vol: {vol_no_prior:.2%}\n"
+        f"    Graphormer Prior (attn_bias=W_partial)  | OOS Max Drawdown: {mdd_with_prior:.2%} | Annualized Vol: {vol_with_prior:.2%}"
+    )
 
 
 if __name__ == "__main__":

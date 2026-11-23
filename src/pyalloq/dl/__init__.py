@@ -22,6 +22,7 @@ from pyalloq.dl.estimators.covariance.models.set_covariance import (
     SetTransformerCovarianceNet,
 )
 from pyalloq.dl.estimators.e2e.deep_allocator import DeepAllocator
+from pyalloq.dl.estimators.e2e.models.c_stan import ConvTransformerAllocator
 from pyalloq.dl.estimators.e2e.models.set_policy import (
     CappedSimplexProjection,
     DollarNeutralStatArbHead,
@@ -71,6 +72,7 @@ from pyalloq.dl.policy import (
     UnifiedE2EPolicyNetwork,
     compute_von_neumann_entropy,
 )
+from pyalloq.dl.world_models import LatentPredictor, MarketJEPA, VICRegLoss
 
 __all__ = [
     "ISAB",
@@ -85,6 +87,7 @@ __all__ = [
     "BasePolicyNetwork",
     "CRISPSparseSTGAT",
     "CappedSimplexProjection",
+    "ConvTransformerAllocator",
     "DeepAllocator",
     "DeepCovarianceEstimator",
     "DifferentiableCVaRLayer",
@@ -96,9 +99,11 @@ __all__ = [
     "EquivariantGramCorrHead",
     "FragilityShrinkageCholeskyLayer",
     "ISABFactorDiagonalHead",
+    "LatentPredictor",
     "LogSigSSMBlock",
     "MDFPOptimizationLayer",
     "MarketDataset",
+    "MarketJEPA",
     "MaskedDirichletCashHead",
     "NeuralJumpRDE",
     "NeuralSDEEstimator",
@@ -121,6 +126,7 @@ __all__ = [
     "TorchLogSignatureExtractor",
     "UnifiedE2EPolicyNetwork",
     "UniverseSubsampler",
+    "VICRegLoss",
     "VectorizedVariableSelectionNetwork",
     "VolTargetedContinuousRiskHead",
     "WoodburyGaussianNLLLoss",

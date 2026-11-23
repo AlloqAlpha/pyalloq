@@ -29,7 +29,9 @@ class DeepCovarianceEstimator(BaseCovarianceEstimator):
         self.model.eval()
         self.lookback_window = lookback_window
         self.allow_ragged = allow_ragged
+        self.inactive_diagonal_penalty = 1e6
         self.last_factors_: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
+        self.last_tradability_mask_: pd.Series | None = None
 
     def _prepare_latest_batch(
         self, data: MarketData
@@ -97,24 +99,41 @@ class DeepCovarianceEstimator(BaseCovarianceEstimator):
             allow_ragged=self.allow_ragged,
         )
 
-        item = dataset[len(dataset) - 1]
+        idx = len(dataset) - 1
+        item = dataset[idx]
         x_tensor = item[0]
         x_batch = x_tensor.unsqueeze(0).to(self.device)
+        mask_tensor = dataset.get_tradability_mask(idx)
+        mask_np = mask_tensor.cpu().numpy().astype(bool)
+        self.last_tradability_mask_ = pd.Series(
+            mask_np, index=data.prices.columns, name="tradability_mask"
+        )
+
         with torch.no_grad():
-            if len(item) == 3:
-                mask_batch = item[2].unsqueeze(0).to(self.device)
+            if self.allow_ragged or len(item) == 3:
+                mask_batch = mask_tensor.unsqueeze(0).to(self.device)
                 try:
                     cov_pred_tensor = self.model(x_batch, mask=mask_batch)
                 except TypeError:
                     cov_pred_tensor = self.model(x_batch)
             else:
                 cov_pred_tensor = self.model(x_batch)
-        cov_np = cov_pred_tensor.squeeze(0).cpu().numpy()
+        cov_np = cov_pred_tensor.squeeze(0).cpu().numpy().astype(np.float64)
+
+        if self.allow_ragged and not np.all(mask_np):
+            # Ensure masked (pre-IPO / delisted) slots have zero cross-covariance with active assets
+            # and a large positive diagonal penalty so the full N x N matrix remains strictly SPD
+            # for CVXPY DCP while classical variance/risk-parity solvers assign 0 weight to masked slots
+            inactive_idx = np.flatnonzero(~mask_np)
+            cov_np[inactive_idx, :] = 0.0
+            cov_np[:, inactive_idx] = 0.0
+            cov_np[inactive_idx, inactive_idx] = self.inactive_diagonal_penalty
 
         cov_matrix = pd.DataFrame(
             cov_np,
             index=data.prices.columns,
             columns=data.prices.columns,
         )
+        cov_matrix.attrs["tradability_mask"] = mask_np.tolist()
 
         return cov_matrix
