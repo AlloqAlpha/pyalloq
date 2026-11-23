@@ -1121,6 +1121,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#size-invariant-set-transformer-end-to-end-policies-settransformerpolicynet-deepallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Size-Invariant Set Transformer End-to-End Policies (SetTransformerPolicyNet &amp; DeepAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choosing-an-allocator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2194,6 +2205,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#size-invariant-set-transformer-end-to-end-policies-settransformerpolicynet-deepallocator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Size-Invariant Set Transformer End-to-End Policies (SetTransformerPolicyNet &amp; DeepAllocator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choosing-an-allocator" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2516,6 +2538,38 @@ w_i^{\text{EW}} = \frac{1}{N}, \qquad w_i^{\text{IV}} = \frac{1/\sigma_i}{\sum_{
 </span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
+<h2 id="size-invariant-set-transformer-end-to-end-policies-settransformerpolicynet-deepallocator">Size-Invariant Set Transformer End-to-End Policies (<code>SetTransformerPolicyNet</code> &amp; <code>DeepAllocator</code>)<a class="headerlink" href="#size-invariant-set-transformer-end-to-end-policies-settransformerpolicynet-deepallocator" title="Permanent link">&para;</a></h2>
+<p><code>SetTransformerPolicyNet</code> implements PyAlloq's <code>BasePolicyNetwork</code> (<code>forward(x, w_current=None, mask=None, attn_bias=None) -&gt; w_target</code>) using <strong>Induced Set Attention Blocks (<code>ISAB</code>)</strong>, <strong>Pooling by Multihead Attention (<code>PMA_1</code>)</strong>, and <strong>Scalable-Softmax (<code>SSMax</code>)</strong>. A policy trained on a 500-stock universe with <code>UniverseSubsampler</code> transfers zero-shot to a 50-stock inference subset without tensor shape errors or Softmax concentration collapse.</p>
+<p>It supports five strictly equivariant, mask-aware mandate output heads:</p>
+<ul>
+<li><strong><code>mandate="capped_simplex"</code> (<code>CappedSimplexProjection</code>)</strong>: Exact vectorized bisection projection onto <span class="arithmatex">\(\{w : \sum_i w_i = 1, 0 \le w_i \le w_{\max}\}\)</span> with zero weight on padded/untradable slots.</li>
+<li><strong><code>mandate="sparsemax"</code></strong>: Exact Euclidean simplex projection (<span class="arithmatex">\(w_{\max} = 1\)</span>) inducing sparse active holdings.</li>
+<li><strong><code>mandate="masked_dirichlet"</code> (<code>MaskedDirichletCashHead</code>)</strong>: Simplex concentration parameters over active assets plus an invariant cash logit derived from the <code>PMA_1</code> <code>[REGIME]</code> token (for <code>POMDPPortfolioEnv</code> and <code>SB3PortfolioAgent(policy_backbone="set_transformer")</code>).</li>
+<li><strong><code>mandate="dollar_neutral"</code> (<code>DollarNeutralStatArbHead</code>)</strong>: Strictly zero net exposure (<span class="arithmatex">\(\sum_i w_i = 0\)</span>) and exact target gross leverage (<span class="arithmatex">\(\sum_i |w_i| = G_{\text{gross}}\)</span>) across any active asset count.</li>
+<li><strong><code>mandate="vol_targeted"</code> (<code>VolTargetedContinuousRiskHead</code>)</strong>: Directional risk weights scaled by inverse asset volatility <span class="arithmatex">\(1 / \hat{\sigma}_{i,t}\)</span>.</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyPipeline</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq.dl</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeepAllocator</span><span class="p">,</span> <span class="n">SetTransformerPolicyNet</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">policy_net</span> <span class="o">=</span> <span class="n">SetTransformerPolicyNet</span><span class="p">(</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="n">n_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    <span class="n">num_heads</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    <span class="n">num_inds</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    <span class="n">mandate</span><span class="o">=</span><span class="s2">&quot;capped_simplex&quot;</span><span class="p">,</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="n">max_weight</span><span class="o">=</span><span class="mf">0.20</span><span class="p">,</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>    <span class="n">temporal_type</span><span class="o">=</span><span class="s2">&quot;vsn_conv&quot;</span><span class="p">,</span>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="p">)</span>
+</span><span id="__span-16-13"><a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>
+</span><span id="__span-16-14"><a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span>
+</span><span id="__span-16-15"><a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>    <span class="n">allocator</span><span class="o">=</span><span class="n">DeepAllocator</span><span class="p">(</span>
+</span><span id="__span-16-16"><a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>        <span class="n">model</span><span class="o">=</span><span class="n">policy_net</span><span class="p">,</span>
+</span><span id="__span-16-17"><a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>        <span class="n">lookback_window</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+</span><span id="__span-16-18"><a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>        <span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">,</span>
+</span><span id="__span-16-19"><a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>    <span class="p">)</span>
+</span><span id="__span-16-20"><a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
 <h2 id="choosing-an-allocator">Choosing an Allocator<a class="headerlink" href="#choosing-an-allocator" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2570,38 +2624,38 @@ w_i^{\text{EW}} = \frac{1}{N}, \qquad w_i^{\text{IV}} = \frac{1/\sigma_i}{\sum_{
 <hr />
 <h2 id="converting-continuous-weights-to-integer-shares-discreteshareallocator">Converting Continuous Weights to Integer Shares (<code>DiscreteShareAllocator</code>)<a class="headerlink" href="#converting-continuous-weights-to-integer-shares-discreteshareallocator" title="Permanent link">&para;</a></h2>
 <p>In live trading, continuous portfolio weights <span class="arithmatex">\(w \in \mathbb{R}^N\)</span> must be converted into whole share or lot orders given current asset prices and total account cash. <code>DiscreteShareAllocator</code> supports both <code>method="greedy"</code> and Mixed-Integer Linear Programming (<code>method="lp"</code>), handling both long-only and long-short portfolios:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscreteShareAllocator</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">generate_weights</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">disc</span> <span class="o">=</span> <span class="n">DiscreteShareAllocator</span><span class="p">(</span><span class="n">total_portfolio_value</span><span class="o">=</span><span class="mf">100_000.0</span><span class="p">,</span> <span class="n">lot_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="n">order_plan</span> <span class="o">=</span> <span class="n">disc</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">latest_prices</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
-</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
-</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">shares</span><span class="p">)</span>          <span class="c1"># {&#39;AAPL&#39;: 142, &#39;MSFT&#39;: 88, &#39;GOOGL&#39;: 115, ...}</span>
-</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">leftover_cash</span><span class="p">)</span>   <span class="c1"># 43.18</span>
-</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">rmse_error</span><span class="p">)</span>      <span class="c1"># 0.0004</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscreteShareAllocator</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">generate_weights</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">disc</span> <span class="o">=</span> <span class="n">DiscreteShareAllocator</span><span class="p">(</span><span class="n">total_portfolio_value</span><span class="o">=</span><span class="mf">100_000.0</span><span class="p">,</span> <span class="n">lot_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="n">order_plan</span> <span class="o">=</span> <span class="n">disc</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">latest_prices</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;greedy&quot;</span><span class="p">)</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">shares</span><span class="p">)</span>          <span class="c1"># {&#39;AAPL&#39;: 142, &#39;MSFT&#39;: 88, &#39;GOOGL&#39;: 115, ...}</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">leftover_cash</span><span class="p">)</span>   <span class="c1"># 43.18</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">order_plan</span><span class="o">.</span><span class="n">rmse_error</span><span class="p">)</span>      <span class="c1"># 0.0004</span>
 </span></code></pre></div>
 <hr />
 <h2 id="implementing-a-custom-allocator">Implementing a Custom Allocator<a class="headerlink" href="#implementing-a-custom-allocator" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAllocator</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizationResult</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCustomAllocator</span><span class="p">(</span><span class="n">BaseAllocator</span><span class="p">):</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span>
-</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>        <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>        <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span>
-</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>        <span class="n">cov_matrix</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>        <span class="n">expected_returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
-</span><span id="__span-17-14"><a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>        <span class="c1"># Your optimization logic here</span>
-</span><span id="__span-17-15"><a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
-</span><span id="__span-17-16"><a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;OPTIMAL&quot;</span><span class="p">)</span>
-</span><span id="__span-17-17"><a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>
-</span><span id="__span-17-18"><a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a><span class="c1"># Drop it into any pipeline — no other changes needed</span>
-</span><span id="__span-17-19"><a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">MyCustomAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAllocator</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizationResult</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyalloq_core.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketData</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyCustomAllocator</span><span class="p">(</span><span class="n">BaseAllocator</span><span class="p">):</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>        <span class="n">data</span><span class="p">:</span> <span class="n">MarketData</span><span class="p">,</span>
+</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>        <span class="n">cov_matrix</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>        <span class="n">expected_returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>        <span class="c1"># Your optimization logic here</span>
+</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">)</span>
+</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;OPTIMAL&quot;</span><span class="p">)</span>
+</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>
+</span><span id="__span-18-18"><a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a><span class="c1"># Drop it into any pipeline — no other changes needed</span>
+</span><span id="__span-18-19"><a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">StrategyPipeline</span><span class="p">(</span><span class="n">allocator</span><span class="o">=</span><span class="n">MyCustomAllocator</span><span class="p">(</span><span class="n">tickers</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">assets</span><span class="p">))</span>
 </span></code></pre></div>
 
 
