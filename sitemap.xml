@@ -17,6 +17,10 @@
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
+         <loc>https://pyalloq.alloq-alpha.com/api/dl/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
          <loc>https://pyalloq.alloq-alpha.com/api/estimators/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
@@ -29,11 +33,31 @@
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
+         <loc>https://pyalloq.alloq-alpha.com/api/rl/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
          <loc>https://pyalloq.alloq-alpha.com/api/simulation/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://pyalloq.alloq-alpha.com/api/viz/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/architecture/component-composition/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/architecture/data-and-execution-flows/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/architecture/extending-pyalloq/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/architecture/system-overview/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
@@ -61,6 +85,10 @@
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
+         <loc>https://pyalloq.alloq-alpha.com/mathematics/deep-learning/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
          <loc>https://pyalloq.alloq-alpha.com/mathematics/estimators/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
@@ -77,7 +105,19 @@
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
+         <loc>https://pyalloq.alloq-alpha.com/mathematics/notation-glossary/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
          <loc>https://pyalloq.alloq-alpha.com/mathematics/portfolio-theory/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/mathematics/reinforcement-learning/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/mathematics/robust-and-regime-optimization/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
@@ -98,6 +138,10 @@
     </url>
     <url>
          <loc>https://pyalloq.alloq-alpha.com/user-guide/data-connectors/</loc>
+         <lastmod>2026-11-23</lastmod>
+    </url>
+    <url>
+         <loc>https://pyalloq.alloq-alpha.com/user-guide/deep-learning/</loc>
          <lastmod>2026-11-23</lastmod>
     </url>
     <url>
