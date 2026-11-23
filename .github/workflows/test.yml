@@ -33,3 +33,25 @@ jobs:
       - name: Run Pytest Suite with Coverage Gating
         run: |
           uv run pytest --cov --cov-report=term-missing --cov-report=xml
+
+  docs-build:
+    name: Docs Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras --group dev
+
+      - name: Build Documentation (Strict)
+        run: uv run mkdocs build --strict
