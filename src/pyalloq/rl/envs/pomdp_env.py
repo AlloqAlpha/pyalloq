@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 import pandas as pd
@@ -37,7 +37,7 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
       `BaseRewardFunction` (`DifferentialSharpeReward`, `StepwiseSortinoReward`, `CARAUtilReward`).
     """
 
-    metadata = {"render_modes": ["human"]}
+    metadata: ClassVar[dict[str, list[str]]] = {"render_modes": ["human"]}
 
     def __init__(
         self,
@@ -53,20 +53,26 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
         risk_free_rate: float = 0.0,
         initial_capital: float = 1.0,
         use_thermodynamic_gate: bool = False,
+        tradability_mask: np.ndarray | None = None,
+        include_tradability_mask: bool = False,
     ) -> None:
         super().__init__()
         if isinstance(scenario_data, MarketData):
-            prices_np = scenario_data.prices.to_numpy(dtype=np.float64)[None, ...]
-            rets_np = (
-                scenario_data.prices.pct_change()
-                .fillna(0.0)
-                .to_numpy(dtype=np.float64)[None, ...]
-            )
+            raw_prices = scenario_data.prices.to_numpy(dtype=np.float64)[None, ...]
+            raw_rets = scenario_data.prices.pct_change(fill_method=None).to_numpy(
+                dtype=np.float64
+            )[None, ...]
+            inferred_mask = np.isfinite(raw_prices) & np.isfinite(raw_rets)
+            inferred_mask[:, 0, :] = np.isfinite(raw_prices[:, 0, :])
+            prices_np = np.nan_to_num(raw_prices, nan=100.0)
+            rets_np = np.nan_to_num(raw_rets, nan=0.0)
             feats_3d: dict[str, np.ndarray] = {}
             feat_cols: dict[str, list[str]] = {}
             if scenario_data.features:
                 for k, df_f in scenario_data.features.items():
-                    feats_3d[k] = df_f.to_numpy(dtype=np.float64)[None, ...]
+                    feats_3d[k] = np.nan_to_num(
+                        df_f.to_numpy(dtype=np.float64), nan=0.0
+                    )[None, ...]
                     feat_cols[k] = [str(c) for c in df_f.columns]
             self.scenario_data = ScenarioMarketData(
                 prices=prices_np,
@@ -78,6 +84,9 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
             )
         else:
             self.scenario_data = scenario_data
+            inferred_mask = np.isfinite(self.scenario_data.prices) & np.isfinite(
+                self.scenario_data.returns
+            )
 
         self.feature_pipeline = feature_pipeline
         self.n_paths = self.scenario_data.n_paths
@@ -93,6 +102,24 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
         self.risk_free_daily = float(risk_free_rate) / 252.0
         self.initial_capital = float(initial_capital)
         self.use_thermodynamic_gate = use_thermodynamic_gate
+        self.include_tradability_mask = bool(
+            include_tradability_mask or tradability_mask is not None
+        )
+
+        if tradability_mask is not None:
+            tm = np.asarray(tradability_mask, dtype=bool)
+            if tm.ndim == 2:
+                tm = np.broadcast_to(
+                    tm[None, ...], (self.n_paths, self.horizon, self.n_assets)
+                ).copy()
+            elif tm.ndim == 1:
+                tm = np.broadcast_to(
+                    tm[None, None, :], (self.n_paths, self.horizon, self.n_assets)
+                ).copy()
+            self.tradability_mask = tm
+        else:
+            self.tradability_mask = inferred_mask.astype(bool)
+
         self.regime_gate = WassersteinRegimeGate(
             fast_window=max(5, self.lookback_window // 2),
             slow_window=max(10, self.lookback_window),
@@ -119,28 +146,34 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
             shape=(self.action_dim,),
             dtype=np.float32,
         )
-        self.observation_space = make_dict_space(
-            {
-                "market_state": _make_box_space(
-                    low=-np.inf,
-                    high=np.inf,
-                    shape=(self.lookback_window, self.n_assets, self.n_features),
-                    dtype=np.float32,
-                ),
-                "current_weights": _make_box_space(
-                    low=0.0,
-                    high=1.0,
-                    shape=(self.n_assets,),
-                    dtype=np.float32,
-                ),
-                "portfolio_meta": _make_box_space(
-                    low=-np.inf,
-                    high=np.inf,
-                    shape=(3,),
-                    dtype=np.float32,
-                ),
-            }
-        )
+        obs_spaces: dict[str, Any] = {
+            "market_state": _make_box_space(
+                low=-np.inf,
+                high=np.inf,
+                shape=(self.lookback_window, self.n_assets, self.n_features),
+                dtype=np.float32,
+            ),
+            "current_weights": _make_box_space(
+                low=0.0,
+                high=1.0,
+                shape=(self.n_assets,),
+                dtype=np.float32,
+            ),
+            "portfolio_meta": _make_box_space(
+                low=-np.inf,
+                high=np.inf,
+                shape=(3,),
+                dtype=np.float32,
+            ),
+        }
+        if self.include_tradability_mask:
+            obs_spaces["tradability_mask"] = _make_box_space(
+                low=0.0,
+                high=1.0,
+                shape=(self.n_assets,),
+                dtype=np.float32,
+            )
+        self.observation_space = make_dict_space(obs_spaces)
 
         self.active_path_idx: int = 0
         self.current_step: int = self.lookback_window
@@ -215,14 +248,28 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
         self._path_volume_cache[path_idx] = vol_arr
         return full_tensor
 
+    def get_current_tradability_mask(self) -> np.ndarray:
+        """
+        Returns the Point-in-Time active tradability mask ``(n_assets,)`` for the
+        current lookback window ``[current_step - lookback_window, current_step)``.
+        """
+        start = max(0, self.current_step - self.lookback_window)
+        end = max(start + 1, min(self.current_step, self.horizon))
+        win_mask = self.tradability_mask[self.active_path_idx, start:end, :]
+        step_mask = np.all(win_mask, axis=0)
+        if not np.any(step_mask):
+            return np.ones(self.n_assets, dtype=bool)
+        return step_mask
+
     def project_action(
         self,
         action: np.ndarray,
         deterministic: bool = True,
+        mask: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         """
         Projects raw action vector in R^{action_dim} onto the simplex Delta^{action_dim},
-        returning `(risky_weights_N, cash_weight)`.
+        respecting the Point-in-Time tradability mask and returning `(risky_weights_N, cash_weight)`.
         """
         raw = np.asarray(action, dtype=np.float64).reshape(-1)
         if len(raw) < self.action_dim:
@@ -231,26 +278,50 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
         elif len(raw) > self.action_dim:
             raw = raw[: self.action_dim]
 
-        if self.projection_mode == "relu_l1":
-            clipped = np.maximum(raw, 0.0)
+        asset_mask = (
+            np.asarray(mask, dtype=bool)
+            if mask is not None
+            else self.get_current_tradability_mask()
+        )
+        full_mask = (
+            np.concatenate([asset_mask, np.array([True], dtype=bool)])
+            if self.include_cash
+            else asset_mask
+        )
+        m_f = full_mask.astype(np.float64)
+
+        # Check if `raw` is already a valid masked simplex vector (e.g. from SetTransformerPolicyNet)
+        if (
+            np.all(raw >= -1e-7)
+            and abs(float(np.sum(raw * m_f)) - 1.0) < 1e-4
+            and float(np.sum(np.abs(raw * (1.0 - m_f)))) < 1e-5
+        ):
+            simplex_w = np.maximum(raw, 0.0) * m_f
+            simplex_w = simplex_w / max(float(np.sum(simplex_w)), 1e-12)
+        elif self.projection_mode == "relu_l1":
+            clipped = np.maximum(raw, 0.0) * m_f
             total = float(np.sum(clipped))
             if total > 1e-12:
                 simplex_w = clipped / total
             else:
-                simplex_w = np.full(self.action_dim, 1.0 / self.action_dim)
+                simplex_w = m_f / max(float(np.sum(m_f)), 1.0)
         elif self.projection_mode == "dirichlet":
-            # Softplus concentration alpha_i = log(1 + exp(a_i)) + 1.0
+            # Masked Dirichlet concentration alpha_i = (log(1 + exp(a_i)) + 1.0) * m_i
             clipped_raw = np.clip(raw, -20.0, 20.0)
-            alpha = np.log1p(np.exp(clipped_raw)) + 1.0
+            alpha = (np.log1p(np.exp(clipped_raw)) + 1.0) * m_f
             if deterministic:
-                simplex_w = alpha / np.sum(alpha)
+                simplex_w = alpha / max(float(np.sum(alpha)), 1e-12)
             else:
-                simplex_w = np.random.dirichlet(alpha)
+                simplex_w = np.zeros(self.action_dim, dtype=np.float64)
+                active_idx = np.flatnonzero(full_mask)
+                if len(active_idx) > 0:
+                    simplex_w[active_idx] = np.random.dirichlet(alpha[active_idx])
         else:
-            # Default: temperature-scaled softmax
-            scaled = (raw - np.max(raw)) / self.softmax_temperature
-            exp_w = np.exp(np.clip(scaled, -25.0, 25.0))
-            simplex_w = exp_w / np.sum(exp_w)
+            # Default: mask-aware temperature-scaled softmax
+            active_raw = np.where(full_mask, raw, -1e9)
+            scaled = (active_raw - np.max(active_raw)) / self.softmax_temperature
+            exp_w = np.exp(np.clip(scaled, -25.0, 25.0)) * m_f
+            simplex_w = exp_w / max(float(np.sum(exp_w)), 1e-12)
 
         if self.include_cash:
             risky_w = simplex_w[: self.n_assets]
@@ -282,11 +353,16 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
             [self.unrealized_drawdown, self.cash_reserve, w2_val],
             dtype=np.float32,
         )
-        return {
+        obs: dict[str, np.ndarray] = {
             "market_state": market_window.astype(np.float32),
             "current_weights": self.current_weights.astype(np.float32),
             "portfolio_meta": meta_vec,
         }
+        if self.include_tradability_mask:
+            obs["tradability_mask"] = self.get_current_tradability_mask().astype(
+                np.float32
+            )
+        return obs
 
     def reset(
         self,
@@ -410,6 +486,8 @@ class POMDPPortfolioEnv(_GYM_BASE):  # type: ignore[misc]
                     dtype=np.float32,
                 ),
             }
+            if self.include_tradability_mask:
+                next_obs["tradability_mask"] = np.ones(self.n_assets, dtype=np.float32)
 
         info = {
             "scenario_idx": self.active_path_idx,

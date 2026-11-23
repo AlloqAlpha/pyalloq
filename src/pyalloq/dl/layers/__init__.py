@@ -10,8 +10,21 @@ from pyalloq.dl.layers.neural_jump_rde import (
     NeuralJumpRDE,
     TorchLogSignatureExtractor,
 )
+from pyalloq.dl.layers.set_transformer import (
+    ISAB,
+    MAB,
+    PMA,
+    SAB,
+    ScalableMultiheadAttention,
+    SetTransformerBackbone,
+    VectorizedVariableSelectionNetwork,
+)
 
 __all__ = [
+    "ISAB",
+    "MAB",
+    "PMA",
+    "SAB",
     "BasePolicyNetwork",
     "DifferentiableCVaRLayer",
     "DifferentiableKKTAllocatorModule",
@@ -19,5 +32,8 @@ __all__ = [
     "FragilityShrinkageCholeskyLayer",
     "MDFPOptimizationLayer",
     "NeuralJumpRDE",
+    "ScalableMultiheadAttention",
+    "SetTransformerBackbone",
     "TorchLogSignatureExtractor",
+    "VectorizedVariableSelectionNetwork",
 ]

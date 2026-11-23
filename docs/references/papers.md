@@ -394,3 +394,59 @@ x^* = \arg\min_{x \in \Delta^M} \sum_{m=1}^M x_m \ln\!\left(\frac{x_m}{p_m}\righ
 **Contribution:** Analyzed the compounding interaction between multi-horizon alpha decay, intra-period weight drift, and linear/non-linear transaction costs when transitioning from theoretical paper signals to executed multi-period trajectories.
 
 **Implemented in:** `PerformanceAttributor.compute_frictional_drag`, `FrictionalDragResult`, `WalkForwardEngine`, `plot_attribution_waterfall`
+
+---
+
+## Permutation-Invariant Set Transformers, Scalable-Softmax & Equivariant Portfolio Policies
+
+### Lee, Lee, Kim, Kosiorek, Choi & Teh (2019) — Set Transformer {#lee-2019}
+
+> Lee, J., Lee, Y., Kim, J., Kosiorek, A., Choi, S., & Teh, Y. W. (2019). Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks. *Proceedings of the 36th International Conference on Machine Learning (ICML)*, PMLR 97, 3744–3753.
+> [https://proceedings.mlr.press/v97/lee19d/lee19d.pdf](https://proceedings.mlr.press/v97/lee19d/lee19d.pdf)
+
+**Contribution:** Formulated Multihead Attention Blocks (`MAB`), Set Attention Blocks (`SAB`), linear-time \(\mathcal{O}(Nm)\) Induced Set Attention Blocks (`ISAB`) via \(m\) trainable inducing points, and Pooling by Multihead Attention (`PMA`) as universal approximators of continuous permutation-equivariant and permutation-invariant functions on variable-cardinality sets.
+
+**Implemented in:** `MAB`, `SAB`, `ISAB`, `PMA`, `SetTransformerBackbone`, `SetTransformerCovarianceNet`, `SetTransformerPolicyNet`
+
+---
+
+### Nakanishi (2025) & Martins & Astudillo (2016) — Scalable-Softmax (`SSMax`) & Sparsemax {#ssmax-2025}
+
+> Nakanishi, K. M. (2025). Scalable-Softmax Is Superior for Attention. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2501.19399](https://doi.org/10.48550/arxiv.2501.19399)
+>
+> Martins, A. F. T., & Astudillo, R. F. (2016). From Softmax to Sparsemax: A Sparse Model of Attention and Multi-Label Classification. *International Conference on Machine Learning (ICML)*.
+
+**Contribution:** Proved that standard Softmax suffers from attention fading as set cardinality \(N\) scales, and introduced logarithmic logit scaling \(\operatorname{SSMax}(z_i; N, s) \propto \exp((s \ln N) z_i)\) alongside Euclidean simplex projections (`Sparsemax` / `CappedSimplexProjection`) to preserve concentration across 50-to-500 asset cardinality shifts.
+
+**Implemented in:** `ScalableMultiheadAttention`, `CappedSimplexProjection`, `UniverseSubsampler`, `plot_set_transformer_diagnostics`
+
+---
+
+### Lin et al. (2021) & Bongiorno, Manolakis & Mantegna (2026) — Deep Risk Factor & RIE Spectral Covariance {#deep-cov-2026}
+
+> Lin, H., Zhou, D., Liu, W., & Bian, J. (2021). Deep Risk Model: A Deep Learning Solution for Mining Latent Risk Factors to Improve Covariance Matrix Estimation. *ACM International Conference on AI in Finance (ICAIF)*.
+> [https://doi.org/10.48550/arxiv.2107.05201](https://doi.org/10.48550/arxiv.2107.05201)
+>
+> Bongiorno, C., Manolakis, E., & Mantegna, R. N. (2026). End-to-End Large Portfolio Optimization for Variance Minimization. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2507.01918](https://doi.org/10.48550/arxiv.2507.01918)
+
+**Contribution:** Formulated strictly congruence-equivariant low-rank factor-plus-diagonal PSD covariance heads (\(\hat{\Sigma}_t = B_t \Sigma_{F,t} B_t^\top + D_t\) with exact \(\mathcal{O}(Nm^2 + m^3)\) Woodbury inversion) and rotation-invariant eigenvalue spectral cleaning (`RIESpectralHead`) that generalize zero-shot across universe sizes.
+
+**Implemented in:** `ISABFactorDiagonalHead`, `EquivariantGramCorrHead`, `RIESpectralHead`, `SetTransformerCovarianceNet`, `WoodburyGaussianNLLLoss`, `WoodburySteinLoss`
+
+---
+
+### Wood, Roberts & Zohren (2026), Xue & Ye (2025) & Ying et al. (2021) — DeePM, Masked Dirichlet RL & Graphormer Priors {#deepm-2026}
+
+> Wood, K., Roberts, S., & Zohren, S. (2026). DeePM: Regime-Robust Deep Learning for Systematic Macro Portfolio Management. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2601.05975](https://doi.org/10.48550/arxiv.2601.05975)
+>
+> Xue, J., & Ye, Y. (2025). Cross-Sectional Transformer Reinforcement Learning for Dynamic Constituent Portfolios. *arXiv*.
+> [https://doi.org/10.48550/arxiv.2510.06466](https://doi.org/10.48550/arxiv.2510.06466)
+>
+> Ying, C., Cai, T., Luo, S., Zheng, S., Ke, G., He, D., Shen, Y., & Liu, T.-Y. (2021). Do Transformers Really Perform Bad for Graph Representation? (`Graphormer`). *Advances in Neural Information Processing Systems (NeurIPS)*, 34.
+
+**Contribution:** Introduced Vectorized Variable Selection Networks (`V-VSN`), the Directed Delay (\(t-1\)) causal sieve for asynchronous global market closes, differentiable `SoftMinEVaRLoss`, ragged binary tradability masking without price imputation, Masked Dirichlet + Cash PPO Actor-Critic policies, and Graphormer structural attention biases.
+
+**Implemented in:** `VectorizedVariableSelectionNetwork`, `SetTransformerBackbone(directed_delay=True)`, `SoftMinEVaRLoss`, `MaskedDirichletCashHead`, `DollarNeutralStatArbHead`, `VolTargetedContinuousRiskHead`, `SetTransformerPolicyNet`, `MarketDataset(return_mask=True)`, `SB3PortfolioAgent(policy_backbone="set_transformer")`

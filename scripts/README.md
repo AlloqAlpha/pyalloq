@@ -73,3 +73,12 @@ This folder contains runnable end-to-end scripts demonstrating `pyalloq` workflo
    ```bash
    uv run python scripts/run_apollopfn_generative_wdro.py
    ```
+
+9. **[`run_set_transformer_benchmark.py`](./run_set_transformer_benchmark.py)**
+   - Audits 2D congruence permutation equivariance (`||Sigma(Pi X) - Pi Sigma(X) Pi^T||_F`), spectral conditioning ($\kappa$), and Woodbury $\mathcal{O}(N m^2 + m^3)$ solve exactness across `CrossAttentionCholeskyNet` and `SetTransformerCovarianceNet` (`ISABFactorDiagonalHead`, `EquivariantGramCorrHead`, `RIESpectralHead`).
+   - Simulates 50-to-500 asset cardinality shifts comparing Standard Softmax dilution against Scalable-Softmax (`SSMax`) and `CappedSimplexProjection`.
+   - Trains `SetTransformerCovarianceNet` (with `WoodburyGaussianNLLLoss`) and `SetTransformerPolicyNet` (`mandate="capped_simplex"`, with `SoftMinEVaRLoss` and `UniverseSubsampler`) inside `WalkForwardTrainer`.
+   - Runs `BenchmarkSuite` (`MultiStrategyComparator`) under `AlmgrenChrissCostModel` with Deflated Sharpe Ratio (DSR) tracking and exports `set_transformer_diagnostics.html` and `set_transformer_comparison_tearsheet.html`.
+   ```bash
+   uv run python scripts/run_set_transformer_benchmark.py
+   ```

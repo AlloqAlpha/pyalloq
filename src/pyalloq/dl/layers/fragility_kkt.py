@@ -69,9 +69,11 @@ class BasePolicyNetwork(nn.Module, ABC):
             )
             mkt = np.asarray(raw_mkt)
             w_np = observation.get("current_weights", observation.get("weights"))
+            mask_np = observation.get("tradability_mask")
         else:
             mkt = np.asarray(observation)
             w_np = None
+            mask_np = None
 
         if mkt.ndim == 2:
             x_t = (
@@ -92,7 +94,26 @@ class BasePolicyNetwork(nn.Module, ABC):
             else:
                 w_t = torch.tensor(w_arr, device=device, dtype=dtype)
 
-        w_out = self.forward(x_t, w_current=w_t)
+        mask_t: torch.Tensor | None = None
+        if mask_np is not None:
+            m_arr = np.asarray(mask_np) > 0.5
+            if m_arr.ndim == 1:
+                mask_t = torch.tensor(m_arr, device=device, dtype=torch.bool).unsqueeze(
+                    0
+                )
+            else:
+                mask_t = torch.tensor(m_arr, device=device, dtype=torch.bool)
+
+        forward_fn: Any = self.forward
+        try:
+            w_out = forward_fn(
+                x_t, w_current=w_t, mask=mask_t, deterministic=deterministic
+            )
+        except TypeError:
+            try:
+                w_out = forward_fn(x_t, w_current=w_t, mask=mask_t)
+            except TypeError:
+                w_out = self.forward(x_t, w_current=w_t)
         action = w_out.squeeze(0).cpu().numpy()
         return action, {"deterministic": deterministic}
 
@@ -377,7 +398,6 @@ def _cvar_kkt_mirror_step(
     """
     Single entropic mirror-descent step on the CVaR-tilted, risk-budgeted objective on Delta^N.
     """
-    B, N = w.shape
     # Mean-variance gradient: -mu + gamma * Sigma w
     grad_mv = -mu + gamma * torch.bmm(cov, w.unsqueeze(-1)).squeeze(-1)
 

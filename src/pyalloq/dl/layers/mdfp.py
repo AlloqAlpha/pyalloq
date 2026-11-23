@@ -4,16 +4,60 @@ import torch
 from torch import nn
 
 
+def _factor_cov_matvec(
+    z: torch.Tensor,
+    b_load: torch.Tensor,
+    sigma_f: torch.Tensor,
+    d_diag: torch.Tensor,
+) -> torch.Tensor:
+    r"""
+    Evaluates the quadratic risk matrix-vector product:
+        \hat{\Sigma} z = B (\Sigma_F (B^T z)) + D \odot z
+    in ``O(N m)`` time and memory without materializing an ``N x N`` matrix.
+
+    Shapes:
+        z: ``(B, H, N)``
+        b_load: ``(B, N, m)`` or ``(B, H, N, m)``
+        sigma_f: ``(B, m, m)`` or ``(B, H, m, m)``
+        d_diag: ``(B, N)`` or ``(B, H, N)``
+    """
+    B, H, N = z.shape
+    if b_load.dim() == 3:
+        b_exp = b_load.unsqueeze(1).expand(B, H, N, -1)
+    else:
+        b_exp = b_load
+    m = b_exp.shape[-1]
+
+    if sigma_f.dim() == 3:
+        sf_exp = sigma_f.unsqueeze(1).expand(B, H, m, m)
+    else:
+        sf_exp = sigma_f
+
+    if d_diag.dim() == 2:
+        d_exp = d_diag.unsqueeze(1).expand(B, H, N)
+    else:
+        d_exp = d_diag
+
+    # B^T z: (B, H, m, 1)
+    bt_z = torch.matmul(b_exp.transpose(-2, -1), z.unsqueeze(-1))
+    # Sigma_F (B^T z): (B, H, m, 1)
+    sf_bt_z = torch.matmul(sf_exp, bt_z)
+    # B (Sigma_F (B^T z)): (B, H, N)
+    low_rank_term = torch.matmul(b_exp, sf_bt_z).squeeze(-1)
+    return low_rank_term + d_exp * z
+
+
 def _mdfp_step(
     z: torch.Tensor,
     mu_seq: torch.Tensor,
-    cov_seq: torch.Tensor,
+    cov_seq: torch.Tensor | None,
     w_current: torch.Tensor,
     gamma: float,
     kappa: float,
     eta: float,
     discount: float,
     smooth_eps: float,
+    cov_factors: tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None = None,
 ) -> torch.Tensor:
     """
     Single Entropic Mirror-Descent Fixed-Point (MDFP) operator evaluation z^{m+1} = F(z^m, theta).
@@ -21,8 +65,9 @@ def _mdfp_step(
     Shapes:
         z: (B, H, N) - multi-period weight trajectory on the probability simplex
         mu_seq: (B, H, N) - predicted expected return trajectory
-        cov_seq: (B, H, N, N) - predicted or empirical covariance trajectory
+        cov_seq: (B, H, N, N) - predicted or empirical covariance trajectory (optional if cov_factors given)
         w_current: (B, N) - pre-trade starting weights w_{t^-}
+        cov_factors: optional low-rank factor tuple (B_load, Sigma_F, d_diag) for O(Nm) risk matvec
     """
     B, H, N = z.shape
     device = z.device
@@ -54,7 +99,12 @@ def _mdfp_step(
         grad_tc_next = torch.zeros_like(z)
 
     # Risk gradient: gamma * Sigma_s z_s -> shape (B, H, N)
-    grad_risk = gamma * torch.matmul(cov_seq, z.unsqueeze(-1)).squeeze(-1)
+    if cov_factors is not None:
+        b_load, sigma_f, d_diag = cov_factors
+        grad_risk = gamma * _factor_cov_matvec(z, b_load, sigma_f, d_diag)
+    else:
+        assert cov_seq is not None
+        grad_risk = gamma * torch.matmul(cov_seq, z.unsqueeze(-1)).squeeze(-1)
 
     # Total stage gradient of convex minimization objective J(z; theta):
     # min_z sum_{s=0}^{H-1} beta^s [ -mu_s^T z_s + (gamma/2) z_s^T Sigma_s z_s + kappa ||z_s - z_{s-1}||_1 ]
@@ -277,6 +327,7 @@ class MDFPOptimizationLayer(nn.Module):
         mu_seq: torch.Tensor,
         cov_seq: torch.Tensor | None = None,
         w_current: torch.Tensor | None = None,
+        cov_factors: tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         """
         Parameters
@@ -287,6 +338,10 @@ class MDFPOptimizationLayer(nn.Module):
             Covariance trajectory of shape (B, H, N, N) or (B, N, N). Defaults to identity * 0.01.
         w_current : torch.Tensor, optional
             Pre-trade starting weights of shape (B, N). Defaults to equal weights 1/N.
+        cov_factors : tuple[torch.Tensor, torch.Tensor, torch.Tensor], optional
+            Low-rank factor tuple ``(B_load, Sigma_F, d_diag)`` from ``ISABFactorDiagonalHead``
+            enabling ``O(N m)`` mirror-descent risk matrix-vector products without materializing
+            an ``N x N`` covariance tensor.
 
         Returns
         -------
@@ -300,14 +355,54 @@ class MDFPOptimizationLayer(nn.Module):
         device = mu_seq.device
         dtype = mu_seq.dtype
 
+        if w_current is None:
+            w_current = torch.full((B, N), 1.0 / N, device=device, dtype=dtype)
+
+        if cov_factors is not None:
+            # Fast O(Nm) factor matvec path matching exact max_iter fixed-point steps
+            w_init = w_current.clamp(min=1e-6)
+            w_init = w_init / w_init.sum(dim=-1, keepdim=True)
+            z = w_init.unsqueeze(1).expand(B, H, N).clone()
+
+            if self.max_iter > 1:
+                with torch.no_grad():
+                    for _ in range(self.max_iter - 1):
+                        z_next = _mdfp_step(
+                            z=z,
+                            mu_seq=mu_seq,
+                            cov_seq=None,
+                            w_current=w_current,
+                            gamma=self.risk_aversion,
+                            kappa=self.cost_penalty,
+                            eta=self.step_size,
+                            discount=self.discount,
+                            smooth_eps=self.smooth_eps,
+                            cov_factors=cov_factors,
+                        )
+                        max_diff = float(torch.max(torch.abs(z_next - z)).item())
+                        z = z_next
+                        if max_diff < self.tol:
+                            return z
+
+            # Final differentiable step (step max_iter) for gradient propagation into mu_seq and cov_factors
+            return _mdfp_step(
+                z=z.detach(),
+                mu_seq=mu_seq,
+                cov_seq=None,
+                w_current=w_current,
+                gamma=self.risk_aversion,
+                kappa=self.cost_penalty,
+                eta=self.step_size,
+                discount=self.discount,
+                smooth_eps=self.smooth_eps,
+                cov_factors=cov_factors,
+            )
+
         if cov_seq is None:
             eye = torch.eye(N, device=device, dtype=dtype) * 0.01
             cov_seq = eye.view(1, 1, N, N).expand(B, H, N, N)
         elif cov_seq.dim() == 3:
             cov_seq = cov_seq.unsqueeze(1).expand(B, H, N, N)
-
-        if w_current is None:
-            w_current = torch.full((B, N), 1.0 / N, device=device, dtype=dtype)
 
         if self.implicit_backward:
             return _ImplicitMDFPFunction.apply(

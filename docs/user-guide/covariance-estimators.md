@@ -210,6 +210,55 @@ cov_df = cov_estimator.estimate(data)
 
 ---
 
+## Size- and Permutation-Equivariant Set Transformer Covariance (`SetTransformerCovarianceNet`)
+
+Unlike lower-triangular Cholesky heads (`torch.tril`) whose output depends on arbitrary DataFrame column ordering, `SetTransformerCovarianceNet` enforces exact **2D Congruence Equivariance** (\(\hat{\Sigma}(\Pi X) = \Pi \hat{\Sigma}(X) \Pi^\top\)) and zero-shot universe-size transfer via **Induced Set Attention Blocks (`ISAB`)** and **Scalable-Softmax (`SSMax`)**.
+
+It supports three pluggable PSD covariance heads:
+
+- **`head_type="factor_diag"` (`ISABFactorDiagonalHead`, Default)**: Reuses the equivariant asset embeddings \(Z_t\) and invariant inducing-point factor states \(H_{I,t}\) to form \(\hat{\Sigma}_t = B_t \Sigma_{F,t} B_t^\top + D_t\). Supports exact \(\mathcal{O}(N m^2 + m^3)\) training and GMV solves via `forward_factors(x, mask)` and `WoodburyGaussianNLLLoss` / `WoodburySteinLoss`.
+- **`head_type="gram_corr"` (`EquivariantGramCorrHead`)**: Volatility-scaled \(\ell_2\)-normalized Gram correlation matrix blended with learnable `[REGIME]` shrinkage \(\lambda_t \in (0, 1)\) and optional Point-in-Time implied-volatility anchoring.
+- **`head_type="rie_spectral"` (`RIESpectralHead`)**: Rotation- and permutation-invariant eigenvalue cleaning inside the empirical correlation eigenbasis conditioned on the aspect ratio \(q_{\text{in}} = N_{\text{active}} / L\).
+
+```python
+import torch
+from pyalloq_backtest.splitters import RollingWindowSplitter
+from pyalloq.dl import (
+    DeepCovarianceEstimator,
+    SetTransformerCovarianceNet,
+    UniverseSubsampler,
+    WoodburyGaussianNLLLoss,
+)
+from pyalloq.dl.trainer import WalkForwardTrainer
+
+set_cov_net = SetTransformerCovarianceNet(
+    n_features=1,
+    hidden_dim=64,
+    num_heads=4,
+    num_inds=16,
+    head_type="factor_diag",      # or "gram_corr" | "rie_spectral"
+    temporal_type="vsn_conv",     # "lstm" | "vsn_conv" | "logsig_ssm" | "neural_jump_rde"
+    directed_delay=True,          # Optional (t-1) causal sieve for multi-timezone closes
+)
+
+trainer = WalkForwardTrainer(
+    model=set_cov_net,
+    loss_function=WoodburyGaussianNLLLoss(normalize_by_cardinality=True),
+    optimizer=torch.optim.AdamW(set_cov_net.parameters(), lr=2e-3),
+    splitter=RollingWindowSplitter(lookback_window=120),
+    lookback_window=30,
+    return_mask=True,
+    universe_subsampler=UniverseSubsampler(min_assets=10),
+    use_forward_factors=True,     # Invokes O(Nm^2 + m^3) Woodbury pathway
+)
+
+cov_est = DeepCovarianceEstimator(model=set_cov_net, lookback_window=30, allow_ragged=True)
+cov_df = cov_est.estimate(data)
+factor_loadings_df, sigma_f_np, idio_var_ser = cov_est.estimate_factors(data)
+```
+
+---
+
 ## Choosing a Covariance Estimator
 
 | Scenario | Recommended Estimator |

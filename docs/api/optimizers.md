@@ -154,6 +154,36 @@
 
 ---
 
+### SetTransformerPolicyNet
+
+::: pyalloq.dl.estimators.e2e.models.set_policy.SetTransformerPolicyNet
+
+---
+
+### CappedSimplexProjection
+
+::: pyalloq.dl.estimators.e2e.models.set_policy.CappedSimplexProjection
+
+---
+
+### MaskedDirichletCashHead
+
+::: pyalloq.dl.estimators.e2e.models.set_policy.MaskedDirichletCashHead
+
+---
+
+### DollarNeutralStatArbHead
+
+::: pyalloq.dl.estimators.e2e.models.set_policy.DollarNeutralStatArbHead
+
+---
+
+### VolTargetedContinuousRiskHead
+
+::: pyalloq.dl.estimators.e2e.models.set_policy.VolTargetedContinuousRiskHead
+
+---
+
 ### SignatureMMDRegimeGate
 
 ::: pyalloq.rl.thermodynamics.SignatureMMDRegimeGate

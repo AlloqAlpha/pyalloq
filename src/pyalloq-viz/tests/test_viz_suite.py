@@ -44,6 +44,7 @@ from pyalloq_viz import (
     plot_pbo_distribution,
     plot_regime_transitions,
     plot_risk_contributions,
+    plot_set_transformer_diagnostics,
     plot_terminal_wealth_ruin,
     plot_thermodynamic_regime_gate,
     plot_weight_drift_turnover,
@@ -436,3 +437,31 @@ def test_comparison_and_attribution_tearsheet(
     html_str = ts_comp.to_html(path=html_path)
     assert html_path.exists()
     assert "Multi-Strategy Comparison & Attribution Tear Sheet" in html_str
+
+
+def test_set_transformer_diagnostics_plot() -> None:
+    loadings_df = pd.DataFrame(
+        np.random.normal(0.0, 0.4, size=(5, 4)),
+        index=["AAPL", "MSFT", "NVDA", "JPM", "XOM"],
+        columns=["Factor_1", "Factor_2", "Factor_3", "Factor_4"],
+    )
+    spectra = {
+        "Cholesky_tril": np.array([4.5, 0.4, 0.08, 0.01, 1e-5]),
+        "ISAB_Factor_Diag": np.array([2.4, 1.1, 0.7, 0.5, 0.3]),
+        "RIE_Spectral_Clean": np.array([2.1, 1.0, 0.8, 0.6, 0.5]),
+    }
+    card_df = pd.DataFrame(
+        {
+            "N": [10, 50, 250, 500],
+            "ssmax_max_weight": [0.48, 0.49, 0.52, 0.54],
+            "capped_simplex_max_weight": [0.25, 0.25, 0.25, 0.25],
+            "softmax_max_weight": [0.42, 0.22, 0.11, 0.07],
+        }
+    )
+    fig = plot_set_transformer_diagnostics(
+        factor_loadings=loadings_df,
+        eigenvalue_spectra=spectra,
+        cardinality_profile=card_df,
+    )
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) >= 7

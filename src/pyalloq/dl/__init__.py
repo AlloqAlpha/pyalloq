@@ -1,3 +1,4 @@
+from pyalloq.dl.dataset import MarketDataset, UniverseSubsampler
 from pyalloq.dl.estimators.apollopfn import (
     ApolloPFNPretrainer,
     ApolloPFNReturnEstimator,
@@ -14,6 +15,20 @@ from pyalloq.dl.estimators.black_litterman import (
 )
 from pyalloq.dl.estimators.covariance.deep_cov import DeepCovarianceEstimator
 from pyalloq.dl.estimators.covariance.models.gnn import CRISPSparseSTGAT
+from pyalloq.dl.estimators.covariance.models.set_covariance import (
+    EquivariantGramCorrHead,
+    ISABFactorDiagonalHead,
+    RIESpectralHead,
+    SetTransformerCovarianceNet,
+)
+from pyalloq.dl.estimators.e2e.deep_allocator import DeepAllocator
+from pyalloq.dl.estimators.e2e.models.set_policy import (
+    CappedSimplexProjection,
+    DollarNeutralStatArbHead,
+    MaskedDirichletCashHead,
+    SetTransformerPolicyNet,
+    VolTargetedContinuousRiskHead,
+)
 from pyalloq.dl.estimators.ensemble import (
     EnsembleReturnEstimator,
     EnsembleViewGenerator,
@@ -30,13 +45,25 @@ from pyalloq.dl.estimators.sde_estimator import (
     NeuralSDEEstimator,
 )
 from pyalloq.dl.layers import (
+    ISAB,
+    MAB,
+    PMA,
+    SAB,
     DifferentiableCVaRLayer,
     DifferentiableKKTAllocatorModule,
     DifferentiableRiskParityLayer,
     FragilityShrinkageCholeskyLayer,
     MDFPOptimizationLayer,
     NeuralJumpRDE,
+    ScalableMultiheadAttention,
+    SetTransformerBackbone,
     TorchLogSignatureExtractor,
+    VectorizedVariableSelectionNetwork,
+)
+from pyalloq.dl.loss_functions.woodbury import (
+    SoftMinEVaRLoss,
+    WoodburyGaussianNLLLoss,
+    WoodburySteinLoss,
 )
 from pyalloq.dl.policy import (
     BasePolicyNetwork,
@@ -46,6 +73,10 @@ from pyalloq.dl.policy import (
 )
 
 __all__ = [
+    "ISAB",
+    "MAB",
+    "PMA",
+    "SAB",
     "ApolloPFNPretrainer",
     "ApolloPFNReturnEstimator",
     "ApolloPFNTransformer",
@@ -53,19 +84,32 @@ __all__ = [
     "ArbitrageFreeNeuralSDENet",
     "BasePolicyNetwork",
     "CRISPSparseSTGAT",
+    "CappedSimplexProjection",
+    "DeepAllocator",
     "DeepCovarianceEstimator",
     "DifferentiableCVaRLayer",
     "DifferentiableKKTAllocatorModule",
     "DifferentiableRiskParityLayer",
+    "DollarNeutralStatArbHead",
     "EnsembleReturnEstimator",
     "EnsembleViewGenerator",
+    "EquivariantGramCorrHead",
     "FragilityShrinkageCholeskyLayer",
+    "ISABFactorDiagonalHead",
     "LogSigSSMBlock",
     "MDFPOptimizationLayer",
+    "MarketDataset",
+    "MaskedDirichletCashHead",
     "NeuralJumpRDE",
     "NeuralSDEEstimator",
+    "RIESpectralHead",
     "RiemannBarDistribution",
     "SRNGNPriorGenerator",
+    "ScalableMultiheadAttention",
+    "SetTransformerBackbone",
+    "SetTransformerCovarianceNet",
+    "SetTransformerPolicyNet",
+    "SoftMinEVaRLoss",
     "TimesFM3MultivariateReturnEstimator",
     "TimesFM3MultivariateViewGenerator",
     "TimesFM3UnivariateReturnEstimator",
@@ -76,6 +120,11 @@ __all__ = [
     "TimestralUnivariateViewGenerator",
     "TorchLogSignatureExtractor",
     "UnifiedE2EPolicyNetwork",
+    "UniverseSubsampler",
+    "VectorizedVariableSelectionNetwork",
+    "VolTargetedContinuousRiskHead",
+    "WoodburyGaussianNLLLoss",
+    "WoodburySteinLoss",
     "compute_quantile_scrps",
     "compute_von_neumann_entropy",
 ]
