@@ -15,15 +15,19 @@ from pyalloq.classical.optimizers.markowitz import MarkowitzAllocator
 class NCOAllocator(BaseAllocator):
     def __init__(
         self,
-        tickers: list[str],
+        tickers: list[str] | None = None,
         inner_optimizer: BaseAllocator | None = None,
         outer_optimizer: BaseAllocator | None = None,
         n_clusters: int = 4,
         objective: ObjectiveFunction = ObjectiveFunction.MIN_VOLATILITY,
     ) -> None:
-        super().__init__(tickers=tickers)
-        self.inner_optimizer = inner_optimizer or MarkowitzAllocator(tickers, objective)
-        self.outer_optimizer = outer_optimizer or MarkowitzAllocator(tickers, objective)
+        super().__init__(tickers=tickers or [])
+        self.inner_optimizer = inner_optimizer or MarkowitzAllocator(
+            self.tickers, objective
+        )
+        self.outer_optimizer = outer_optimizer or MarkowitzAllocator(
+            self.tickers, objective
+        )
         self.n_clusters = n_clusters
         self.objective = objective
 

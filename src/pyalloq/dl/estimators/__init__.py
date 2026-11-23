@@ -1,5 +1,9 @@
 """Deep learning estimators."""
 
+from pyalloq_simulation.generators.diffusion import (
+    FactorConditionalDiffusionEstimator,
+)
+
 from pyalloq.dl.estimators.apollopfn import (
     ApolloPFNPretrainer,
     ApolloPFNReturnEstimator,
@@ -26,6 +30,7 @@ __all__ = [
     "ArbitrageFreeNeuralSDENet",
     "EnsembleReturnEstimator",
     "EnsembleViewGenerator",
+    "FactorConditionalDiffusionEstimator",
     "NeuralSDEEstimator",
     "RiemannBarDistribution",
     "SRNGNPriorGenerator",

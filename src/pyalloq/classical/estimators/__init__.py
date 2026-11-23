@@ -1,7 +1,13 @@
 from pyalloq.classical.estimators.black_litterman import (
+    AssetSpecificJumpViewGenerator,
     BlackLittermanCovarianceEstimator,
     BlackLittermanEstimator,
     BlackLittermanReturnEstimator,
+)
+from pyalloq.classical.estimators.relevance import (
+    RelevanceConditionedCovarianceEstimator,
+    RelevanceConditionedReturnEstimator,
+    compute_mahalanobis_relevance_weights,
 )
 from pyalloq.classical.estimators.covariance import (
     EWMACovariance,
@@ -27,6 +33,7 @@ from pyalloq.classical.estimators.returns import (
 
 __all__ = [
     "AlphaDecayReturnEstimator",
+    "AssetSpecificJumpViewGenerator",
     "BlackLittermanCovarianceEstimator",
     "BlackLittermanEstimator",
     "BlackLittermanReturnEstimator",
@@ -42,8 +49,11 @@ __all__ = [
     "MultiFactorReturnEstimator",
     "RandomMatrixTheoryEstimator",
     "ReactionDiffusionCovarianceEstimator",
+    "RelevanceConditionedCovarianceEstimator",
+    "RelevanceConditionedReturnEstimator",
     "ResidualMomentumEstimator",
     "SemiCovariance",
     "VarianceRiskPremiumEstimator",
     "VolatilityScaledMultiHorizonEstimator",
+    "compute_mahalanobis_relevance_weights",
 ]

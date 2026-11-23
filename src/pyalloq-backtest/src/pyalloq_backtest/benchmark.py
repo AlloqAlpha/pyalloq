@@ -296,6 +296,9 @@ class ComparisonResult:
     scenario_results: dict[str, MonteCarloResult] | None = None
     n_trials: int = 1
     expected_max_sharpe: float = 0.0
+    top2_sharpe_gap: float = 0.0
+    top2_sharpe_gap_warning: bool = False
+    used_excess_returns: bool = True
 
 
 class MultiStrategyComparator:
@@ -566,6 +569,27 @@ class MultiStrategyComparator:
             else 0.0
         )
 
+        # Polyhedral-lemma post-selection top-2 Sharpe margin check (arXiv:2606.01650v2)
+        if "sharpe_ratio" in summary_df.columns and len(summary_df) >= 2:
+            sorted_srs = np.sort(summary_df["sharpe_ratio"].to_numpy(dtype=np.float64))[
+                ::-1
+            ]
+            top2_gap = float(abs(sorted_srs[0] - sorted_srs[1]))
+            top2_warn = bool(top2_gap < 0.05)
+        else:
+            top2_gap = 0.0
+            top2_warn = False
+
+        summary_df["top2_sharpe_gap"] = top2_gap
+        summary_df["top2_sharpe_gap_warning"] = float(top2_warn)
+
+        rf_check = (
+            float(data.risk_free_rate.abs().mean())
+            if isinstance(data.risk_free_rate, pd.Series)
+            else abs(float(data.risk_free_rate))
+        )
+        used_excess = bool(rf_check > 0.0 or self.benchmark is not None)
+
         comp_res = ComparisonResult(
             summary_table=summary_df,
             results=ordered_results,
@@ -573,6 +597,9 @@ class MultiStrategyComparator:
             scenario_results=scenario_results,
             n_trials=total_n_trials,
             expected_max_sharpe=sr0_val,
+            top2_sharpe_gap=top2_gap,
+            top2_sharpe_gap_warning=top2_warn,
+            used_excess_returns=used_excess,
         )
         self.last_result = comp_res
         return comp_res

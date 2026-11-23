@@ -1,12 +1,35 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from pyalloq_core.data import MarketData, ScenarioMarketData
 from pyalloq_core.interfaces import BaseScenarioEstimator
 
 from pyalloq_simulation.utils.imputation import FactorBackcastImputer
+
+FactorSelectionMode = Literal["fixed", "effective_rank", "sjm_screened"]
+
+
+def compute_effective_spectral_rank(
+    z_returns: np.ndarray,
+    max_k: int = 18,
+) -> int:
+    """
+    Computes the Roy & Vetterli (2007) spectral-entropy effective rank of standardized
+    asset returns, capped at `max_k = 18` to prevent the diffusion conditioning
+    bias-variance cliff documented in Gao et al. WRDS ablations (March 2026,
+    arXiv:2603.10385).
+    """
+    _, n_assets = z_returns.shape
+    if n_assets <= 2:
+        return max(1, n_assets)
+    _, s_vals, _ = np.linalg.svd(z_returns, full_matrices=False)
+    eig_energy = np.maximum(s_vals**2, 1e-12)
+    p = eig_energy / np.sum(eig_energy)
+    entropy = -float(np.sum(p * np.log(p)))
+    eff_rank = int(round(np.exp(entropy)))
+    return int(np.clip(eff_rank, 2, min(n_assets, max(2, int(max_k)))))
 
 
 class ConditionalDiffusionGenerator(BaseScenarioEstimator):
@@ -46,6 +69,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         hidden_dim: int = 64,
         ridge_penalty: float = 1e-2,
         implied_vol_feature: str = "implied_vol",
+        factor_selection_mode: FactorSelectionMode = "fixed",
+        max_conditioning_dim: int = 18,
         annualization_factor: float = 252.0,
         dtype: Any = np.float32,
         impute_missing: bool = True,
@@ -62,6 +87,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self.hidden_dim = max(16, int(hidden_dim))
         self.ridge_penalty = float(max(1e-6, ridge_penalty))
         self.implied_vol_feature = implied_vol_feature
+        self.factor_selection_mode: FactorSelectionMode = factor_selection_mode
+        self.max_conditioning_dim = max(4, int(max_conditioning_dim))
         self.annualization_factor = float(annualization_factor)
         self.dtype = np.dtype(dtype)
         self.impute_missing = bool(impute_missing)
@@ -92,6 +119,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
         self._terminal_factors_window: np.ndarray | None = None
         self._terminal_iv_ratio: float = 1.0
         self._terminal_iv_dispersion: float = 0.0
+        self._cond_keep_indices: np.ndarray | None = None
+        self.effective_rank_: int = 0
         self.signature_mmd_loss_: float = 0.0
 
     @staticmethod
@@ -201,6 +230,14 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
 
         z_ret = (ret_np - self.mean_vector) / self.std_vector
 
+        self.effective_rank_ = compute_effective_spectral_rank(
+            z_ret, max_k=self.max_conditioning_dim
+        )
+        if self.factor_selection_mode in ("effective_rank", "sjm_screened"):
+            self.K = min(self.effective_rank_, self.N, self.max_conditioning_dim)
+        else:
+            self.K = min(self.n_factors, self.N)
+
         # SVD factor decomposition: Z = U S V^T -> F = Z @ V_K
         _, _, vt = np.linalg.svd(z_ret, full_matrices=False)
         v_k = vt[: self.K].T  # (N, K)
@@ -262,6 +299,29 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
 
         cond_mat = np.vstack(cond_list)
         target_mat = np.vstack(target_list)
+
+        # Bias-variance cliff regularization on conditioning dimensionality k (arXiv:2603.10385):
+        # Cap conditioning vector dimension at `max_conditioning_dim` via SJM/variance screening
+        raw_c_dim = cond_mat.shape[1]
+        if (
+            self.factor_selection_mode == "sjm_screened"
+            or raw_c_dim > self.max_conditioning_dim
+        ):
+            c_vars = np.var(cond_mat, axis=0, ddof=0)
+            target_corr = np.mean(
+                np.abs(
+                    (cond_mat - np.mean(cond_mat, axis=0)).T
+                    @ (target_mat - np.mean(target_mat, axis=0))
+                ),
+                axis=1,
+            )
+            relevance_score = c_vars * (target_corr + 1e-4)
+            k_keep = min(raw_c_dim, self.max_conditioning_dim)
+            keep_idx = np.sort(np.argsort(relevance_score)[::-1][:k_keep])
+            self._cond_keep_indices = keep_idx
+            cond_mat = cond_mat[:, keep_idx]
+        else:
+            self._cond_keep_indices = None
 
         self._cond_mean = np.mean(cond_mat, axis=0)
         cond_std = np.std(cond_mat, axis=0, ddof=0)
@@ -340,6 +400,8 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
             and self._readout_weights is not None
         )
         m_paths = len(cond_batch)
+        if self._cond_keep_indices is not None:
+            cond_batch = cond_batch[:, self._cond_keep_indices]
         cond_norm = np.clip((cond_batch - self._cond_mean) / self._cond_std, -5.0, 5.0)
         uncond_norm = np.zeros_like(cond_norm)
         g_scale = (
@@ -489,3 +551,6 @@ class ConditionalDiffusionGenerator(BaseScenarioEstimator):
             features=sim_features,
             feature_columns=feat_cols,
         )
+
+
+FactorConditionalDiffusionEstimator = ConditionalDiffusionGenerator

@@ -21,13 +21,68 @@ class DeepAllocator(BaseAllocator):
         lookback_window: int = 60,
         device: str = "cpu",
         tickers: list[str] | None = None,
+        graph_prior: Any | None = None,
     ) -> None:
         super().__init__(tickers or [])
         self.device = device
         self.model = model.to(self.device)
         self.model.eval()
         self.lookback_window = lookback_window
+        self.graph_prior = graph_prior
         self.last_cash_weight_: float = 0.0
+        self.last_attn_bias_: np.ndarray | None = None
+
+    def _resolve_attn_bias(
+        self,
+        data: MarketData,
+        x_batch: torch.Tensor,
+        kwargs: dict[str, Any],
+    ) -> torch.Tensor | None:
+        explicit_bias = kwargs.get("attn_bias")
+        if explicit_bias is not None:
+            if isinstance(explicit_bias, torch.Tensor):
+                return explicit_bias.to(self.device)
+            return torch.tensor(
+                np.asarray(explicit_bias, dtype=np.float32), device=self.device
+            )
+
+        prior_src = kwargs.get("graph_prior", self.graph_prior)
+        if prior_src is None:
+            if data.features and any(
+                k in data.features
+                for k in ("relational_graph", "news_graph", "entity_graph")
+            ):
+                from pyalloq.dl.layers.relational_graph import (
+                    RelationalGraphPriorModule,
+                )
+
+                mod = RelationalGraphPriorModule().to(self.device)
+                bias_t = mod.compute_attn_bias(data, x_batch)
+                if bias_t is not None:
+                    self.last_attn_bias_ = bias_t.squeeze(0).cpu().numpy()
+                return bias_t
+            return None
+
+        if hasattr(prior_src, "compute_attn_bias"):
+            bias_t = prior_src.compute_attn_bias(data, x_batch)
+            if isinstance(bias_t, torch.Tensor):
+                self.last_attn_bias_ = bias_t.squeeze(0).cpu().numpy()
+                return bias_t.to(self.device)
+        if isinstance(prior_src, pd.DataFrame):
+            assets = list(data.prices.columns)
+            arr = prior_src.reindex(
+                index=assets, columns=assets, fill_value=0.0
+            ).to_numpy(dtype=np.float32)
+            self.last_attn_bias_ = arr
+            return torch.tensor(arr, dtype=torch.float32, device=self.device)
+        if isinstance(prior_src, np.ndarray):
+            arr = np.asarray(prior_src, dtype=np.float32)
+            self.last_attn_bias_ = arr
+            return torch.tensor(arr, dtype=torch.float32, device=self.device)
+        if isinstance(prior_src, torch.Tensor):
+            self.last_attn_bias_ = prior_src.detach().cpu().numpy()
+            return prior_src.to(self.device)
+        return None
 
     def allocate(
         self,
@@ -108,14 +163,28 @@ class DeepAllocator(BaseAllocator):
                 w_np, dtype=torch.float32, device=self.device
             ).unsqueeze(0)
 
+        attn_bias = self._resolve_attn_bias(data, x_batch, kwargs)
         with torch.no_grad():
             try:
                 if w_curr_tensor is not None:
-                    weights_tensor = self.model(
-                        x_batch, w_current=w_curr_tensor, mask=mask_batch
-                    )
+                    if attn_bias is not None:
+                        weights_tensor = self.model(
+                            x_batch,
+                            w_current=w_curr_tensor,
+                            mask=mask_batch,
+                            attn_bias=attn_bias,
+                        )
+                    else:
+                        weights_tensor = self.model(
+                            x_batch, w_current=w_curr_tensor, mask=mask_batch
+                        )
                 else:
-                    weights_tensor = self.model(x_batch, mask=mask_batch)
+                    if attn_bias is not None:
+                        weights_tensor = self.model(
+                            x_batch, mask=mask_batch, attn_bias=attn_bias
+                        )
+                    else:
+                        weights_tensor = self.model(x_batch, mask=mask_batch)
             except TypeError:
                 try:
                     if w_curr_tensor is not None:

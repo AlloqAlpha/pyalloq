@@ -148,29 +148,43 @@ class HierarchicalMetaRLAllocator(BaseAllocator):
             shifted = raw_arr - np.max(raw_arr)
             blend_alpha = np.exp(np.clip(shifted, -20.0, 20.0))
             blend_alpha /= np.sum(blend_alpha)
+            blended_w = blend_alpha @ candidate_weights
+            blended_w = np.clip(blended_w, 0.0, None)
+            blended_w /= np.sum(blended_w)
         else:
-            # Regime-adaptive ex-ante Sharpe minus turnover utility per candidate allocator
-            cov_np = cov_df.reindex(index=tickers, columns=tickers).to_numpy(
-                dtype=np.float64
-            )
-            mu_np = mu_ser.reindex(tickers).fillna(0.0).to_numpy(dtype=np.float64)
-            scores = np.zeros(self.n_allocators, dtype=np.float64)
-            for k in range(self.n_allocators):
-                w_k = candidate_weights[k]
-                vol_k = float(np.sqrt(max(float(w_k.T @ cov_np @ w_k), 1e-8)))
-                ret_k = float(w_k @ mu_np)
-                to_k = float(np.sum(np.abs(w_k - w_curr_np)))
-                # Penalize high-turnover allocators when W_2 regime distance is elevated
-                scores[k] = (ret_k / vol_k) - (
-                    1.0 + 15.0 * diag.wasserstein_distance
-                ) * to_k
-            shifted = scores - np.max(scores)
-            blend_alpha = np.exp(np.clip(shifted, -15.0, 15.0))
-            blend_alpha /= np.sum(blend_alpha)
+            # Delegate to Phase 2 EnsembleAllocator with Dual-Scaled Switching-Cost OLO
+            # and Wasserstein regime-adaptive switching penalty
+            from pyalloq_core.meta import DualScaledSwitchingCostStrategy
 
-        blended_w = blend_alpha @ candidate_weights
-        blended_w = np.clip(blended_w, 0.0, None)
-        blended_w /= np.sum(blended_w)
+            from pyalloq.classical.optimizers.ensemble import EnsembleAllocator
+
+            ens = EnsembleAllocator(
+                child_allocators=self.base_allocators,
+                meta_strategy=DualScaledSwitchingCostStrategy(
+                    switching_cost_penalty=0.25 + 2.5 * diag.wasserstein_distance
+                ),
+                include_1n_anchor=False,
+                evaluation_window=self.lookback_window,
+                returns_estimator=self.returns_estimator,
+                cov_estimator=self.cov_estimator,
+                tickers=tickers,
+            )
+            ens_res = ens.allocate(
+                data,
+                cov_matrix=cov_df,
+                expected_returns=mu_ser,
+                current_weights=curr_w_ser,
+            )
+            blended_w = (
+                ens_res.weights.reindex(tickers).fillna(0.0).to_numpy(dtype=np.float64)
+            )
+            meta_dict = ens_res.metadata.get("meta_weights", {})
+            if len(meta_dict) == self.n_allocators:
+                blend_alpha = np.array(list(meta_dict.values()), dtype=np.float64)
+            else:
+                blend_alpha = np.full(
+                    self.n_allocators, 1.0 / self.n_allocators, dtype=np.float64
+                )
 
         blend_map = {
             name: float(alpha) for name, alpha in zip(allocator_names, blend_alpha)

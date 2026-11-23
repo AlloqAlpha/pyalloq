@@ -22,8 +22,12 @@ from pyalloq_backtest.costs import (
 from pyalloq_backtest.engine import WalkForwardEngine
 from pyalloq_backtest.metrics import (
     MetricsTearSheet,
+    compute_bayesian_fdr,
     compute_deflated_sharpe_ratio,
     compute_expected_max_sharpe,
+    compute_expected_max_sharpe_scale,
+    compute_location_scale_dsr,
+    compute_minimum_track_record_length,
 )
 from pyalloq_backtest.overfitting import (
     CPCVResult,
@@ -64,6 +68,10 @@ __all__ = [
     "PurgedKFoldSplitter",
     "RollingWindowSplitter",
     "WalkForwardEngine",
+    "compute_bayesian_fdr",
     "compute_deflated_sharpe_ratio",
     "compute_expected_max_sharpe",
+    "compute_expected_max_sharpe_scale",
+    "compute_location_scale_dsr",
+    "compute_minimum_track_record_length",
 ]

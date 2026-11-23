@@ -104,6 +104,9 @@ class MultiPeriodMPCAllocator(BaseAllocator):
         min_weight: float = 0.0,
         max_weight: float = 1.0,
         terminal_weights: pd.Series | dict[str, float] | None = None,
+        reference_weights: pd.Series | dict[str, float] | None = None,
+        reference_allocator: BaseAllocator | None = None,
+        reference_penalty: float = 0.0,
         backend: str = "cvxpy",
         admm_rho: float = 2.0,
         admm_max_iter: int = 250,
@@ -130,6 +133,9 @@ class MultiPeriodMPCAllocator(BaseAllocator):
         self.min_weight = min_weight
         self.max_weight = max_weight
         self.terminal_weights = terminal_weights
+        self.reference_weights = reference_weights
+        self.reference_allocator = reference_allocator
+        self.reference_penalty = float(max(0.0, reference_penalty))
         self.backend = backend
         self.admm_rho = admm_rho
         self.admm_max_iter = admm_max_iter
@@ -209,6 +215,8 @@ class MultiPeriodMPCAllocator(BaseAllocator):
         kappa1: np.ndarray,
         impact_b: np.ndarray,
         x_term: np.ndarray | None,
+        w_ref: np.ndarray | None = None,
+        gamma_ref: float = 0.0,
     ) -> tuple[np.ndarray, np.ndarray, str, float]:
         h_steps, n_assets = mu_h.shape
         X = cp.Variable((h_steps, n_assets))
@@ -238,6 +246,12 @@ class MultiPeriodMPCAllocator(BaseAllocator):
 
             # Expected return minus quadratic variance risk
             stage_util = mu_h[tau] @ x_curr - gamma * cp.quad_form(x_curr, Sigma_psd)
+
+            # Reference-regulated high-dimensional anchoring penalty (Deng, Gao & Wang, May 2026, arXiv:2606.13697)
+            if w_ref is not None and gamma_ref > 0.0:
+                stage_util = stage_util - 0.5 * gamma_ref * cp.sum_squares(
+                    x_curr - w_ref
+                )
 
             # Holding cost (short borrow fees)
             if short_fee > 0.0 and self.min_weight < 0.0:
@@ -296,6 +310,8 @@ class MultiPeriodMPCAllocator(BaseAllocator):
         kappa1: np.ndarray,
         impact_b: np.ndarray,
         x_term: np.ndarray | None,
+        w_ref: np.ndarray | None = None,
+        gamma_ref: float = 0.0,
     ) -> tuple[np.ndarray, np.ndarray, str, float]:
         """
         Alternating Direction Method of Multipliers (ADMM) with closed-form Soft-Thresholding
@@ -326,15 +342,26 @@ class MultiPeriodMPCAllocator(BaseAllocator):
                 x_curr = X[s]
 
                 # Smooth gradient of stage s + coupling to s+1
+                ref_grad = (
+                    gamma_ref * (x_curr - w_ref)
+                    if (w_ref is not None and gamma_ref > 0.0)
+                    else 0.0
+                )
                 grad = beta_s * (
                     2.0 * gamma * (cov_np @ x_curr)
                     - mu_h[s]
                     + quad_lambda * (x_curr - x_prev)
+                    + ref_grad
                 )
                 grad = grad + rho * (x_curr - x_prev - Y[s] + U[s])
 
                 curv = (
                     2.0 * beta_s * gamma * lipschitz_cov
+                    + (
+                        beta_s * gamma_ref
+                        if (w_ref is not None and gamma_ref > 0.0)
+                        else 0.0
+                    )
                     + float(np.max(quad_lambda))
                     + rho
                 )
@@ -392,11 +419,17 @@ class MultiPeriodMPCAllocator(BaseAllocator):
         obj_val = 0.0
         for s in range(h_steps):
             beta_s = self.discount_factor**s
+            ref_pen_s = (
+                0.5 * gamma_ref * float(np.sum((X[s] - w_ref) ** 2))
+                if (w_ref is not None and gamma_ref > 0.0)
+                else 0.0
+            )
             obj_val += beta_s * float(
                 mu_h[s] @ X[s]
                 - gamma * (X[s] @ cov_np @ X[s])
                 - kappa1 @ np.abs(Z[s])
                 - 0.5 * (quad_lambda @ (Z[s] ** 2))
+                - ref_pen_s
             )
         return X, Z, "OPTIMAL_ADMM", obj_val
 
@@ -437,6 +470,38 @@ class MultiPeriodMPCAllocator(BaseAllocator):
                 .to_numpy(dtype=np.float64)
             )
 
+        # Resolve reference portfolio w_ref for high-dimensional multi-period regularization
+        # (Deng, Gao & Wang, May 2026, arXiv:2606.13697)
+        w_ref_np: np.ndarray | None = None
+        ref_kw = kwargs.get("reference_weights", self.reference_weights)
+        if ref_kw is not None:
+            w_ref_np = (
+                pd.Series(ref_kw, dtype=float)
+                .reindex(assets)
+                .fillna(1.0 / n_assets)
+                .to_numpy(dtype=np.float64)
+            )
+        elif self.reference_allocator is not None:
+            try:
+                ref_res = self.reference_allocator.allocate(
+                    data,
+                    cov_matrix=cov_matrix,
+                    expected_returns=expected_returns
+                    if isinstance(expected_returns, pd.Series)
+                    else None,
+                )
+                w_ref_np = (
+                    ref_res.weights.reindex(assets)
+                    .fillna(1.0 / n_assets)
+                    .to_numpy(dtype=np.float64)
+                )
+            except Exception:
+                w_ref_np = np.full(n_assets, 1.0 / n_assets, dtype=np.float64)
+        elif self.reference_penalty > 0.0:
+            w_ref_np = np.full(n_assets, 1.0 / n_assets, dtype=np.float64)
+
+        gamma_ref_stage = self.reference_penalty / self.periods_per_year
+
         mu_h = self._build_horizon_forecasts(assets, expected_returns, data)
         mu_stage = mu_h / self.periods_per_year
         cov_stage = cov_np / self.periods_per_year
@@ -445,11 +510,27 @@ class MultiPeriodMPCAllocator(BaseAllocator):
 
         if self.backend == "admm":
             x_traj, z_traj, status, obj_val = self._solve_admm(
-                mu_stage, cov_stage, x_init, gamma, kappa1, impact_b, x_term
+                mu_stage,
+                cov_stage,
+                x_init,
+                gamma,
+                kappa1,
+                impact_b,
+                x_term,
+                w_ref=w_ref_np,
+                gamma_ref=gamma_ref_stage,
             )
         else:
             x_traj, z_traj, status, obj_val = self._solve_cvxpy(
-                mu_stage, cov_stage, x_init, gamma, kappa1, impact_b, x_term
+                mu_stage,
+                cov_stage,
+                x_init,
+                gamma,
+                kappa1,
+                impact_b,
+                x_term,
+                w_ref=w_ref_np,
+                gamma_ref=gamma_ref_stage,
             )
 
         # Optional Physics-Informed Thermodynamic Regime Gate (Section 8.2)
@@ -486,5 +567,9 @@ class MultiPeriodMPCAllocator(BaseAllocator):
                 "first_step_turnover": float(np.sum(np.abs(z_traj[0]))),
                 "total_planned_turnover": float(np.sum(np.abs(z_traj))),
                 "regime_gate_scale": gate_scale,
+                "reference_penalty": self.reference_penalty,
+                "reference_regulated": bool(
+                    w_ref_np is not None and self.reference_penalty > 0.0
+                ),
             },
         )

@@ -13,6 +13,7 @@ from pyalloq.rl.envs import (
 )
 from pyalloq.rl.exploratory_mv import (
     ExploratoryRegimeMVAllocator,
+    ExploratoryRegimeRLAllocator,
     WonhamRegimeFilter,
 )
 from pyalloq.rl.rewards import (
@@ -45,6 +46,7 @@ __all__ = [
     "DifferentialSharpeReward",
     "EndogenousLiquidityImpactWrapper",
     "ExploratoryRegimeMVAllocator",
+    "ExploratoryRegimeRLAllocator",
     "FeatureNormalizationWrapper",
     "HierarchicalMetaRLAllocator",
     "MetaPortfolioEnv",
