@@ -22,6 +22,7 @@ resolution-markers = [
 [manifest]
 members = [
     "pyalloq",
+    "pyalloq-agents",
     "pyalloq-backtest",
     "pyalloq-core",
     "pyalloq-data-connector",
@@ -2788,7 +2789,7 @@ wheels = [
 
 [[package]]
 name = "pyalloq"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "." }
 dependencies = [
     { name = "cvxopt", marker = "sys_platform != 'win32'" },
@@ -2798,6 +2799,7 @@ dependencies = [
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
     { name = "plotly" },
+    { name = "pyalloq-agents" },
     { name = "pyalloq-backtest" },
     { name = "pyalloq-core" },
     { name = "pyalloq-data-connector" },
@@ -2874,6 +2876,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.0" },
     { name = "plotly", specifier = ">=5.18.0" },
     { name = "pyalloq", extras = ["dl", "rl"], marker = "extra == 'all-ml'" },
+    { name = "pyalloq-agents", editable = "src/pyalloq-agents" },
     { name = "pyalloq-backtest", editable = "src/pyalloq-backtest" },
     { name = "pyalloq-core", editable = "src/pyalloq-core" },
     { name = "pyalloq-data-connector", editable = "src/pyalloq-data-connector" },
@@ -2918,8 +2921,33 @@ dev = [
 ]
 
 [[package]]
+name = "pyalloq-agents"
+version = "0.1.26"
+source = { editable = "src/pyalloq-agents" }
+dependencies = [
+    { name = "pyalloq-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyalloq-core", editable = "src/pyalloq-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "ruff", specifier = ">=0.6" },
+]
+
+[[package]]
 name = "pyalloq-backtest"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-backtest" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -2951,7 +2979,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-core"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-core" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -2981,7 +3009,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-data-connector"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-data-connector" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -3023,7 +3051,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-features"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-features" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -3062,7 +3090,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-simulation"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-simulation" }
 dependencies = [
     { name = "arch" },
@@ -3101,7 +3129,7 @@ dev = [
 
 [[package]]
 name = "pyalloq-viz"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "src/pyalloq-viz" }
 dependencies = [
     { name = "jinja2" },

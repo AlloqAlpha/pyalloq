@@ -61,6 +61,7 @@ plugins:
             - src/pyalloq-features/src
             - src/pyalloq-simulation/src
             - src/pyalloq-viz/src
+            - src/pyalloq-agents/src
           options:
             docstring_style: google
             show_source: true
